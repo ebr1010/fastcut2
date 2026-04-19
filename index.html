@@ -275,7 +275,7 @@ input[type=range]{
 #view-db{display:none;padding:16px;height:calc(100vh - 50px);overflow-y:auto}
 #view-db::-webkit-scrollbar{width:6px}
 #view-db::-webkit-scrollbar-thumb{background:var(--r2);border-radius:3px}
-.db-bar{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.db-bar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
 .db-search{
   flex:1;background:var(--bg2);border:1px solid var(--r3);border-radius:var(--rad);
   color:var(--t0);padding:8px 12px;font-family:var(--bf);font-size:13px;outline:none;
@@ -388,6 +388,23 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .gh-in{background:var(--bg1);border:1px solid var(--r3);border-radius:var(--rad);color:var(--t0);padding:6px 8px;font-size:12px;outline:none;width:100%;font-family:var(--mf)}
 .gh-in:focus{border-color:var(--r4)}
 .gh-status{font-size:11px;color:var(--t2);margin-top:8px;min-height:16px}
+/* ── Tablet / Mobile ─────────────────────────────────────────── */
+@media (max-width:900px){
+  html,body{overflow:auto;height:auto}
+  .layout{grid-template-columns:1fr;height:auto;min-height:0}
+  .left{overflow-y:visible;max-height:none;border-right:none;border-bottom:1px solid var(--r3)}
+  .right{overflow-y:visible}
+  #view-db,#view-rank{height:auto;min-height:0;overflow-y:visible}
+  .db-search{width:100%!important;min-width:0}
+  header{flex-wrap:wrap;height:auto;padding:8px 12px;gap:8px}
+  .tab-bar{flex-wrap:wrap}
+}
+@media (max-width:600px){
+  .layout{grid-template-columns:1fr}
+  .db-grid{grid-template-columns:1fr!important}
+}
+/* iOS Safari: enable momentum scrolling on overflow containers */
+.left,.right,#view-db,#view-rank{-webkit-overflow-scrolling:touch}
 </style>
 </head>
 <body>
@@ -1631,6 +1648,13 @@ async function loadAndRenderDB(){
     if(ghEnabled()){
       try{
         const remote=await ghGet();
+        // Apply remote tags (add ones not in local)
+        if(remote.tags&&remote.tags.length){
+          const localNames=new Set(_tags.map(t=>t.name));
+          const newTags=remote.tags.filter(t=>t.name&&!localNames.has(t.name));
+          if(newTags.length){_tags=[..._tags,...newTags];saveTags();}
+        }
+        // Apply remote videos
         const existing=new Set(_dbCache.map(r=>r.registeredAt));
         const newRecs=remote.data.filter(r=>r.registeredAt&&!existing.has(r.registeredAt));
         if(newRecs.length){await dbAddMany(newRecs);_dbCache=await dbAll();}
@@ -1667,7 +1691,9 @@ function renderDB(records,q,acct){
   acct=acct||'';
   const grid=document.getElementById('db-grid');
   const ql=q.toLowerCase();
-  const al=acct.toLowerCase().replace(/^@/,'');
+  const exactAcct=acct.startsWith('@');            // @つき = 完全一致
+  const al=acct.toLowerCase().replace(/^@/,'');   // 検索文字列（@ 除去済み）
+  const matchUser=u=>!al?true:exactAcct?(u||'').toLowerCase()===(al):(u||'').toLowerCase().includes(al);
 
   // update KW CSV button state
   const kwCsvBtn=document.getElementById('db-kw-csv-btn');
@@ -1685,13 +1711,13 @@ function renderDB(records,q,acct){
 
   // account filter (applied on top of keyword filter)
   if(al){
-    filtered=filtered.filter(rec=>(rec.chatData||[]).some(c=>(c.username||'').toLowerCase().includes(al)));
+    filtered=filtered.filter(rec=>(rec.chatData||[]).some(c=>matchUser(c.username)));
   }
 
   // count label
   const total=records.length;
   let cntLabel=filtered.length<total?filtered.length+' / '+total+'件':total+'件';
-  if(al)cntLabel+=' @'+acct;
+  if(al)cntLabel+=' '+(exactAcct?'=':'~')+'@'+al;
   document.getElementById('db-cnt').textContent=cntLabel;
 
   if(!filtered.length){
@@ -1733,7 +1759,7 @@ function renderDB(records,q,acct){
     // counts — reflect current search mode
     let chatMatchCnt,trMatchCnt;
     if(al){
-      chatMatchCnt=chatData.filter(c=>(c.username||'').toLowerCase().includes(al)).length;
+      chatMatchCnt=chatData.filter(c=>matchUser(c.username)).length;
       trMatchCnt=trData.length; // tr data not filtered by account
     }else if(q){
       chatMatchCnt=chatData.filter(c=>c.message.toLowerCase().includes(ql)).length;
@@ -1753,7 +1779,7 @@ function renderDB(records,q,acct){
     if(al){
       // account mode: show this user's chats only
       const userHits=chatData
-        .filter(c=>(c.username||'').toLowerCase().includes(al))
+        .filter(c=>matchUser(c.username))
         .map(c=>({sec:c.sec,txt:'@'+c.username+' '+c.message,vid:rec.videoId}))
         .sort((a,b)=>a.sec-b.sec);
       if(userHits.length){
@@ -2036,9 +2062,13 @@ async function ghGet(){
   }else{
     text=_b64dec(json.content);
   }
-  const data=JSON.parse(text);
+  const parsed=JSON.parse(text);
+  // New format: {v:[...videos], t:[...tags]}
+  // Old format: [...videos]  ← backward compat
+  const data=Array.isArray(parsed)?parsed:(parsed.v||[]);
+  const tags=Array.isArray(parsed)?[]:(parsed.t||[]);
   if(!Array.isArray(data))throw new Error('データが配列ではありません');
-  return{data,sha:json.sha};
+  return{data,tags,sha:json.sha};
 }
 
 async function ghPut(data,sha){
@@ -2055,33 +2085,51 @@ async function ghSync(silent){
   const st=document.getElementById('gh-status');
   try{
     if(st)st.textContent='同期中... (GitHub取得中)';
-    // pull: add records from GitHub not in local
     const remote=await ghGet();
     if(st)st.textContent='[1] GitHub取得: '+remote.data.length+'件 sha:'+(remote.sha?remote.sha.slice(0,7):'null');
-    await new Promise(r=>setTimeout(r,800));
+
+    // ── タグのマージ（remote にあってローカルにないタグを追加）──
+    let tagChanged=false;
+    const localTagMap=new Map(_tags.map(t=>[t.name,t]));
+    for(const rt of (remote.tags||[])){
+      if(!localTagMap.has(rt.name)){localTagMap.set(rt.name,rt);tagChanged=true;}
+    }
+    if(tagChanged){
+      _tags=[...localTagMap.values()];
+      saveTags();
+      renderTagBar();
+      renderLeftTags();
+    }
+    // マージ後のタグ（ローカル優先でリモートにないタグも含む）
+    const mergedTagMap=new Map((remote.tags||[]).map(t=>[t.name,t]));
+    for(const t of _tags)mergedTagMap.set(t.name,t); // local wins color
+    const mergedTags=[...mergedTagMap.values()];
+
+    await new Promise(r=>setTimeout(r,400));
     const existing=new Set(_dbCache.map(r=>r.registeredAt));
     const newRecs=remote.data.filter(r=>r.registeredAt&&!existing.has(r.registeredAt));
     if(st)st.textContent='[2] 新着: '+newRecs.length+'件をローカルに追加中...';
     if(newRecs.length)await dbAddMany(newRecs);
     const local=await dbAll();
     if(st)st.textContent='[3] ローカル取得後: '+local.length+'件';
-    await new Promise(r=>setTimeout(r,800));
+    await new Promise(r=>setTimeout(r,400));
     const map=new Map();
     for(const r of remote.data)if(r.registeredAt)map.set(r.registeredAt,r);
     for(const r of local)if(r.registeredAt)map.set(r.registeredAt,r);
     const merged=[...map.values()].sort((a,b)=>a.registeredAt<b.registeredAt?-1:1);
     if(st)st.textContent='[4] マージ後: '+merged.length+'件 → GitHubにプッシュ中...';
-    await new Promise(r=>setTimeout(r,800));
+    await new Promise(r=>setTimeout(r,400));
     if(merged.length>=remote.data.length&&merged.length>0){
-      await ghPut(merged,remote.sha);
-      if(st)st.textContent='[5] プッシュ完了: '+merged.length+'件';
+      // 新フォーマット {v:[...videos], t:[...tags]} でプッシュ
+      await ghPut({v:merged,t:mergedTags},remote.sha);
+      if(st)st.textContent='[5] プッシュ完了: '+merged.length+'件 / タグ '+mergedTags.length+'件';
     }else{
       if(st)st.textContent='[5] プッシュスキップ (merged:'+merged.length+' remote:'+remote.data.length+')';
     }
-    await new Promise(r=>setTimeout(r,800));
+    await new Promise(r=>setTimeout(r,400));
     _dbCache=await dbAll();
     renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
-    if(st)st.textContent='同期完了（'+_dbCache.length+'件）';
+    if(st)st.textContent='同期完了（動画'+_dbCache.length+'件 / タグ'+_tags.length+'件）';
     if(!silent)toast('GitHub同期完了 '+_dbCache.length+'件','ok');
   }catch(e){
     if(st)st.textContent='エラー: '+e.message;
