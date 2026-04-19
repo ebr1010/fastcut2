@@ -1501,17 +1501,16 @@ function dbUpdate(id,changes){
 function dbAddMany(records){
   return new Promise((res,rej)=>{
     if(!_db){rej(new Error('DB not open'));return;}
+    if(!records.length){res();return;}
     const tx=_db.transaction('videos','readwrite');
     const store=tx.objectStore('videos');
-    let pending=records.length;
-    if(!pending){res();return;}
     for(const r of records){
-      const rec={...r};delete rec.id; // IDB assigns new id
-      const req=store.add(rec);
-      req.onsuccess=()=>{if(--pending===0)res();};
-      req.onerror=()=>{if(--pending===0)res();};
+      const rec={...r};delete rec.id;
+      store.add(rec);
     }
+    tx.oncomplete=()=>res();
     tx.onerror=e=>rej(e.target.error);
+    tx.onabort=e=>rej(new Error('IDB abort'));
   });
 }
 
@@ -1854,24 +1853,20 @@ async function ghGet(){
   const url='https://api.github.com/repos/'+_ghCfg.repo+'/contents/'+_ghCfg.path;
   const res=await fetch(url,{headers:{'Authorization':'token '+_ghCfg.token,'Accept':'application/vnd.github.v3+json'}});
   if(res.status===404)return{data:[],sha:null};
-  if(!res.ok)throw new Error('GitHub取得失敗 ('+res.status+')');
+  if(!res.ok)throw new Error('GitHub取得失敗 (HTTP '+res.status+')');
   const json=await res.json();
   let text;
   if(!json.content||json.content.trim()===''){
-    // 1MB超のファイルはcontent空になるのでdownload_urlから取得
-    if(!json.download_url)throw new Error('ファイルが大きすぎて取得できません');
+    if(!json.download_url)throw new Error('content空 + download_urlなし (size:'+json.size+')');
     const dl=await fetch(json.download_url);
-    if(!dl.ok)throw new Error('ダウンロード失敗 ('+dl.status+')');
+    if(!dl.ok)throw new Error('download_url失敗 (HTTP '+dl.status+')');
     text=await dl.text();
   }else{
     text=_b64dec(json.content);
   }
-  try{
-    const data=JSON.parse(text);
-    return{data:Array.isArray(data)?data:[],sha:json.sha};
-  }catch{
-    return{data:[],sha:json.sha};
-  }
+  const data=JSON.parse(text);
+  if(!Array.isArray(data))throw new Error('データが配列ではありません');
+  return{data,sha:json.sha};
 }
 
 async function ghPut(data,sha){
@@ -1887,25 +1882,34 @@ async function ghSync(silent){
   if(!ghEnabled())return;
   const st=document.getElementById('gh-status');
   try{
-    if(st)st.textContent='同期中...';
+    if(st)st.textContent='同期中... (GitHub取得中)';
     // pull: add records from GitHub not in local
     const remote=await ghGet();
+    if(st)st.textContent='[1] GitHub取得: '+remote.data.length+'件 sha:'+(remote.sha?remote.sha.slice(0,7):'null');
+    await new Promise(r=>setTimeout(r,800));
     const existing=new Set(_dbCache.map(r=>r.registeredAt));
     const newRecs=remote.data.filter(r=>r.registeredAt&&!existing.has(r.registeredAt));
+    if(st)st.textContent='[2] 新着: '+newRecs.length+'件をローカルに追加中...';
     if(newRecs.length)await dbAddMany(newRecs);
-    // push: merge and upload all
     const local=await dbAll();
+    if(st)st.textContent='[3] ローカル取得後: '+local.length+'件';
+    await new Promise(r=>setTimeout(r,800));
     const map=new Map();
     for(const r of remote.data)if(r.registeredAt)map.set(r.registeredAt,r);
     for(const r of local)if(r.registeredAt)map.set(r.registeredAt,r);
     const merged=[...map.values()].sort((a,b)=>a.registeredAt<b.registeredAt?-1:1);
-    // リモートより少ない件数での上書きを防ぐ
+    if(st)st.textContent='[4] マージ後: '+merged.length+'件 → GitHubにプッシュ中...';
+    await new Promise(r=>setTimeout(r,800));
     if(merged.length>=remote.data.length&&merged.length>0){
       await ghPut(merged,remote.sha);
+      if(st)st.textContent='[5] プッシュ完了: '+merged.length+'件';
+    }else{
+      if(st)st.textContent='[5] プッシュスキップ (merged:'+merged.length+' remote:'+remote.data.length+')';
     }
+    await new Promise(r=>setTimeout(r,800));
     _dbCache=await dbAll();
     renderDB(sortedCache(),document.getElementById('db-q').value.trim());
-    if(st)st.textContent='同期完了 '+new Date().toLocaleTimeString('ja-JP')+'（'+_dbCache.length+'件）';
+    if(st)st.textContent='同期完了（'+_dbCache.length+'件）';
     if(!silent)toast('GitHub同期完了 '+_dbCache.length+'件','ok');
   }catch(e){
     if(st)st.textContent='エラー: '+e.message;
