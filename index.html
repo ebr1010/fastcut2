@@ -1856,8 +1856,13 @@ async function ghGet(){
   if(res.status===404)return{data:[],sha:null};
   if(!res.ok)throw new Error('GitHub取得失敗 ('+res.status+')');
   const json=await res.json();
-  const data=JSON.parse(_b64dec(json.content));
-  return{data,sha:json.sha};
+  try{
+    const data=JSON.parse(_b64dec(json.content));
+    return{data:Array.isArray(data)?data:[],sha:json.sha};
+  }catch{
+    // ファイルが壊れている場合は空として扱い、次のpushで上書きする
+    return{data:[],sha:json.sha};
+  }
 }
 
 async function ghPut(data,sha){
