@@ -1,0 +1,1947 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FASTCUT — VTuber Clip Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3/dist/chartjs-plugin-annotation.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg0:#0a0507;
+  --bg1:#0f080a;
+  --bg2:#160c0f;
+  --card:rgba(255,255,255,0.025);
+  --r0:#b81828;
+  --r1:#d91e30;
+  --r2:#7a0e1a;
+  --r3:rgba(185,24,40,0.22);
+  --r4:rgba(185,24,40,0.55);
+  --glow:0 0 14px rgba(185,24,40,0.35);
+  --t0:#ede0e2;
+  --t1:#8a7274;
+  --t2:#4a2e32;
+  --ok:#3a9e60;
+  --warn:#b07020;
+  --rad:3px;
+  --hf:'Barlow Condensed','Arial Narrow','Helvetica Neue',sans-serif;
+  --bf:'Barlow','Hiragino Kaku Gothic Pro','Noto Sans JP','Yu Gothic UI',sans-serif;
+  --mf:'JetBrains Mono','Consolas','Courier New',monospace;
+}
+html,body{height:100%;background:var(--bg0);color:var(--t0);font-family:var(--bf);font-size:13px;overflow:hidden}
+
+/* HEADER */
+header{
+  height:50px;display:flex;align-items:center;gap:16px;padding:0 16px;
+  background:var(--bg1);border-bottom:1px solid var(--r3);
+  position:sticky;top:0;z-index:200;flex-shrink:0;
+}
+.logo-txt{font-family:var(--hf);font-size:22px;font-weight:700;letter-spacing:2px;color:var(--t0)}
+.logo-txt span{color:var(--r1)}
+.tab-bar{display:flex;gap:4px}
+.tab{
+  background:none;border:1px solid transparent;border-radius:var(--rad);
+  padding:5px 14px;font-family:var(--hf);font-size:14px;font-weight:500;
+  color:var(--t1);cursor:pointer;transition:all 0.15s;
+}
+.tab:hover{color:var(--t0);border-color:var(--r3)}
+.tab.active{color:var(--r1);border-color:var(--r3);background:rgba(185,24,40,0.08)}
+.header-sub{margin-left:auto;font-family:var(--hf);font-size:13px;color:var(--t2);letter-spacing:1px}
+
+/* LAYOUT */
+.layout{
+  display:grid;grid-template-columns:320px 1fr;
+  height:calc(100vh - 50px);
+}
+
+/* LEFT PANEL */
+.left{
+  background:var(--bg1);border-right:1px solid var(--r3);
+  padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;
+}
+.left::-webkit-scrollbar{width:4px}
+.left::-webkit-scrollbar-track{background:var(--bg1)}
+.left::-webkit-scrollbar-thumb{background:var(--r2);border-radius:2px}
+
+/* RIGHT PANEL */
+.right{
+  background:var(--bg0);overflow-y:auto;padding:16px;
+}
+.right::-webkit-scrollbar{width:6px}
+.right::-webkit-scrollbar-track{background:var(--bg0)}
+.right::-webkit-scrollbar-thumb{background:var(--r2);border-radius:3px}
+
+/* MESSAGES */
+#msgs{display:flex;flex-direction:column;gap:6px}
+.msg{
+  padding:7px 10px;border-radius:var(--rad);font-size:12px;
+  display:flex;align-items:flex-start;gap:8px;line-height:1.4;
+}
+.msg.error{background:rgba(185,24,40,0.15);border:1px solid rgba(185,24,40,0.3);color:#e06070}
+.msg.warning{background:rgba(176,112,32,0.13);border:1px solid rgba(176,112,32,0.3);color:#c49040}
+.msg.info{background:rgba(58,158,96,0.1);border:1px solid rgba(58,158,96,0.25);color:#5aae80}
+.msg-close{margin-left:auto;cursor:pointer;opacity:0.6;flex-shrink:0;font-size:14px;line-height:1}
+.msg-close:hover{opacity:1}
+
+/* DROP ZONES */
+.dz-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dz{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;position:relative;border:1px dashed var(--r3);border-radius:var(--rad);
+  padding:12px 8px 10px;text-align:center;transition:all 0.18s;
+  background:var(--card);cursor:pointer;min-height:72px;
+}
+.dz:hover,.dz.over{border-color:var(--r1);border-style:solid;background:rgba(185,24,40,0.07)}
+.dz.ready{border-style:solid;border-width:2px;border-color:var(--ok);background:rgba(58,158,96,0.10)}
+.dz-ico{font-size:20px;line-height:1}
+.dz-ttl{font-family:var(--hf);font-size:13px;font-weight:500;color:var(--t0)}
+.dz-hint{font-size:10px;color:var(--t2)}
+.dz-name{font-size:10px;color:var(--ok);word-break:break-all;max-width:100%}
+
+/* FORM */
+.fi-lbl{font-size:11px;color:var(--t1);margin-bottom:2px}
+.fi{
+  width:100%;background:var(--bg2);border:1px solid var(--r3);border-radius:var(--rad);
+  color:var(--t0);padding:6px 9px;font-family:var(--bf);font-size:13px;outline:none;
+  transition:border-color 0.15s;
+}
+.fi:focus{border-color:var(--r4)}
+.fi.err{border-color:var(--r1);box-shadow:var(--glow)}
+.fi-group{display:flex;flex-direction:column;gap:3px}
+
+/* TAGS */
+.tw{
+  background:var(--bg2);border:1px solid var(--r3);border-radius:var(--rad);
+  padding:5px 7px;display:flex;flex-wrap:wrap;gap:5px;align-items:center;
+  min-height:34px;cursor:text;transition:border-color 0.15s;
+}
+.tw:focus-within{border-color:var(--r4)}
+.tag{
+  background:var(--r2);color:var(--t0);border-radius:2px;
+  padding:2px 6px;font-size:11px;display:flex;align-items:center;gap:4px;
+}
+.tag-x{cursor:pointer;opacity:0.7;font-size:12px;line-height:1}
+.tag-x:hover{opacity:1}
+.tag-in{
+  background:none;border:none;outline:none;color:var(--t0);
+  font-family:var(--bf);font-size:12px;flex:1;min-width:60px;
+}
+
+/* ACCORDION */
+.acc{border:1px solid var(--r3);border-radius:var(--rad)}
+.acc-h{
+  padding:8px 10px;cursor:pointer;display:flex;justify-content:space-between;
+  align-items:center;font-size:12px;color:var(--t1);user-select:none;
+  transition:color 0.15s;
+}
+.acc-h:hover{color:var(--t0)}
+.acc-h.open{color:var(--t0)}
+.acc-arr{transition:transform 0.2s;display:inline-block;font-size:10px}
+.acc-h.open .acc-arr{transform:rotate(180deg)}
+.acc-b{display:none;padding:10px;flex-direction:column;gap:8px;border-top:1px solid var(--r3)}
+.acc-b.open{display:flex}
+
+/* SLIDERS */
+.sl-row{display:flex;flex-direction:column;gap:3px}
+.sl-top{display:flex;justify-content:space-between;align-items:center}
+.sl-lbl{font-size:11px;color:var(--t1)}
+.sl-val{font-size:11px;color:var(--r1);font-family:var(--mf)}
+input[type=range]{
+  width:100%;accent-color:var(--r1);height:4px;
+  background:var(--r2);border-radius:2px;outline:none;cursor:pointer;
+}
+.fps-row{display:flex;align-items:center;gap:8px}
+.fps-row .sl-lbl{flex:1}
+.fps-in{
+  width:60px;background:var(--bg0);border:1px solid var(--r3);
+  border-radius:var(--rad);color:var(--t0);padding:3px 6px;
+  font-family:var(--mf);font-size:12px;outline:none;text-align:right;
+}
+.fps-in:focus{border-color:var(--r4)}
+
+/* ANALYZE BUTTON */
+.abtn{
+  width:100%;padding:11px;background:var(--r0);border:none;border-radius:var(--rad);
+  color:#fff;font-family:var(--hf);font-size:17px;font-weight:700;letter-spacing:1px;
+  cursor:pointer;transition:all 0.18s;
+}
+.abtn:hover{background:var(--r1);box-shadow:var(--glow)}
+.abtn:active{background:var(--r2)}
+
+/* EMPTY STATE */
+.empty{
+  display:flex;align-items:center;justify-content:center;
+  height:200px;color:var(--t2);font-family:var(--hf);font-size:18px;
+}
+
+/* STATS BAR */
+.stats{
+  display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px;
+}
+.stat{
+  background:var(--bg2);border:1px solid var(--r3);border-radius:var(--rad);
+  padding:10px 12px;
+}
+.stat-v{font-family:var(--hf);font-size:22px;font-weight:700;color:var(--t0)}
+.stat-v.red{color:var(--r1)}
+.stat-l{font-size:10px;color:var(--t1);margin-top:2px}
+
+/* LIST BUTTONS */
+.list-btns{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.list-btns button{
+  background:var(--bg2);border:1px solid var(--r3);border-radius:var(--rad);
+  color:var(--t1);padding:5px 11px;font-size:12px;cursor:pointer;transition:all 0.15s;
+}
+.list-btns button:hover{border-color:var(--r4);color:var(--t0)}
+
+/* CHART CONTAINER */
+.cc{
+  background:var(--bg2);border:1px solid var(--r3);border-radius:var(--rad);
+  padding:12px;margin-bottom:12px;height:130px;
+}
+
+/* HIGHLIGHT BAR */
+.hl-bar{
+  display:flex;align-items:center;gap:8px;margin-bottom:8px;
+  padding-bottom:8px;border-bottom:1px solid var(--r3);
+}
+.hl-bar span{font-family:var(--hf);font-size:18px;font-weight:700;flex:1}
+.hl-bar button{
+  background:var(--bg2);border:1px solid var(--r3);border-radius:var(--rad);
+  color:var(--t0);padding:6px 12px;font-size:12px;cursor:pointer;transition:all 0.15s;
+}
+.hl-bar button:hover{border-color:var(--r4);background:rgba(185,24,40,0.08)}
+
+/* HIGHLIGHT LIST */
+.hl-list{display:flex;flex-direction:column;gap:8px}
+.hc{
+  background:var(--bg2);border:1px solid var(--r3);border-radius:var(--rad);
+  padding:12px;transition:border-color 0.15s;
+}
+.hc:hover{border-color:var(--r4)}
+.hc-top{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.hc-rank{font-family:var(--hf);font-size:20px;font-weight:700;color:var(--r1);min-width:34px}
+.hc-time{font-family:var(--mf);font-size:15px;color:var(--t0)}
+.yt-btn{
+  background:rgba(185,24,40,0.12);border:1px solid var(--r3);border-radius:var(--rad);
+  color:var(--r1);padding:3px 9px;font-size:12px;text-decoration:none;transition:all 0.15s;
+}
+.yt-btn:hover{background:rgba(185,24,40,0.22);border-color:var(--r4)}
+.hc-score{margin-left:auto;font-family:var(--mf);font-size:11px;color:var(--t1)}
+.hc-reasons{display:flex;flex-direction:column;gap:4px;margin-bottom:6px}
+.hc-rsn{display:flex;align-items:flex-start;gap:6px;font-size:12px;color:var(--t1)}
+.rsn-ico{color:var(--r1);font-size:12px;flex-shrink:0;width:14px}
+.hc-snip{
+  font-size:11px;color:var(--t2);border-left:2px solid var(--r2);
+  padding-left:8px;margin-top:4px;line-height:1.5;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+
+/* TOAST */
+#toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  z-index:1000;pointer-events:none;display:flex;flex-direction:column;gap:6px;align-items:center;
+}
+.toast-item{
+  background:rgba(15,8,10,0.97);border:1px solid var(--r3);
+  border-radius:var(--rad);padding:8px 16px;font-size:12px;
+  color:var(--t0);opacity:0;transition:opacity 0.25s;white-space:nowrap;
+  pointer-events:none;
+}
+.toast-item.ok{border-color:rgba(58,158,96,0.4);color:#6acf90}
+.toast-item.err{border-color:rgba(185,24,40,0.5);color:#e06070}
+.toast-item.wrn{border-color:rgba(176,112,32,0.4);color:#c49040}
+.toast-item.show{opacity:1}
+
+/* OVERLAY */
+#ov{
+  position:fixed;inset:0;background:rgba(10,5,7,0.88);
+  z-index:900;display:none;flex-direction:column;
+  align-items:center;justify-content:center;gap:16px;
+}
+#ov.show{display:flex}
+.spin{
+  width:40px;height:40px;border:3px solid var(--r2);
+  border-top-color:var(--r1);border-radius:50%;
+  animation:spin 0.7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin-lbl{font-family:var(--hf);font-size:16px;color:var(--t1)}
+
+/* DATABASE VIEW */
+#view-db{display:none;padding:16px;height:calc(100vh - 50px);overflow-y:auto}
+#view-db::-webkit-scrollbar{width:6px}
+#view-db::-webkit-scrollbar-thumb{background:var(--r2);border-radius:3px}
+.db-bar{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.db-search{
+  flex:1;background:var(--bg2);border:1px solid var(--r3);border-radius:var(--rad);
+  color:var(--t0);padding:8px 12px;font-family:var(--bf);font-size:13px;outline:none;
+}
+.db-search:focus{border-color:var(--r4)}
+#db-cnt{font-size:12px;color:var(--t1);flex-shrink:0}
+.db-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.db-card-h{display:flex;align-items:flex-start;gap:8px;margin-bottom:8px}
+.db-ep{
+  font-family:var(--hf);font-size:16px;font-weight:700;color:var(--r1);
+  flex-shrink:0;min-width:28px;
+}
+.db-title{font-size:13px;color:var(--t0);flex:1;line-height:1.4;word-break:break-all}
+.db-meta{font-size:10px;color:var(--t2);margin-bottom:6px}
+.db-hits{display:flex;flex-direction:column;gap:3px;margin-top:6px;max-height:260px;overflow-y:auto}
+.db-hits::-webkit-scrollbar{width:3px}
+.db-hits::-webkit-scrollbar-thumb{background:var(--r2);border-radius:2px}
+.db-hit{font-size:11px;color:var(--t1);display:flex;gap:6px;align-items:flex-start}
+.db-hit a{color:var(--r1);text-decoration:none;flex-shrink:0;font-family:var(--mf);font-size:10px}
+.db-hit a:hover{text-decoration:underline}
+.db-hit-txt{flex:1;word-break:break-all;line-height:1.4}
+mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0 1px}
+.db-counts{display:flex;gap:8px;margin:4px 0 6px}
+.cnt-chip{font-size:11px;border-radius:2px;padding:2px 7px}
+.cnt-chip.chat{background:rgba(185,24,40,0.12);color:var(--r1)}
+.cnt-chip.tr{background:rgba(58,158,96,0.10);color:#5aae80}
+.db-actions{display:flex;gap:6px;margin-top:8px;border-top:1px solid var(--r3);padding-top:8px;flex-wrap:wrap}
+.db-del{
+  background:none;border:1px solid rgba(185,24,40,0.2);border-radius:var(--rad);
+  color:var(--t2);padding:3px 10px;font-size:11px;cursor:pointer;transition:all 0.15s;
+}
+.db-del:hover{border-color:var(--r1);color:var(--r1)}
+.db-txt-btn{background:none;border:1px solid rgba(58,158,96,0.3);border-radius:var(--rad);color:#5aae80;padding:3px 10px;font-size:11px;cursor:pointer;transition:all 0.15s}
+.db-txt-btn:hover{border-color:var(--ok);color:var(--ok)}
+.db-bar-btn{background:var(--bg2);border:1px solid var(--r3);border-radius:var(--rad);color:var(--t1);padding:6px 11px;font-size:12px;cursor:pointer;transition:all 0.15s;white-space:nowrap}
+.db-bar-btn:hover{border-color:var(--r4);color:var(--t0)}
+.db-bar-btn:disabled{opacity:0.35;cursor:default;pointer-events:none}
+.db-empty{color:var(--t2);font-family:var(--hf);font-size:18px;text-align:center;margin-top:40px}
+.hc-chats{margin-top:5px;display:flex;flex-direction:column;gap:2px}
+.hc-chat-item{font-size:11px;color:var(--t1);padding:2px 0 2px 8px;border-left:2px solid var(--r2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* highlight card active state */
+.hc.active{border-color:var(--r1);border-width:2px;background:rgba(185,24,40,0.07);box-shadow:var(--glow)}
+/* db sort select */
+.db-sort{background:var(--bg2);border:1px solid var(--r3);border-radius:var(--rad);color:var(--t1);padding:5px 8px;font-size:12px;outline:none;cursor:pointer}
+.db-sort:focus{border-color:var(--r4)}
+/* db card double-click hint */
+.db-card{background:var(--bg2);border:1px solid var(--r3);border-radius:var(--rad);padding:14px;cursor:pointer;transition:border-color 0.15s}
+.db-card:hover{border-color:var(--r4)}
+/* slider & field descriptions */
+.sl-desc{font-size:10px;color:var(--t2);line-height:1.4;margin-top:2px}
+.fi-desc{font-size:10px;color:var(--t2);line-height:1.4;margin-top:2px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-txt">FAST<span>CUT</span></div>
+  <div class="tab-bar">
+    <button class="tab active" id="tab-analyze">解析</button>
+    <button class="tab" id="tab-db">データベース</button>
+  </div>
+  <span class="header-sub">VTuber Clip Analyzer</span>
+</header>
+
+<div id="toast"></div>
+
+<div id="ov">
+  <div class="spin"></div>
+  <div class="spin-lbl" id="ov-txt">Analyzing...</div>
+</div>
+
+<div class="layout" id="layout">
+  <aside class="left">
+    <div id="msgs"></div>
+
+    <input type="file" id="fi-c" accept=".txt,.tsv,.log,.ycs" style="display:none">
+    <input type="file" id="fi-t" accept=".txt,.vtt,.log,.ycs" style="display:none">
+    <div class="dz-row">
+      <label class="dz" id="dz-c" for="fi-c">
+        <div class="dz-ico" id="dz-ico-c">📄</div>
+        <div class="dz-ttl" id="dz-ttl-c">チャット</div>
+        <div class="dz-hint">クリックまたはドロップ</div>
+        <div class="dz-name" id="fn-c"></div>
+      </label>
+      <label class="dz" id="dz-t" for="fi-t">
+        <div class="dz-ico" id="dz-ico-t">📝</div>
+        <div class="dz-ttl" id="dz-ttl-t">文字起こし</div>
+        <div class="dz-hint">クリックまたはドロップ</div>
+        <div class="dz-name" id="fn-t"></div>
+      </label>
+    </div>
+
+    <div class="fi-group">
+      <div class="fi-lbl">配信開始時刻 (ISO 8601)</div>
+      <input class="fi" type="text" id="fi-start" list="start-hist" placeholder="2026-01-01T21:00:00" value="2026-01-01T00:00:00">
+      <datalist id="start-hist"></datalist>
+    </div>
+
+    <div class="fi-group">
+      <div class="fi-lbl">YouTube URL</div>
+      <input class="fi" type="text" id="fi-url" list="url-hist" placeholder="https://www.youtube.com/watch?v=...">
+      <datalist id="url-hist"></datalist>
+    </div>
+
+    <div class="fi-group">
+      <div class="fi-lbl">配信番号</div>
+      <input class="fi" type="text" id="fi-ep" placeholder="例: 042">
+    </div>
+
+    <div class="fi-group">
+      <div class="fi-lbl">キーワード（Enter/カンマで追加）</div>
+      <div class="tw" id="tw" onclick="document.getElementById('kw-in').focus()">
+        <input type="text" id="kw-in" class="tag-in" placeholder="キーワードを追加...">
+      </div>
+      <div class="fi-desc">入力するとキーワードが含まれるチャット箇所のみをハイライト抽出します。空欄の場合はコメント数のピークで自動検出します。</div>
+    </div>
+
+    <div class="fi-group">
+      <div class="fi-lbl">反応ワード — 笑い・リアクション語</div>
+      <div class="tw" id="tw-attn" onclick="document.getElementById('attn-in').focus()">
+        <input type="text" id="attn-in" class="tag-in" placeholder="反応ワードを追加...">
+      </div>
+      <div class="fi-desc">草・www・笑 など視聴者の盛り上がりを示す言葉。チャットに含まれる回数が下の「反応ワードの感度」でスコアに加算されます。</div>
+    </div>
+
+    <div class="acc">
+      <div class="acc-h" id="acc-h">詳細設定 <span class="acc-arr">▼</span></div>
+      <div class="acc-b" id="acc-b">
+        <div class="sl-row">
+          <div class="sl-top"><span class="sl-lbl">チャット急増の感度</span><span class="sl-val" id="sv-c">1</span></div>
+          <input type="range" id="sr-c" min="0" max="5" step="0.5" value="1">
+          <div class="sl-desc">短時間にコメントが集中した箇所をスコアに加算する重み。0 にするとコメント数を無視します。</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-top"><span class="sl-lbl">キーワード反応の感度</span><span class="sl-val" id="sv-k">3</span></div>
+          <input type="range" id="sr-k" min="0" max="10" step="0.5" value="3">
+          <div class="sl-desc">キーワードタグにヒットしたコメントへの加算重み。キーワード未入力時は無効です。</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-top"><span class="sl-lbl">反応ワードの感度</span><span class="sl-val" id="sv-a">2</span></div>
+          <input type="range" id="sr-a" min="0" max="10" step="0.5" value="2">
+          <div class="sl-desc">反応ワードタグにヒットしたコメントへの加算重み。草・www などの多い箇所を強調します。</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-top"><span class="sl-lbl">ピーク判定の厳しさ</span><span class="sl-val" id="sv-p">2</span></div>
+          <input type="range" id="sr-p" min="0.5" max="10" step="0.5" value="2">
+          <div class="sl-desc">周囲との差がこの倍率以上の箇所のみを抽出。高くすると件数が減り、低くすると多く検出されます。</div>
+        </div>
+        <div class="sl-row">
+          <div class="sl-top"><span class="sl-lbl">最大抽出件数</span><span class="sl-val" id="sv-m">20</span></div>
+          <input type="range" id="sr-m" min="5" max="50" step="5" value="20">
+          <div class="sl-desc">ハイライト・キーワード抽出の最大表示件数。</div>
+        </div>
+        <div class="fps-row">
+          <span class="sl-lbl">エクスポートFPS</span>
+          <input type="number" class="fps-in" id="sr-fps" value="30" min="1" max="120">
+        </div>
+        <div class="sl-desc" style="margin-top:0">Premiere Pro CSV のタイムコード計算に使うフレームレート。通常は 30 または 60 です。</div>
+      </div>
+    </div>
+
+    <button class="abtn" id="abtn">Analyze</button>
+  </aside>
+
+  <main class="right" id="right">
+    <div class="empty" id="empty">▶ ファイルを読み込んでAnalyzeを押す</div>
+    <div id="result-area" style="display:none">
+      <div class="stats" id="stats-bar"></div>
+      <div class="list-btns">
+        <button id="chat-page-btn">▤ チャット一覧</button>
+        <button id="chat-txt-btn">↓ TXT</button>
+        <button id="tr-page-btn" style="display:none">▤ 音声データ一覧</button>
+        <button id="tr-txt-btn" style="display:none">↓ TXT</button>
+      </div>
+      <div class="cc"><canvas id="cv-c"></canvas></div>
+      <div>
+        <div class="hl-bar">
+          <span>Highlights</span>
+          <button id="reg-btn">＋ データ登録</button>
+          <button id="exp-btn">↓ CSV</button>
+          <button id="jsx-btn">↓ マーカーリスト</button>
+        </div>
+        <div class="hl-list" id="hl-list"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="view-db" style="display:none">
+  <div class="db-bar">
+    <input type="text" class="db-search" id="db-q" placeholder="キーワードで全動画から検索...">
+    <span id="db-cnt"></span>
+    <select id="db-sort" class="db-sort" title="並び替え">
+      <option value="date">新しい順</option>
+      <option value="date-asc">古い順</option>
+      <option value="ep">配信番号順</option>
+      <option value="title">タイトル順</option>
+    </select>
+    <button id="db-backup-btn" class="db-bar-btn">↓ バックアップ</button>
+    <button id="db-kw-csv-btn" class="db-bar-btn" disabled>↓ KW マーカー CSV</button>
+  </div>
+  <div class="db-grid" id="db-grid"></div>
+</div>
+
+<script>
+// ─── §0 CONSTANTS & GLOBALS ─────────────────────────────────────────────────
+const WIN = 5;
+const HIST_MAX = 10;
+const DEFAULT_ATTN = ['草','ｗｗ','www','笑','わら','LMAO','lol','kusa','ｋｕｓａ'];
+
+const S = {
+  chatRaw:    null,
+  trRaw:      null,
+  kws:        [],
+  attnWords:  [...DEFAULT_ATTN],
+  chartC:     null,
+  chartK:     null,
+  chatConv:   [],
+  trRecs:     [],
+  videoId:    null,
+  videoTitle: '',
+  lastPeaks:  [],
+  lastWins:   [],
+};
+
+// ─── §0b HISTORY ─────────────────────────────────────────────────────────────
+function histLoad(key){
+  try{return JSON.parse(localStorage.getItem(key)||'[]');}catch{return[];}
+}
+function histSave(key,val){
+  if(!val||!val.trim())return;
+  const v=val.trim();
+  let h=histLoad(key).filter(x=>x!==v);
+  h.unshift(v);
+  if(h.length>HIST_MAX)h.length=HIST_MAX;
+  try{localStorage.setItem(key,JSON.stringify(h));}catch{}
+}
+function histFill(listId,key){
+  const dl=document.getElementById(listId);
+  if(!dl)return;
+  dl.innerHTML=histLoad(key).map(v=>`<option value="${v.replace(/"/g,'&quot;')}">`).join('');
+}
+
+// ─── §1 UTILITIES ─────────────────────────────────────────────────────────────
+const p2=n=>String(n).padStart(2,'0');
+
+function fmtSec(s){
+  const t=Math.floor(s);
+  const h=Math.floor(t/3600);
+  const m=Math.floor((t%3600)/60);
+  const ss=t%60;
+  return h>0?`${h}:${p2(m)}:${p2(ss)}`:`${m}:${p2(ss)}`;
+}
+
+function toTC(s,fps){
+  const t=Math.floor(s);
+  const h=Math.floor(t/3600);
+  const m=Math.floor((t%3600)/60);
+  const sc=t%60;
+  const fr=Math.floor((s-t)*fps);
+  return `${p2(h)}:${p2(m)}:${p2(sc)};${p2(fr)}`;
+}
+
+function getVid(url){
+  try{
+    const u=new URL(url.trim());
+    if(u.hostname==='youtu.be')return u.pathname.slice(1).split(/[?#]/)[0];
+    if(u.hostname.includes('youtube.com'))return u.searchParams.get('v');
+    return null;
+  }catch{return null;}
+}
+
+function ytLink(vid,sec){
+  return vid?`https://www.youtube.com/watch?v=${vid}&t=${Math.floor(sec)}`:null;
+}
+
+function esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function dl(content,name,mime){
+  const b=new Blob(['\uFEFF'+content],{type:mime});
+  const url=URL.createObjectURL(b);
+  const a=Object.assign(document.createElement('a'),{href:url,download:name});
+  document.body.appendChild(a);a.click();
+  document.body.removeChild(a);URL.revokeObjectURL(url);
+}
+
+// ─── §2 TOAST ─────────────────────────────────────────────────────────────────
+function toast(msg,type='ok',ms=2800){
+  const el=document.createElement('div');
+  el.className='toast-item '+type;
+  el.textContent=msg;
+  document.getElementById('toast').appendChild(el);
+  requestAnimationFrame(()=>{requestAnimationFrame(()=>{el.classList.add('show');});});
+  setTimeout(()=>{
+    el.classList.remove('show');
+    setTimeout(()=>el.remove(),300);
+  },ms);
+}
+
+// ─── §3 MESSAGES ──────────────────────────────────────────────────────────────
+function addMsg(text,type){
+  const div=document.createElement('div');
+  div.className='msg '+type;
+  div.innerHTML=`<span>${esc(text)}</span><span class="msg-close" onclick="this.parentElement.remove()">×</span>`;
+  document.getElementById('msgs').appendChild(div);
+}
+function clearMsgs(){document.getElementById('msgs').innerHTML='';}
+
+// ─── §4 OVERLAY ───────────────────────────────────────────────────────────────
+function showOv(t){
+  document.getElementById('ov-txt').textContent=t;
+  document.getElementById('ov').classList.add('show');
+}
+function hideOv(){document.getElementById('ov').classList.remove('show');}
+const tick=()=>new Promise(r=>setTimeout(r,16));
+
+// ─── §5 YCS PARSERS ───────────────────────────────────────────────────────────
+function parseYCSHeader(headerBlock){
+  const lines=headerBlock.split('\n').map(l=>l.trim());
+  const h={type:null,videoUrl:null,title:null,total:null};
+  for(const l of lines){
+    if(l==='Comments chat')h.type='chat';
+    if(l==='Transcript video')h.type='transcript';
+    if(l.startsWith('Video URL:'))h.videoUrl=l.slice(10).trim();
+    if(l.startsWith('Title:'))h.title=l.slice(6).trim();
+    if(l.startsWith('Total:'))h.total=parseInt(l.slice(6).trim())||null;
+  }
+  return h;
+}
+
+function parseChatBlock(block){
+  const lines=block.split('\n').map(l=>l.trim()).filter(Boolean);
+  if(!lines.length)return null;
+  let username=null,ts=null,donated=null;
+  const msgLines=[];
+  for(const line of lines){
+    if(line.startsWith('@')&&username===null){username=line.slice(1).trim();continue;}
+    if(line.startsWith('youtube.com/')||line.startsWith('https://youtube.com/')||line.startsWith('http://'))continue;
+    if(line.startsWith('date:')){
+      const raw=line.slice(5).trim();
+      const hastz=/[Z]$/.test(raw)||/[+-]\d{2}:?\d{2}$/.test(raw);
+      ts=luxon.DateTime.fromISO(hastz?raw:raw+'Z');
+      continue;
+    }
+    if(line.startsWith('donated:')){donated=line.slice(8).trim();continue;}
+    msgLines.push(line);
+  }
+  if(!username||!ts||!ts.isValid)return null;
+  const message=msgLines.join(' ').trim()||(donated?`[SC: ${donated}]`:'');
+  return{ts,username,message,donated};
+}
+
+function parseChatFile(raw){
+  const parts=raw.split(/^#{5,}\s*$/m);
+  if(parts.length<2)throw new Error('YCS形式のセパレータ (#####) が見つかりません。');
+  const header=parseYCSHeader(parts[0]);
+  const records=[];
+  let skipped=0;
+  for(let i=1;i<parts.length;i++){
+    const rec=parseChatBlock(parts[i]);
+    if(rec)records.push(rec);
+    else if(parts[i].trim())skipped++;
+  }
+  return{header,records,skipped};
+}
+
+function parseTrBlock(block){
+  const lines=block.split('\n').map(l=>l.trim()).filter(Boolean);
+  if(!lines.length)return null;
+  let sec=null;
+  const txtLines=[];
+  for(const line of lines){
+    const soMatch=line.match(/^start offset:\s*(\d+)/);
+    if(soMatch){sec=parseInt(soMatch[1])/1000;continue;}
+    const tmMatch=line.match(/^Time:\s*(\d+):(\d{2})(?::(\d{2}))?$/);
+    if(tmMatch){
+      if(sec===null){
+        sec=tmMatch[3]!==undefined
+          ?parseInt(tmMatch[1])*3600+parseInt(tmMatch[2])*60+parseInt(tmMatch[3])
+          :parseInt(tmMatch[1])*60+parseInt(tmMatch[2]);
+      }
+      continue;
+    }
+    if(/^duration:\s*\d+/.test(line))continue;
+    txtLines.push(line);
+  }
+  if(sec===null)return null;
+  const text=txtLines.join(' ').trim();
+  if(!text)return null;
+  return{sec,text};
+}
+
+function parseTranscriptFile(raw){
+  const parts=raw.split(/^#{5,}\s*$/m);
+  if(parts.length<2)throw new Error('YCS形式のセパレータ (#####) が見つかりません。');
+  const header=parseYCSHeader(parts[0]);
+  const records=[];
+  for(let i=1;i<parts.length;i++){
+    const rec=parseTrBlock(parts[i]);
+    if(rec)records.push(rec);
+  }
+  return{header,records};
+}
+
+// ─── §6 TIMESTAMP ─────────────────────────────────────────────────────────────
+function parseStreamStart(iso){
+  const s=iso.trim();
+  const hasTz=/[Z]$/.test(s)||/[+-]\d{2}:?\d{2}$/.test(s);
+  return luxon.DateTime.fromISO(hasTz?s:s+'+09:00');
+}
+
+function convertTimestamps(records,streamStartISO){
+  const start=parseStreamStart(streamStartISO);
+  if(!start.isValid)throw new Error(`配信開始時刻が無効です。入力: "${streamStartISO}"`);
+  const out=[];
+  let pre=0;
+  for(const r of records){
+    const diff=r.ts.diff(start,'seconds').seconds;
+    if(diff<0){pre++;continue;}
+    out.push({sec:diff,username:r.username,message:r.message,donated:r.donated??null});
+  }
+  return{out,pre};
+}
+
+// ─── §7 WINDOWING ─────────────────────────────────────────────────────────────
+function buildWindows(msgs,trRecs){
+  if(!msgs.length)return[];
+  const maxSec=Math.max(...msgs.map(m=>m.sec));
+  const n=Math.ceil(maxSec/WIN)+2;
+  const wins=Array.from({length:n},(_,i)=>({
+    i,s0:i*WIN,s1:(i+1)*WIN,
+    cnt:0,msgs:[],tr:'',kwS:0,atS:0,score:0,
+  }));
+  for(const m of msgs){
+    const b=Math.floor(m.sec/WIN);
+    if(b<wins.length){wins[b].cnt++;wins[b].msgs.push(m.message);}
+  }
+  for(const t of trRecs){
+    const b=Math.floor(t.sec/WIN);
+    for(let d=-1;d<=1;d++){
+      const idx=b+d;
+      if(idx>=0&&idx<wins.length){
+        wins[idx].tr=wins[idx].tr?wins[idx].tr+' '+t.text:t.text;
+      }
+    }
+  }
+  return wins;
+}
+
+// ─── §8 SCORING ───────────────────────────────────────────────────────────────
+function countAttn(msgs,attnWords){
+  if(!attnWords.length)return 0;
+  let s=0;
+  for(const msg of msgs){
+    const lower=msg.toLowerCase();
+    for(const word of attnWords){
+      const wl=word.toLowerCase();
+      let p=0;
+      while((p=lower.indexOf(wl,p))!==-1){s++;p+=wl.length;}
+    }
+  }
+  return s;
+}
+
+function countKws(msgs,kws){
+  if(!kws.length)return 0;
+  let s=0;
+  for(const msg of msgs){
+    const lower=msg.toLowerCase();
+    for(const kw of kws){
+      if(!kw)continue;
+      const kl=kw.toLowerCase();
+      let p=0;
+      while((p=lower.indexOf(kl,p))!==-1){s++;p+=kl.length;}
+    }
+  }
+  return s;
+}
+
+function scoreWins(wins,kws,attnWords,W){
+  for(const w of wins){
+    w.kwS=countKws(w.msgs,kws);
+    w.atS=countAttn(w.msgs,attnWords);
+    w.score=w.cnt*W.c+w.kwS*W.k+w.atS*W.a;
+  }
+}
+
+// ─── §9 PEAK DETECTION ────────────────────────────────────────────────────────
+function rollingMedian(arr,half){
+  return arr.map((_,i)=>{
+    const lo=Math.max(0,i-half);
+    const hi=Math.min(arr.length,i+half+1);
+    const sl=arr.slice(lo,hi).filter(v=>v>0);
+    if(!sl.length)return 0;
+    const ss=[...sl].sort((a,b)=>a-b);
+    return ss[Math.floor(ss.length/2)];
+  });
+}
+
+function detectPeaks(wins,cfg){
+  const scores=wins.map(w=>w.score);
+  const baseline=rollingMedian(scores,12);
+  const maxima=[];
+  for(let i=1;i<scores.length-1;i++){
+    if(scores[i]<=0)continue;
+    if(scores[i]>scores[i-1]&&scores[i]>scores[i+1]){
+      const b=baseline[i];
+      const prom=b>0?scores[i]/b:99;
+      if(prom>=cfg.minP)maxima.push({i,score:scores[i],prom,w:wins[i]});
+    }
+  }
+  maxima.sort((a,b)=>b.score-a.score);
+  const sel=[];
+  for(const c of maxima){
+    if(sel.some(p=>Math.abs(p.i-c.i)<cfg.gap))continue;
+    sel.push(c);
+    if(sel.length>=cfg.max)break;
+  }
+  return sel.sort((a,b)=>a.i-b.i);
+}
+
+// ─── §10 REASONS ──────────────────────────────────────────────────────────────
+function makeReasons(pk,kws){
+  const w=pk.w;
+  const r=[];
+  if(w.cnt>0)r.push({i:'▲',t:`チャット急増: ${w.cnt}件 / 5秒`});
+  if(w.kwS>0&&kws.length){
+    const hits=kws.map(kw=>{
+      let c=0,p=0;
+      const kl=kw.toLowerCase();
+      for(const m of w.msgs){
+        const lower=m.toLowerCase();
+        while((p=lower.indexOf(kl,p))!==-1){c++;p+=kl.length;}
+        p=0;
+      }
+      return{kw,c};
+    }).filter(h=>h.c>0).map(h=>h.c>1?`${h.kw}(×${h.c})`:h.kw);
+    if(hits.length)r.push({i:'◆',t:`キーワード: ${hits.join(', ')}`});
+  }
+  if(w.atS>0)r.push({i:'→',t:`反応ワード (草/www): ${w.atS}回`});
+  r.push({i:'■',t:`スコア: ${w.score.toFixed(1)}  prominence ×${pk.prom.toFixed(1)}`});
+  return r;
+}
+
+// Build peak-like objects for every window that contains keyword hits
+function buildKwPeaks(wins,kws,maxHL){
+  return wins
+    .filter(w=>w.kwS>0)
+    .map(w=>{
+      const hits=kws.map(kw=>{
+        let c=0,p=0;
+        const kl=kw.toLowerCase();
+        for(const m of w.msgs){
+          const lower=m.toLowerCase();
+          while((p=lower.indexOf(kl,p))!==-1){c++;p+=kl.length;}
+          p=0;
+        }
+        return{kw,c};
+      }).filter(h=>h.c>0).map(h=>h.c>1?`${h.kw}(×${h.c})`:h.kw);
+      const reasons=[
+        {i:'◆',t:`キーワード: ${hits.join(', ')}`},
+        {i:'▲',t:`チャット件数: ${w.cnt}件 / 5秒`},
+      ];
+      if(w.atS>0)reasons.push({i:'→',t:`反応ワード: ${w.atS}回`});
+      return{i:w.i,score:w.kwS,prom:1,w,reasons};
+    })
+    .slice(0,maxHL);
+}
+
+// ─── §11 CSV EXPORT ───────────────────────────────────────────────────────────
+function buildCSV(peaks,fps){
+  const hdr='Marker Name,Description,In,Out,Duration,Marker Type';
+  const rows=peaks.map((pk,i)=>{
+    const w=pk.w;
+    const desc=pk.reasons.map(r=>r.t).join(' | ').replace(/"/g,'""');
+    return `"Highlight ${p2(i+1)}","${desc}",${toTC(w.s0,fps)},${toTC(w.s1,fps)},${toTC(WIN,fps)},Comment`;
+  });
+  return[hdr,...rows].join('\r\n');
+}
+
+function buildMarkerList(peaks,ep,fps){
+  const e=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;');
+  const rows=peaks.map((pk,i)=>{
+    const w=pk.w;
+    const tc=toTC(w.s0,fps);
+    const nm=e('Highlight '+p2(i+1)+(ep?' ['+ep+']':''));
+    const ds=e(pk.reasons.map(r=>r.t).join(' | '));
+    return '<tr><td>'+p2(i+1)+'</td>'
+      +'<td class="tc" data-tc="'+tc+'" onclick="cp(this)">'+tc+'</td>'
+      +'<td>'+nm+'</td><td class="ds">'+ds+'</td></tr>';
+  }).join('');
+  const ttl=e('FASTCUT マーカーリスト'+(ep?' — '+ep:''));
+
+  return '<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>'+ttl+'<\/title>'
+    +'<style>'
+    +'*{box-sizing:border-box;margin:0;padding:0}'
+    +'body{font-family:sans-serif;background:#111;color:#ddd;padding:20px;font-size:13px}'
+    +'h1{font-size:15px;margin-bottom:10px;color:#fff}'
+    +'.guide{background:#1e1e1e;border:1px solid #333;border-radius:6px;padding:12px 14px;margin-bottom:14px;line-height:2.2;color:#bbb}'
+    +'.guide b{color:#f90}'
+    +'.guide kbd{background:#2a2a2a;border:1px solid #555;border-radius:3px;padding:1px 6px;font-family:monospace;color:#fff;font-size:12px}'
+    +'table{width:100%;border-collapse:collapse}'
+    +'th{background:#1e1e1e;padding:7px 8px;text-align:left;border-bottom:2px solid #333;font-size:11px;color:#888}'
+    +'tr:nth-child(even){background:#161616}'
+    +'tr:hover{background:#1d2a3a}'
+    +'td{padding:7px 8px;border-bottom:1px solid #222;vertical-align:middle}'
+    +'td:first-child{width:28px;color:#555;text-align:right;font-size:11px}'
+    +'.tc{font-family:monospace;font-size:16px;color:#4af;cursor:pointer;border-radius:4px;padding:2px 8px;transition:.1s;user-select:none}'
+    +'.tc:hover{background:#1a3050;color:#7cf}'
+    +'.tc.done{color:#4f4;background:#0a2010}'
+    +'.ds{color:#777;font-size:11px}'
+    +'#nt{position:fixed;bottom:16px;right:16px;background:#4f4;color:#000;padding:6px 14px;border-radius:5px;font-weight:bold;font-size:13px;opacity:0;transition:.2s;pointer-events:none}'
+    +'#nt.on{opacity:1}'
+    +'<\/style><\/head><body>'
+    +'<h1>'+ttl+'<\/h1>'
+    +'<div class="guide">'
+    +'<b>①</b> タイムコード（青字）をクリック → クリップボードにコピーされます<br>'
+    +'<b>②</b> Premiere Pro のタイムライン左端の <b>タイムコード表示欄</b> をクリック<br>'
+    +'<b>③</b> <kbd>Ctrl</kbd>+<kbd>V</kbd> で貼り付けて <kbd>Enter</kbd> → 再生ヘッドがジャンプ<br>'
+    +'<b>④</b> <kbd>M</kbd> キー → マーカーダイアログが開くので名前を入力して <kbd>Enter</kbd>'
+    +'<\/div>'
+    +'<table><thead><tr><th>#<\/th><th>タイムコード<\/th><th>名前<\/th><th>詳細<\/th><\/tr><\/thead><tbody>'
+    +rows
+    +'<\/tbody><\/table>'
+    +'<div id="nt">コピーしました ✓<\/div>'
+    +'<script>'
+    +'var _t;'
+    +'function cp(el){'
+    +'  var tc=el.getAttribute("data-tc");'
+    +'  navigator.clipboard.writeText(tc).then(function(){'
+    +'    el.classList.add("done");'
+    +'    var n=document.getElementById("nt");'
+    +'    n.classList.add("on");'
+    +'    clearTimeout(_t);'
+    +'    _t=setTimeout(function(){n.classList.remove("on");el.classList.remove("done");},1400);'
+    +'  });'
+    +'}'
+    +'<\/script><\/body><\/html>';
+}
+
+// ─── §12 CHARTS ───────────────────────────────────────────────────────────────
+const MIN_STEPS=12; // 12 × 5sec = 60sec per minute bucket
+
+function buildMinuteData(wins){
+  const n=Math.ceil(wins.length/MIN_STEPS);
+  return Array.from({length:n},(_,i)=>{
+    const sl=wins.slice(i*MIN_STEPS,(i+1)*MIN_STEPS);
+    return sl.reduce((s,w)=>s+w.cnt,0);
+  });
+}
+
+function buildAnnotationsMin(peaks){
+  // Convert 5-sec peak index to minute bucket index
+  const ann={};
+  peaks.forEach((pk,i)=>{
+    ann['pk'+i]={
+      type:'line',xMin:pk.i/MIN_STEPS,xMax:pk.i/MIN_STEPS,
+      borderColor:'rgba(185,24,40,0.5)',borderWidth:1,
+      borderDash:[4,3],
+    };
+  });
+  return ann;
+}
+
+
+function renderCharts(wins,peaks){
+  // cv-c: per-minute chat count
+  const minData=buildMinuteData(wins);
+  const minLabels=minData.map((_,i)=>i%5===0?fmtSec(i*60):'');
+  const annMin=buildAnnotationsMin(peaks);
+
+  // Color peak minute buckets brighter
+  const peakMinSet=new Set(peaks.map(pk=>Math.floor(pk.i/MIN_STEPS)));
+  const minColors=minData.map((_,i)=>
+    peakMinSet.has(i)?'rgba(217,30,48,0.90)':'rgba(200,32,48,0.45)'
+  );
+  const minBorders=minData.map((_,i)=>
+    peakMinSet.has(i)?'#ff3048':'#c82030'
+  );
+
+  const BASE_SCALE={
+    x:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#4a2e32',font:{size:9},maxRotation:0}},
+    y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#4a2e32',font:{size:10}},beginAtZero:true},
+  };
+  const BASE_META={responsive:true,maintainAspectRatio:false,animation:{duration:300},interaction:{mode:'index',intersect:false}};
+
+  if(S.chartC){S.chartC.destroy();S.chartC=null;}
+  if(S.chartK){S.chartK.destroy();S.chartK=null;}
+
+  const ctxC=document.getElementById('cv-c').getContext('2d');
+  S.chartC=new Chart(ctxC,{
+    type:'bar',
+    data:{
+      labels:minLabels,
+      datasets:[{
+        label:'コメント数/分',
+        data:minData,
+        backgroundColor:minColors,
+        borderColor:minBorders,
+        borderWidth:1,
+        borderRadius:2,
+      }],
+    },
+    options:{
+      ...BASE_META,
+      onClick:(evt,elements,chart)=>{
+        if(!elements.length)return;
+        const minIdx=elements[0].index;
+        scrollToNearestHighlight(minIdx*60);
+      },
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          backgroundColor:'rgba(15,8,10,0.97)',
+          borderColor:'rgba(185,24,40,0.25)',borderWidth:1,
+          titleColor:'#c04050',bodyColor:'#ede0e2',
+          callbacks:{title:(items)=>items.length?fmtSec(items[0].dataIndex*60)+' — '+items[0].formattedValue+'コメント/分':''},
+        },
+        annotation:{annotations:annMin},
+      },
+      scales:{...BASE_SCALE},
+    },
+  });
+}
+
+function scrollToNearestHighlight(sec){
+  if(!S.lastPeaks.length)return;
+  // find closest peak
+  let best=0;
+  let bestDist=Infinity;
+  S.lastPeaks.forEach((pk,i)=>{
+    const d=Math.abs(pk.w.s0-sec);
+    if(d<bestDist){bestDist=d;best=i;}
+  });
+  // remove active from all cards
+  document.querySelectorAll('.hc').forEach(el=>el.classList.remove('active'));
+  // activate nearest
+  const card=document.getElementById('hc-'+best);
+  if(card){
+    card.classList.add('active');
+    card.scrollIntoView({behavior:'smooth',block:'center'});
+  }
+}
+
+// ─── §13 RENDER RESULTS ───────────────────────────────────────────────────────
+function renderResults(chatConv,trRecs,wins,peaks,pre,chatTotal,vidId){
+  const dur=wins.length?fmtSec(wins[wins.length-1].s1):'—';
+
+  document.getElementById('stats-bar').innerHTML=`
+    <div class="stat"><div class="stat-v red">${chatTotal}</div><div class="stat-l">チャット件数</div></div>
+    <div class="stat"><div class="stat-v">${dur}</div><div class="stat-l">配信時間</div></div>
+    <div class="stat"><div class="stat-v">${peaks.length}</div><div class="stat-l">ハイライト数</div></div>
+    <div class="stat"><div class="stat-v red">${trRecs.length}</div><div class="stat-l">音声データ件数</div></div>
+    <div class="stat"><div class="stat-v">${pre}</div><div class="stat-l">配信前除外数</div></div>
+  `;
+
+  const trBtns=trRecs.length>0;
+  document.getElementById('tr-page-btn').style.display=trBtns?'':'none';
+  document.getElementById('tr-txt-btn').style.display=trBtns?'':'none';
+
+  renderCharts(wins,peaks);
+
+  const hlList=document.getElementById('hl-list');
+  hlList.innerHTML='';
+  peaks.forEach((pk,i)=>{
+    const w=pk.w;
+    const link=ytLink(vidId,w.s0);
+    const ytBtn=link?`<a href="${esc(link)}" target="_blank" class="yt-btn">▶ YouTube</a>`:'';
+    const reasons=pk.reasons.map(r=>
+      `<div class="hc-rsn"><span class="rsn-ico">${esc(r.i)}</span><span>${esc(r.t)}</span></div>`
+    ).join('');
+    const snip=w.tr?`<div class="hc-snip">"${esc(w.tr.slice(0,120))}"</div>`:'';
+    // representative chat messages (up to 3 from this 5-sec window)
+    const chatSnips=w.msgs.slice(0,3).map(m=>
+      `<div class="hc-chat-item">${esc(m)}</div>`
+    ).join('');
+    const chatsBlock=chatSnips?`<div class="hc-chats">${chatSnips}</div>`:'';
+    hlList.innerHTML+=`
+      <div class="hc" id="hc-${i}">
+        <div class="hc-top">
+          <span class="hc-rank">#${p2(i+1)}</span>
+          <span class="hc-time">${fmtSec(w.s0)}</span>
+          ${ytBtn}
+          <span class="hc-score">score ${w.score.toFixed(1)}</span>
+        </div>
+        <div class="hc-reasons">${reasons}</div>
+        ${snip}
+        ${chatsBlock}
+      </div>`;
+  });
+
+  // update hl-bar label to reflect mode
+  const hlBarSpan=document.querySelector('.hl-bar span');
+  if(hlBarSpan){
+    hlBarSpan.textContent=S.kws.length>0
+      ?`キーワード抽出 (${peaks.length}件)`
+      :`Highlights (${peaks.length}件)`;
+  }
+
+  document.getElementById('empty').style.display='none';
+  document.getElementById('result-area').style.display='block';
+}
+
+// ─── §14 LIST PAGE ────────────────────────────────────────────────────────────
+function openListPage(rows,title,vidId){
+  const lines=rows.map(r=>{
+    const t=fmtSec(r.sec);
+    const link=ytLink(vidId,r.sec);
+    const tc=link?`<a href="${esc(link)}" target="_blank">${esc(t)}</a>`:esc(t);
+    const body=r.username?`@${esc(r.username)} ${esc(r.message)}`:esc(r.text);
+    return{tc,body,raw:r.username?`${t} @${r.username} ${r.message}`:`${t} ${r.text}`};
+  });
+
+  const html=`<!DOCTYPE html><html lang="ja"><head>
+<meta charset="UTF-8"><title>${esc(title)}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0507;color:#ede0e2;font-family:'Consolas','Courier New',monospace;font-size:12px}
+.bar{position:sticky;top:0;background:#0f080a;border-bottom:1px solid rgba(185,24,40,0.22);padding:8px 12px;display:flex;gap:8px;align-items:center;z-index:10}
+.bar input{flex:1;background:#160c0f;border:1px solid rgba(185,24,40,0.22);border-radius:3px;color:#ede0e2;padding:5px 9px;font-size:12px;outline:none}
+.bar button{background:#b81828;border:none;border-radius:3px;color:#fff;padding:5px 12px;font-size:12px;cursor:pointer}
+.bar .cnt{font-size:11px;color:#8a7274;flex-shrink:0}
+.row{padding:4px 12px;border-bottom:1px solid rgba(255,255,255,0.03);display:flex;gap:10px}
+.row:hover{background:rgba(255,255,255,0.02)}
+.tc{flex-shrink:0;width:60px}
+.tc a{color:#b81828;text-decoration:none}
+.tc a:hover{text-decoration:underline}
+.bd{flex:1;word-break:break-all;line-height:1.5}
+mark{background:rgba(185,24,40,0.25);color:#d91e30}
+</style></head><body>
+<div class="bar">
+  <input type="text" id="q" placeholder="絞り込み検索...">
+  <span class="cnt" id="cnt"></span>
+  <button onclick="saveTxt()">↓ TXT保存</button>
+</div>
+<div id="list"></div>
+<script>
+const DATA=${JSON.stringify(lines)};
+const listEl=document.getElementById('list');
+const cntEl=document.getElementById('cnt');
+let cur=DATA;
+function hl(s,q){if(!q)return s;const r=new RegExp(q.replace(/[.*+?^\${}()|[\\]\\\\]/g,'\\\\$&'),'gi');return s.replace(r,m=>'<mark>'+m+'</mark>');}
+function render(q){
+  const ql=q?q.toLowerCase():'';
+  cur=q?DATA.filter(r=>r.raw.toLowerCase().includes(ql)):DATA;
+  listEl.innerHTML=cur.map(r=>'<div class="row"><div class="tc">'+r.tc+'</div><div class="bd">'+hl(r.body,q)+'</div></div>').join('');
+  cntEl.textContent=cur.length+' / '+DATA.length;
+}
+document.getElementById('q').addEventListener('input',function(){render(this.value.trim());});
+function saveTxt(){
+  const txt=cur.map(r=>r.raw).join('\\n');
+  const b=new Blob(['\\uFEFF'+txt],{type:'text/plain;charset=utf-8'});
+  const u=URL.createObjectURL(b);
+  const a=Object.assign(document.createElement('a'),{href:u,download:'${esc(title)}.txt'});
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u);
+}
+render('');
+<\/script></body></html>`;
+
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  window.open(URL.createObjectURL(blob),'_blank');
+}
+
+// ─── §15 MAIN ANALYZE ─────────────────────────────────────────────────────────
+async function run(){
+  clearMsgs();
+
+  const startISO=document.getElementById('fi-start').value.trim();
+  const urlVal=document.getElementById('fi-url').value.trim();
+  const epVal=document.getElementById('fi-ep').value.trim();
+
+  if(!S.chatRaw){addMsg('チャットファイルが選択されていません。','error');return;}
+  if(!startISO){
+    addMsg('配信開始時刻を入力してください。例: 2024-01-01T21:00:00+09:00','error');
+    document.getElementById('fi-start').classList.add('err');
+    return;
+  }
+
+  if(urlVal){
+    const vid=getVid(urlVal);
+    if(!vid)addMsg(`YouTube URLを認識できません: "${urlVal}"`,'warning');
+    S.videoId=vid;
+  }else{
+    S.videoId=null;
+  }
+
+  const W={
+    c:parseFloat(document.getElementById('sr-c').value),
+    k:parseFloat(document.getElementById('sr-k').value),
+    a:parseFloat(document.getElementById('sr-a').value),
+  };
+  const minP=parseFloat(document.getElementById('sr-p').value);
+  const maxHL=parseInt(document.getElementById('sr-m').value);
+  const fps=parseInt(document.getElementById('sr-fps').value)||30;
+
+  try{
+    showOv('チャットを解析中...');await tick();
+    const chatResult=parseChatFile(S.chatRaw);
+    if(chatResult.header.title)S.videoTitle=chatResult.header.title;
+    if(chatResult.skipped>0)addMsg(`解析できなかったブロック: ${chatResult.skipped}件（スキップ）`,'warning');
+    if(!chatResult.records.length){
+      addMsg('チャットメッセージが0件でした。','error');
+      hideOv();return;
+    }
+
+    showOv('タイムスタンプを変換中...');await tick();
+    const{out:chatConv,pre}=convertTimestamps(chatResult.records,startISO);
+    if(!chatConv.length){
+      addMsg(`全${chatResult.records.length}件が配信開始前の時刻です。配信開始時刻を確認してください。`,'error');
+      hideOv();return;
+    }
+    S.chatConv=chatConv;
+
+    showOv('文字起こしを処理中...');await tick();
+    S.trRecs=[];
+    if(S.trRaw){
+      try{
+        const tr=parseTranscriptFile(S.trRaw);
+        S.trRecs=tr.records;
+        if(!S.videoTitle&&tr.header.title)S.videoTitle=tr.header.title;
+      }catch(e){
+        addMsg('文字起こし解析失敗（スキップ）: '+e.message,'warning');
+      }
+    }
+
+    showOv('5秒窓で集計中...');await tick();
+    const wins=buildWindows(chatConv,S.trRecs);
+    S.lastWins=wins;
+
+    showOv('スコアリング中...');await tick();
+    scoreWins(wins,S.kws,S.attnWords,W);
+
+    showOv('ピークを検出中...');await tick();
+    let peaks;
+    if(S.kws.length>0){
+      peaks=buildKwPeaks(wins,S.kws,maxHL);
+      if(!peaks.length) addMsg('キーワードに一致するチャットが見つかりませんでした。','warning');
+    }else{
+      const rawPeaks=detectPeaks(wins,{minP,gap:6,max:maxHL});
+      peaks=rawPeaks.map(pk=>({...pk,reasons:makeReasons(pk,[])}));
+      if(!peaks.length) addMsg('ハイライトが検出されませんでした。詳細設定の「ピーク判定の厳しさ」を下げてください。','warning');
+    }
+    S.lastPeaks=peaks;
+
+    showOv('グラフを描画中...');await tick();
+    renderResults(chatConv,S.trRecs,wins,peaks,pre,chatConv.length+pre,S.videoId);
+
+    histSave('fc_start_hist',startISO);
+    if(urlVal)histSave('fc_url_hist',urlVal);
+    if(epVal)histSave('fc_ep_hist',epVal);
+    histFill('start-hist','fc_start_hist');
+    histFill('url-hist','fc_url_hist');
+
+    hideOv();
+    toast(`解析完了: ハイライト${peaks.length}件`,'ok');
+  }catch(e){
+    hideOv();
+    addMsg(e.message,'error');
+    toast(e.message,'err',4000);
+  }
+}
+
+// ─── §16 DROP ZONES ───────────────────────────────────────────────────────────
+function tryAutoFillUrl(raw){
+  const urlEl=document.getElementById('fi-url');
+  if(urlEl.value.trim())return;
+  const m=raw.match(/Video URL:\s*(https?:\/\/\S+)/);
+  if(m)urlEl.value=m[1].trim();
+}
+
+function setupDZ(zoneId,inputId,fnId,key){
+  const zone=document.getElementById(zoneId);
+  const input=document.getElementById(inputId);
+  const fnEl=document.getElementById(fnId);
+  const sfx=zoneId.slice(-1);
+  const icoEl=document.getElementById('dz-ico-'+sfx);
+  const ttlEl=document.getElementById('dz-ttl-'+sfx);
+  const lbl=key==='chatRaw'?'チャット':'文字起こし';
+
+  function load(file){
+    if(!file)return;
+    if(icoEl)icoEl.textContent='⏳';
+    if(ttlEl)ttlEl.textContent='読み込み中...';
+    const r=new FileReader();
+    r.onload=e=>{
+      S[key]=e.target.result;
+      const name=file.name.length>22?file.name.slice(0,20)+'…':file.name;
+      if(fnEl)fnEl.textContent='✓ '+name;
+      if(icoEl)icoEl.textContent='✅';
+      if(ttlEl)ttlEl.textContent=lbl+' 読込済';
+      zone.classList.add('ready');
+      zone.classList.remove('over');
+      toast(lbl+'ファイルを読み込みました: '+file.name,'ok');
+      if(key==='chatRaw')tryAutoFillUrl(e.target.result);
+    };
+    r.onerror=()=>{
+      if(icoEl)icoEl.textContent='❌';
+      if(ttlEl)ttlEl.textContent='読み込み失敗';
+      toast('ファイル読み込み失敗: '+file.name,'err');
+    };
+    r.readAsText(file,'UTF-8');
+  }
+
+  input.addEventListener('change',e=>{
+    const f=e.target.files[0];
+    if(f)load(f);
+    input.value='';
+  });
+
+  zone.addEventListener('dragover',e=>{e.preventDefault();e.stopPropagation();zone.classList.add('over');});
+  zone.addEventListener('dragleave',e=>{e.stopPropagation();if(!zone.contains(e.relatedTarget))zone.classList.remove('over');});
+  zone.addEventListener('drop',e=>{
+    e.preventDefault();e.stopPropagation();
+    zone.classList.remove('over');
+    const f=e.dataTransfer.files[0];
+    if(f)load(f);
+  });
+}
+
+// ─── §17 TAGS ─────────────────────────────────────────────────────────────────
+function setupTags(){
+  const tw=document.getElementById('tw');
+  const inp=document.getElementById('kw-in');
+
+  function render(){
+    Array.from(tw.querySelectorAll('.tag')).forEach(t=>t.remove());
+    S.kws.forEach((kw,i)=>{
+      const t=document.createElement('span');
+      t.className='tag';
+      t.innerHTML=`${esc(kw)}<span class="tag-x" data-i="${i}">×</span>`;
+      tw.insertBefore(t,inp);
+    });
+  }
+
+  function addKw(v){
+    const val=v.trim();
+    if(!val||S.kws.includes(val))return;
+    S.kws.push(val);
+    try{localStorage.setItem('fc_kws',JSON.stringify(S.kws));}catch{}
+    render();
+  }
+
+  tw.addEventListener('click',e=>{
+    if(e.target.classList.contains('tag-x')){
+      const i=parseInt(e.target.dataset.i);
+      S.kws.splice(i,1);
+      try{localStorage.setItem('fc_kws',JSON.stringify(S.kws));}catch{}
+      render();
+    }
+  });
+
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='Enter'||e.key===','){
+      e.preventDefault();
+      addKw(inp.value.replace(/,$/,''));
+      inp.value='';
+    }else if(e.key==='Backspace'&&!inp.value&&S.kws.length){
+      S.kws.pop();
+      try{localStorage.setItem('fc_kws',JSON.stringify(S.kws));}catch{}
+      render();
+    }
+  });
+  inp.addEventListener('blur',()=>{if(inp.value.trim()){addKw(inp.value);inp.value='';}});
+
+  render();
+}
+
+function setupAttnTags(){
+  const tw=document.getElementById('tw-attn');
+  const inp=document.getElementById('attn-in');
+
+  function render(){
+    Array.from(tw.querySelectorAll('.tag')).forEach(t=>t.remove());
+    S.attnWords.forEach((w,i)=>{
+      const t=document.createElement('span');
+      t.className='tag';
+      t.innerHTML=`${esc(w)}<span class="tag-x" data-i="${i}">×</span>`;
+      tw.insertBefore(t,inp);
+    });
+  }
+
+  function addW(v){
+    const val=v.trim();
+    if(!val||S.attnWords.includes(val))return;
+    S.attnWords.push(val);
+    try{localStorage.setItem('fc_attn',JSON.stringify(S.attnWords));}catch{}
+    render();
+  }
+
+  tw.addEventListener('click',e=>{
+    if(e.target.classList.contains('tag-x')){
+      const i=parseInt(e.target.dataset.i);
+      S.attnWords.splice(i,1);
+      try{localStorage.setItem('fc_attn',JSON.stringify(S.attnWords));}catch{}
+      render();
+    }
+  });
+
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='Enter'||e.key===','){
+      e.preventDefault();
+      addW(inp.value.replace(/,$/,''));
+      inp.value='';
+    }else if(e.key==='Backspace'&&!inp.value&&S.attnWords.length){
+      S.attnWords.pop();
+      try{localStorage.setItem('fc_attn',JSON.stringify(S.attnWords));}catch{}
+      render();
+    }
+  });
+  inp.addEventListener('blur',()=>{if(inp.value.trim()){addW(inp.value);inp.value='';}});
+
+  render();
+}
+
+// ─── §18 ACCORDION & SLIDERS ──────────────────────────────────────────────────
+function setupAcc(){
+  const h=document.getElementById('acc-h');
+  const b=document.getElementById('acc-b');
+  h.addEventListener('click',()=>{
+    const open=b.classList.contains('open');
+    b.classList.toggle('open',!open);
+    h.classList.toggle('open',!open);
+  });
+}
+
+function setupSliders(){
+  [['sr-c','sv-c'],['sr-k','sv-k'],['sr-a','sv-a'],['sr-p','sv-p'],['sr-m','sv-m']].forEach(([rid,vid])=>{
+    const r=document.getElementById(rid);
+    const v=document.getElementById(vid);
+    if(r&&v){
+      v.textContent=r.value;
+      r.addEventListener('input',()=>{v.textContent=r.value;});
+    }
+  });
+}
+
+// ─── §19 INDEXEDDB ────────────────────────────────────────────────────────────
+let _db=null;
+
+function openDB(){
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open('fastcut_db',1);
+    req.onupgradeneeded=e=>{
+      const db=e.target.result;
+      if(!db.objectStoreNames.contains('videos')){
+        db.createObjectStore('videos',{keyPath:'id',autoIncrement:true});
+      }
+    };
+    req.onsuccess=e=>{_db=e.target.result;res(_db);};
+    req.onerror=e=>rej(e.target.error);
+  });
+}
+
+function dbAll(){
+  return new Promise((res,rej)=>{
+    if(!_db){res([]);return;}
+    const tx=_db.transaction('videos','readonly');
+    const store=tx.objectStore('videos');
+    const req=store.getAll();
+    req.onsuccess=()=>res(req.result);
+    req.onerror=e=>rej(e.target.error);
+  });
+}
+
+function dbAdd(record){
+  return new Promise((res,rej)=>{
+    if(!_db){rej(new Error('DB not open'));return;}
+    const tx=_db.transaction('videos','readwrite');
+    const store=tx.objectStore('videos');
+    const req=store.add(record);
+    req.onsuccess=()=>res(req.result);
+    req.onerror=e=>rej(e.target.error);
+  });
+}
+
+function dbDel(id){
+  return new Promise((res,rej)=>{
+    if(!_db){rej(new Error('DB not open'));return;}
+    const tx=_db.transaction('videos','readwrite');
+    const store=tx.objectStore('videos');
+    const req=store.delete(id);
+    req.onsuccess=()=>res();
+    req.onerror=e=>rej(e.target.error);
+  });
+}
+
+async function registerCurrentVideo(){
+  if(!S.chatConv.length){toast('先にAnalyzeを実行してください','wrn');return;}
+  const startISO=document.getElementById('fi-start').value.trim();
+  const urlVal=document.getElementById('fi-url').value.trim();
+  const epVal=document.getElementById('fi-ep').value.trim();
+  try{
+    await dbAdd({
+      episodeNum:epVal,
+      title:S.videoTitle,
+      videoId:S.videoId,
+      videoUrl:urlVal,
+      streamStart:startISO,
+      chatData:S.chatConv.map(c=>({sec:c.sec,username:c.username,message:c.message})),
+      trData:S.trRecs.map(t=>({sec:t.sec,text:t.text})),
+      registeredAt:new Date().toISOString(),
+    });
+    toast('データベースに登録しました','ok');
+  }catch(e){
+    toast('登録失敗: '+e.message,'err');
+  }
+}
+
+let _dbCache=[];
+let _dbSort='date';
+
+function sortedCache(){
+  const arr=[..._dbCache];
+  switch(_dbSort){
+    case 'date':     arr.sort((a,b)=>new Date(b.registeredAt)-new Date(a.registeredAt)); break;
+    case 'date-asc': arr.sort((a,b)=>new Date(a.registeredAt)-new Date(b.registeredAt)); break;
+    case 'ep':       arr.sort((a,b)=>(a.episodeNum||'').localeCompare(b.episodeNum||'',undefined,{numeric:true})); break;
+    case 'title':    arr.sort((a,b)=>(a.title||'').localeCompare(b.title||'',undefined,{sensitivity:'base'})); break;
+  }
+  return arr;
+}
+
+async function loadAndRenderDB(){
+  try{
+    _dbCache=await dbAll();
+  }catch{_dbCache=[];}
+  renderDB(sortedCache(),'');
+  document.getElementById('db-q').value='';
+}
+
+function searchDB(q){
+  renderDB(sortedCache(),q.trim());
+}
+
+function renderDB(records,q){
+  const grid=document.getElementById('db-grid');
+  const ql=q.toLowerCase();
+
+  // update KW CSV button state
+  const kwCsvBtn=document.getElementById('db-kw-csv-btn');
+  if(kwCsvBtn)kwCsvBtn.disabled=!q;
+
+  // filter when searching
+  const filtered=q
+    ?records.filter(rec=>
+        (rec.chatData||[]).some(c=>c.message.toLowerCase().includes(ql))||
+        (rec.trData||[]).some(t=>t.text.toLowerCase().includes(ql))||
+        (rec.title||'').toLowerCase().includes(ql)||
+        (rec.episodeNum||'').toLowerCase().includes(ql)
+      )
+    :records;
+
+  document.getElementById('db-cnt').textContent=(q?`${filtered.length} / ${records.length}件`:records.length+'件');
+
+  if(!filtered.length){
+    grid.innerHTML='<div class="db-empty">'+(records.length?'該当する動画がありません':'登録済み動画がありません')+'</div>';
+    return;
+  }
+
+  function hlStr(s,q){
+    if(!q)return esc(s);
+    return esc(s).replace(new RegExp(esc(q).replace(/[.*+?^\${}()|[\]\\]/g,'\\$&'),'gi'),m=>`<mark>${m}</mark>`);
+  }
+
+  function makeHitRow(h,q){
+    const t=fmtSec(h.sec);
+    const link=h.vid?`<a href="https://www.youtube.com/watch?v=${esc(h.vid)}&t=${Math.floor(h.sec)}" target="_blank">${esc(t)}</a>`:esc(t);
+    return`<div class="db-hit"><div class="tc">${link}</div><div class="db-hit-txt">${hlStr(h.txt,q)}</div></div>`;
+  }
+
+  grid.innerHTML=filtered.map(rec=>{
+    const ep=rec.episodeNum?`#${esc(rec.episodeNum)}`:'';
+    const title=rec.title||'(タイトル不明)';
+    const date=rec.streamStart||'';
+    const chatData=rec.chatData||[];
+    const trData=rec.trData||[];
+
+    // counts
+    const chatMatchCnt=q?chatData.filter(c=>c.message.toLowerCase().includes(ql)).length:chatData.length;
+    const trMatchCnt=q?trData.filter(t=>t.text.toLowerCase().includes(ql)).length:trData.length;
+    const countsHtml=`<div class="db-counts">
+      <span class="cnt-chip chat">チャット <b>${chatMatchCnt}</b>件</span>
+      <span class="cnt-chip tr">音声 <b>${trMatchCnt}</b>件</span>
+    </div>`;
+
+    // hits list (all matches when searching, all data when not)
+    let hitsHtml='';
+    if(q){
+      const chatHits=chatData.filter(c=>c.message.toLowerCase().includes(ql))
+        .map(c=>({sec:c.sec,txt:`@${c.username} ${c.message}`,vid:rec.videoId}));
+      const trHits=trData.filter(t=>t.text.toLowerCase().includes(ql))
+        .map(t=>({sec:t.sec,txt:t.text,vid:rec.videoId}));
+      const allHits=[...chatHits,...trHits].sort((a,b)=>a.sec-b.sec);
+      if(allHits.length){
+        hitsHtml='<div class="db-hits">'+allHits.map(h=>makeHitRow(h,q)).join('')+'</div>';
+      }
+    }else{
+      // show all data scrollable
+      const allRows=[
+        ...trData.map(t=>({sec:t.sec,txt:t.text,vid:rec.videoId})),
+        ...chatData.map(c=>({sec:c.sec,txt:`@${c.username} ${c.message}`,vid:rec.videoId})),
+      ].sort((a,b)=>a.sec-b.sec);
+      if(allRows.length){
+        hitsHtml='<div class="db-hits">'+allRows.map(h=>makeHitRow(h,'')).join('')+'</div>';
+      }
+    }
+
+    return`<div class="db-card" ondblclick="loadRecordToAnalysis(${rec.id})" title="ダブルクリックで解析画面に読み込む">
+      <div class="db-card-h">
+        <div class="db-ep">${ep}</div>
+        <div class="db-title">${hlStr(title,q)}</div>
+      </div>
+      <div class="db-meta">${date}${rec.videoUrl?` | <a href="${esc(rec.videoUrl)}" target="_blank" style="color:var(--r1);text-decoration:none" onclick="event.stopPropagation()">${esc(rec.videoUrl.slice(0,40))}</a>`:''}</div>
+      ${countsHtml}
+      ${hitsHtml}
+      <div class="db-actions" onclick="event.stopPropagation()">
+        <button class="db-txt-btn" onclick="downloadCombinedText(${rec.id})">↓ TEXT</button>
+        <button class="db-del" onclick="delVideo(${rec.id})">削除</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function delVideo(id){
+  if(!confirm('この動画データを削除しますか？'))return;
+  try{
+    await dbDel(id);
+    _dbCache=_dbCache.filter(r=>r.id!==id);
+    renderDB(sortedCache(),document.getElementById('db-q').value.trim());
+    toast('削除しました','ok');
+  }catch(e){
+    toast('削除失敗: '+e.message,'err');
+  }
+}
+
+// ─── §19b DB → ANALYSIS LOAD ─────────────────────────────────────────────────
+async function loadRecordToAnalysis(id){
+  const rec=_dbCache.find(r=>r.id===id);
+  if(!rec){toast('データが見つかりません','err');return;}
+
+  // populate form fields
+  if(rec.streamStart) document.getElementById('fi-start').value=rec.streamStart;
+  if(rec.videoUrl)    document.getElementById('fi-url').value=rec.videoUrl;
+  if(rec.episodeNum)  document.getElementById('fi-ep').value=rec.episodeNum;
+
+  // restore state
+  S.videoId    = rec.videoId||null;
+  S.videoTitle = rec.title||'';
+  S.chatConv   = (rec.chatData||[]).map(c=>({sec:c.sec,username:c.username,message:c.message,donated:null}));
+  S.trRecs     = (rec.trData||[]).map(t=>({sec:t.sec,text:t.text}));
+
+  // update DZ UI to show loaded state
+  const icoC=document.getElementById('dz-ico-c');
+  const ttlC=document.getElementById('dz-ttl-c');
+  const fnC =document.getElementById('fn-c');
+  if(icoC)icoC.textContent='✅';
+  if(ttlC)ttlC.textContent='チャット 読込済(DB)';
+  if(fnC) fnC.textContent='✓ '+rec.episodeNum+' (DB)';
+  document.getElementById('dz-c').classList.add('ready');
+
+  if(S.trRecs.length){
+    const icoT=document.getElementById('dz-ico-t');
+    const ttlT=document.getElementById('dz-ttl-t');
+    const fnT =document.getElementById('fn-t');
+    if(icoT)icoT.textContent='✅';
+    if(ttlT)ttlT.textContent='文字起こし 読込済(DB)';
+    if(fnT) fnT.textContent='✓ '+rec.episodeNum+' (DB)';
+    document.getElementById('dz-t').classList.add('ready');
+  }
+
+  // switch to analyze tab and run
+  switchTab('analyze');
+  toast('DBから読み込み中...','ok');
+  await runFromLoaded();
+}
+
+async function runFromLoaded(){
+  clearMsgs();
+  if(!S.chatConv.length){addMsg('チャットデータがありません','error');return;}
+
+  const W={
+    c:parseFloat(document.getElementById('sr-c').value),
+    k:parseFloat(document.getElementById('sr-k').value),
+    a:parseFloat(document.getElementById('sr-a').value),
+  };
+  const minP =parseFloat(document.getElementById('sr-p').value);
+  const maxHL=parseInt(document.getElementById('sr-m').value);
+
+  try{
+    showOv('5秒窓で集計中...');await tick();
+    const wins=buildWindows(S.chatConv,S.trRecs);
+    S.lastWins=wins;
+
+    showOv('スコアリング中...');await tick();
+    scoreWins(wins,S.kws,S.attnWords,W);
+
+    showOv('ピークを検出中...');await tick();
+    let peaks;
+    if(S.kws.length>0){
+      peaks=buildKwPeaks(wins,S.kws,maxHL);
+      if(!peaks.length) addMsg('キーワードに一致するチャットが見つかりませんでした。','warning');
+    }else{
+      const rawPeaks=detectPeaks(wins,{minP,gap:6,max:maxHL});
+      peaks=rawPeaks.map(pk=>({...pk,reasons:makeReasons(pk,[])}));
+      if(!peaks.length) addMsg('ハイライトが検出されませんでした。詳細設定の「ピーク判定の厳しさ」を下げてください。','warning');
+    }
+    S.lastPeaks=peaks;
+
+    showOv('グラフを描画中...');await tick();
+    renderResults(S.chatConv,S.trRecs,wins,peaks,0,S.chatConv.length,S.videoId);
+
+    hideOv();
+    toast(`解析完了: ハイライト${peaks.length}件`,'ok');
+  }catch(e){
+    hideOv();
+    addMsg(e.message,'error');
+    toast(e.message,'err',4000);
+  }
+}
+
+// ─── §20a BACKUP & COMBINED TEXT ─────────────────────────────────────────────
+function exportBackup(){
+  if(!_dbCache.length){toast('登録データがありません','wrn');return;}
+  const json=JSON.stringify(_dbCache,null,2);
+  dl(json,'fastcut_backup_'+new Date().toISOString().slice(0,10)+'.json','application/json');
+  toast('バックアップをダウンロードしました','ok');
+}
+
+function buildCombinedText(rec){
+  const ep=rec.episodeNum||'';
+  const url=rec.videoUrl||'';
+  const start=rec.streamStart||'';
+  const trData=rec.trData||[];
+  const chatData=rec.chatData||[];
+
+  const lines=[ep,url,start,''];
+
+  if(trData.length){
+    lines.push('[音声データ]');
+    for(const t of trData){
+      lines.push(fmtSec(t.sec));
+      lines.push(t.text);
+    }
+    lines.push('');
+  }
+
+  if(chatData.length){
+    lines.push('[チャット]');
+    for(const c of chatData){
+      lines.push(fmtSec(c.sec));
+      lines.push('@'+c.username+' '+c.message);
+    }
+  }
+
+  return lines.join('\n');
+}
+
+function downloadCombinedText(id){
+  const rec=_dbCache.find(r=>r.id===id);
+  if(!rec){toast('データが見つかりません','err');return;}
+  const ep=rec.episodeNum||'';
+  const fname=(ep?ep+'_':'')+'TEXT.txt';
+  dl(buildCombinedText(rec),fname,'text/plain');
+  toast(fname+' をダウンロードしました','ok');
+}
+
+function buildKwMarkerCSV(q){
+  // Build Premiere-compatible CSV of all keyword match positions across all filtered records
+  const ql=q.toLowerCase();
+  const fps=parseInt(document.getElementById('sr-fps').value)||30;
+  const hdr='Marker Name,Description,In,Out,Duration,Marker Type';
+  const rows=[];
+  let idx=1;
+
+  for(const rec of _dbCache){
+    const chatHits=(rec.chatData||[]).filter(c=>c.message.toLowerCase().includes(ql));
+    const trHits=(rec.trData||[]).filter(t=>t.text.toLowerCase().includes(ql));
+    const allHits=[
+      ...chatHits.map(c=>({sec:c.sec,txt:`@${c.username} ${c.message}`})),
+      ...trHits.map(t=>({sec:t.sec,txt:t.text})),
+    ].sort((a,b)=>a.sec-b.sec);
+
+    const ep=rec.episodeNum?`[${rec.episodeNum}] `:'';
+    for(const h of allHits){
+      const desc=(ep+h.txt).replace(/"/g,'""');
+      rows.push(`"KW ${String(idx).padStart(3,'0')}","${desc}",${toTC(h.sec,fps)},${toTC(h.sec+5,fps)},${toTC(5,fps)},Comment`);
+      idx++;
+    }
+  }
+
+  if(!rows.length){toast('マッチするデータがありません','wrn');return;}
+  dl([hdr,...rows].join('\r\n'),'kw_markers_'+q.slice(0,20)+'.csv','text/csv');
+  toast(`KWマーカー CSV: ${rows.length}件`,'ok');
+}
+
+// ─── §20 TAB SWITCH ───────────────────────────────────────────────────────────
+function switchTab(name){
+  const layout=document.getElementById('layout');
+  const viewDb=document.getElementById('view-db');
+  const tabA=document.getElementById('tab-analyze');
+  const tabD=document.getElementById('tab-db');
+  if(name==='db'){
+    layout.style.display='none';
+    viewDb.style.display='block';
+    tabA.classList.remove('active');
+    tabD.classList.add('active');
+    loadAndRenderDB();
+  }else{
+    layout.style.display='grid';
+    viewDb.style.display='none';
+    tabA.classList.add('active');
+    tabD.classList.remove('active');
+  }
+}
+
+// ─── §21 INIT ─────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded',()=>{
+  const safe=(name,fn)=>{try{fn();}catch(e){console.error('[Init] '+name+':',e);}};
+
+  safe('RestoreWords',()=>{
+    const kws=(()=>{try{return JSON.parse(localStorage.getItem('fc_kws')||'null');}catch{return null;}})();
+    const attn=(()=>{try{return JSON.parse(localStorage.getItem('fc_attn')||'null');}catch{return null;}})();
+    if(Array.isArray(kws))S.kws=kws;
+    if(Array.isArray(attn))S.attnWords=attn;
+  });
+
+  safe('DZ-chat', ()=>setupDZ('dz-c','fi-c','fn-c','chatRaw'));
+  safe('DZ-tr',   ()=>setupDZ('dz-t','fi-t','fn-t','trRaw'));
+  safe('Tags',    setupTags);
+  safe('AttnTags',setupAttnTags);
+  safe('Acc',     setupAcc);
+  safe('Sliders', setupSliders);
+
+  safe('Analyze',()=>{
+    document.getElementById('abtn').addEventListener('click',()=>{
+      // DB逆反映時: chatRaw は null だが chatConv は復元済み → runFromLoaded を使う
+      if(!S.chatRaw && S.chatConv.length>0){
+        runFromLoaded();
+      }else{
+        run();
+      }
+    });
+  });
+
+  safe('fi-start',()=>{
+    document.getElementById('fi-start').addEventListener('input',function(){this.classList.remove('err');});
+  });
+
+  safe('fi-ep',()=>{
+    document.getElementById('fi-ep').addEventListener('input',function(){
+      try{localStorage.setItem('fc_ep_last',this.value);}catch{}
+    });
+  });
+
+  document.addEventListener('dragover',e=>e.preventDefault());
+  document.addEventListener('drop',e=>e.preventDefault());
+
+  safe('History',()=>{
+    histFill('start-hist','fc_start_hist');
+    histFill('url-hist','fc_url_hist');
+
+    const lastStart=histLoad('fc_start_hist')[0];
+    if(lastStart)document.getElementById('fi-start').value=lastStart;
+
+    const lastUrl=histLoad('fc_url_hist')[0];
+    if(lastUrl)document.getElementById('fi-url').value=lastUrl;
+
+    const lastEp=histLoad('fc_ep_hist')[0]||localStorage.getItem('fc_ep_last')||'';
+    if(lastEp)document.getElementById('fi-ep').value=lastEp;
+  });
+
+  safe('reg-btn',()=>{
+    document.getElementById('reg-btn').addEventListener('click',registerCurrentVideo);
+  });
+
+  safe('exp-btn',()=>{
+    document.getElementById('exp-btn').addEventListener('click',()=>{
+      if(!S.lastPeaks.length){toast('ハイライトがありません','wrn');return;}
+      const fps=parseInt(document.getElementById('sr-fps').value)||30;
+      const csv=buildCSV(S.lastPeaks,fps);
+      const ep=document.getElementById('fi-ep').value.trim();
+      dl(csv,'highlights'+(ep?'_'+ep:'')+'.csv','text/csv');
+    });
+  });
+
+  safe('jsx-btn',()=>{
+    document.getElementById('jsx-btn').addEventListener('click',()=>{
+      if(!S.lastPeaks.length){toast('ハイライトがありません','wrn');return;}
+      const ep=document.getElementById('fi-ep').value.trim();
+      const fps=parseInt(document.getElementById('sr-fps').value)||30;
+      const html=buildMarkerList(S.lastPeaks,ep,fps);
+      const fname=(ep?ep+'_':'')+'markers.html';
+      const b=new Blob([html],{type:'text/html;charset=utf-8'});
+      const url=URL.createObjectURL(b);
+      const a=Object.assign(document.createElement('a'),{href:url,download:fname});
+      document.body.appendChild(a);a.click();
+      document.body.removeChild(a);URL.revokeObjectURL(url);
+      toast(fname+' をダウンロードしました','ok');
+    });
+  });
+
+  safe('chat-page-btn',()=>{
+    document.getElementById('chat-page-btn').addEventListener('click',()=>{
+      if(!S.chatConv.length){toast('チャットデータがありません','wrn');return;}
+      openListPage(S.chatConv,'チャット一覧',S.videoId);
+    });
+  });
+
+  safe('chat-txt-btn',()=>{
+    document.getElementById('chat-txt-btn').addEventListener('click',()=>{
+      if(!S.chatConv.length){toast('チャットデータがありません','wrn');return;}
+      const txt=S.chatConv.map(c=>`${fmtSec(c.sec)} @${c.username} ${c.message}`).join('\n');
+      dl(txt,'chat.txt','text/plain');
+    });
+  });
+
+  safe('tr-page-btn',()=>{
+    document.getElementById('tr-page-btn').addEventListener('click',()=>{
+      if(!S.trRecs.length){toast('音声データがありません','wrn');return;}
+      openListPage(S.trRecs,'音声データ一覧',S.videoId);
+    });
+  });
+
+  safe('tr-txt-btn',()=>{
+    document.getElementById('tr-txt-btn').addEventListener('click',()=>{
+      if(!S.trRecs.length){toast('音声データがありません','wrn');return;}
+      const txt=S.trRecs.map(t=>`${fmtSec(t.sec)} ${t.text}`).join('\n');
+      dl(txt,'transcript.txt','text/plain');
+    });
+  });
+
+  safe('tabs',()=>{
+    document.getElementById('tab-analyze').addEventListener('click',()=>switchTab('analyze'));
+    document.getElementById('tab-db').addEventListener('click',()=>switchTab('db'));
+  });
+
+  safe('db-q',()=>{
+    document.getElementById('db-q').addEventListener('input',function(){searchDB(this.value);});
+  });
+
+  safe('db-sort',()=>{
+    document.getElementById('db-sort').addEventListener('change',function(){
+      _dbSort=this.value;
+      renderDB(sortedCache(),document.getElementById('db-q').value.trim());
+    });
+  });
+
+  safe('db-backup-btn',()=>{
+    document.getElementById('db-backup-btn').addEventListener('click',exportBackup);
+  });
+
+  safe('db-kw-csv-btn',()=>{
+    document.getElementById('db-kw-csv-btn').addEventListener('click',()=>{
+      const q=document.getElementById('db-q').value.trim();
+      if(!q){toast('検索キーワードを入力してください','wrn');return;}
+      buildKwMarkerCSV(q);
+    });
+  });
+
+  openDB().catch(e=>{
+    console.warn('IndexedDB init error:',e);
+    setTimeout(()=>toast('IndexedDB が使えません ('+e.message+')。データ登録は無効です。','err',8000),800);
+  });
+});
+</script>
+</body>
+</html>
