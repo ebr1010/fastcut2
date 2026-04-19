@@ -1891,9 +1891,10 @@ async function ghSync(silent){
     for(const r of local)if(r.registeredAt)map.set(r.registeredAt,r);
     const merged=[...map.values()].sort((a,b)=>a.registeredAt<b.registeredAt?-1:1);
     await ghPut(merged,remote.sha);
-    if(newRecs.length){_dbCache=await dbAll();renderDB(sortedCache(),document.getElementById('db-q').value.trim());}
-    if(st)st.textContent='同期完了 '+new Date().toLocaleTimeString('ja-JP');
-    if(!silent)toast('GitHub同期完了','ok');
+    _dbCache=await dbAll();
+    renderDB(sortedCache(),document.getElementById('db-q').value.trim());
+    if(st)st.textContent='同期完了 '+new Date().toLocaleTimeString('ja-JP')+'（'+_dbCache.length+'件）';
+    if(!silent)toast('GitHub同期完了 '+_dbCache.length+'件','ok');
   }catch(e){
     if(st)st.textContent='エラー: '+e.message;
     if(!silent)toast('GitHub同期失敗: '+e.message,'err');
