@@ -284,10 +284,9 @@ input[type=range]{
 #db-cnt{font-size:12px;color:var(--t1);flex-shrink:0}
 .db-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
 .db-card-h{display:flex;align-items:flex-start;gap:8px;margin-bottom:8px}
-.db-ep{
-  font-family:var(--hf);font-size:16px;font-weight:700;color:var(--r1);
-  flex-shrink:0;min-width:28px;
-}
+.ep-badge{display:flex;flex-direction:column;align-items:center;justify-content:center;border:3px solid var(--r1);border-radius:9px;padding:4px 8px;font-family:var(--hf);font-weight:700;flex-shrink:0;min-width:48px;text-align:center;line-height:1;gap:1px}
+.ep-badge-p{font-size:10px;color:var(--t1);letter-spacing:1px;text-transform:uppercase}
+.ep-badge-n{font-size:20px;color:var(--t0)}
 .db-title{font-size:13px;color:var(--t0);flex:1;line-height:1.4;word-break:break-all}
 .db-meta{font-size:10px;color:var(--t2);margin-bottom:6px}
 .db-hits{display:flex;flex-direction:column;gap:3px;margin-top:6px;max-height:260px;overflow-y:auto}
@@ -327,6 +326,23 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 /* slider & field descriptions */
 .sl-desc{font-size:10px;color:var(--t2);line-height:1.4;margin-top:2px}
 .fi-desc{font-size:10px;color:var(--t2);line-height:1.4;margin-top:2px}
+/* db inline edit */
+.db-edit-row{display:flex;flex-direction:column;gap:2px;margin-bottom:8px}
+.db-edit-row label{font-size:10px;color:var(--t2)}
+.db-edit-in{background:var(--bg1);border:1px solid var(--r3);border-radius:var(--rad);color:var(--t0);padding:5px 8px;font-size:12px;outline:none;width:100%;font-family:var(--bf)}
+.db-edit-in:focus{border-color:var(--r4)}
+.db-edit-btn{background:none;border:1px solid rgba(90,174,128,0.3);border-radius:var(--rad);color:#5aae80;padding:3px 10px;font-size:11px;cursor:pointer;transition:all 0.15s}
+.db-edit-btn:hover{border-color:var(--ok);color:var(--ok)}
+/* github sync modal */
+.gh-modal{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center}
+.gh-modal.open{display:flex}
+.gh-inner{background:var(--bg2);border:1px solid var(--r3);border-radius:8px;padding:22px;width:420px;max-width:92vw}
+.gh-inner h3{font-family:var(--hf);font-size:16px;color:var(--t0);margin-bottom:14px}
+.gh-row{display:flex;flex-direction:column;gap:3px;margin-bottom:10px}
+.gh-row label{font-size:10px;color:var(--t2)}
+.gh-in{background:var(--bg1);border:1px solid var(--r3);border-radius:var(--rad);color:var(--t0);padding:6px 8px;font-size:12px;outline:none;width:100%;font-family:var(--mf)}
+.gh-in:focus{border-color:var(--r4)}
+.gh-status{font-size:11px;color:var(--t2);margin-top:8px;min-height:16px}
 </style>
 </head>
 <body>
@@ -475,6 +491,9 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
       <option value="title">タイトル順</option>
     </select>
     <button id="db-backup-btn" class="db-bar-btn">↓ バックアップ</button>
+    <label for="db-import-file" class="db-bar-btn" style="cursor:pointer">↑ 読み込み</label>
+    <input type="file" id="db-import-file" accept=".json" style="display:none">
+    <button id="gh-settings-btn" class="db-bar-btn">⚙ 同期</button>
     <button id="db-kw-csv-btn" class="db-bar-btn" disabled>↓ KW マーカー CSV</button>
   </div>
   <div class="db-grid" id="db-grid"></div>
@@ -1464,6 +1483,38 @@ function dbDel(id){
   });
 }
 
+function dbUpdate(id,changes){
+  return new Promise((res,rej)=>{
+    if(!_db){rej(new Error('DB not open'));return;}
+    const tx=_db.transaction('videos','readwrite');
+    const store=tx.objectStore('videos');
+    const req=store.get(id);
+    req.onsuccess=()=>{
+      const upd=store.put({...req.result,...changes});
+      upd.onsuccess=()=>res();
+      upd.onerror=e=>rej(e.target.error);
+    };
+    req.onerror=e=>rej(e.target.error);
+  });
+}
+
+function dbAddMany(records){
+  return new Promise((res,rej)=>{
+    if(!_db){rej(new Error('DB not open'));return;}
+    const tx=_db.transaction('videos','readwrite');
+    const store=tx.objectStore('videos');
+    let pending=records.length;
+    if(!pending){res();return;}
+    for(const r of records){
+      const rec={...r};delete rec.id; // IDB assigns new id
+      const req=store.add(rec);
+      req.onsuccess=()=>{if(--pending===0)res();};
+      req.onerror=()=>{if(--pending===0)res();};
+    }
+    tx.onerror=e=>rej(e.target.error);
+  });
+}
+
 async function registerCurrentVideo(){
   if(!S.chatConv.length){toast('先にAnalyzeを実行してください','wrn');return;}
   const startISO=document.getElementById('fi-start').value.trim();
@@ -1481,6 +1532,8 @@ async function registerCurrentVideo(){
       registeredAt:new Date().toISOString(),
     });
     toast('データベースに登録しました','ok');
+    _dbCache=await dbAll();
+    ghSync(true);
   }catch(e){
     toast('登録失敗: '+e.message,'err');
   }
@@ -1503,6 +1556,14 @@ function sortedCache(){
 async function loadAndRenderDB(){
   try{
     _dbCache=await dbAll();
+    if(ghEnabled()){
+      try{
+        const remote=await ghGet();
+        const existing=new Set(_dbCache.map(r=>r.registeredAt));
+        const newRecs=remote.data.filter(r=>r.registeredAt&&!existing.has(r.registeredAt));
+        if(newRecs.length){await dbAddMany(newRecs);_dbCache=await dbAll();}
+      }catch(e){console.warn('GitHub pull:',e);}
+    }
   }catch{_dbCache=[];}
   renderDB(sortedCache(),'');
   document.getElementById('db-q').value='';
@@ -1510,6 +1571,17 @@ async function loadAndRenderDB(){
 
 function searchDB(q){
   renderDB(sortedCache(),q.trim());
+}
+
+function parseEpBadge(ep){
+  if(!ep)return'';
+  const m=ep.match(/^([A-Za-z]*)(\d+.*)$/);
+  const prefix=m?m[1]:'';
+  const num=m?m[2]:ep;
+  return'<div class="ep-badge">'
+    +(prefix?'<div class="ep-badge-p">'+esc(prefix)+'</div>':'')
+    +'<div class="ep-badge-n">'+esc(num||prefix)+'</div>'
+    +'</div>';
 }
 
 function renderDB(records,q){
@@ -1549,8 +1621,8 @@ function renderDB(records,q){
   }
 
   grid.innerHTML=filtered.map(rec=>{
-    const ep=rec.episodeNum?`#${esc(rec.episodeNum)}`:'';
-    const title=rec.title||'(タイトル不明)';
+    const ep=parseEpBadge(rec.episodeNum);
+    const title=(rec.title||'(タイトル不明)').replace(/^\(\d+\)\s*/,'');
     const date=rec.streamStart||'';
     const chatData=rec.chatData||[];
     const trData=rec.trData||[];
@@ -1585,9 +1657,9 @@ function renderDB(records,q){
       }
     }
 
-    return`<div class="db-card" ondblclick="loadRecordToAnalysis(${rec.id})" title="ダブルクリックで解析画面に読み込む">
+    return`<div class="db-card" id="dbcard-${rec.id}" ondblclick="loadRecordToAnalysis(${rec.id})" title="ダブルクリックで解析画面に読み込む">
       <div class="db-card-h">
-        <div class="db-ep">${ep}</div>
+        ${ep}
         <div class="db-title">${hlStr(title,q)}</div>
       </div>
       <div class="db-meta">${date}${rec.videoUrl?` | <a href="${esc(rec.videoUrl)}" target="_blank" style="color:var(--r1);text-decoration:none" onclick="event.stopPropagation()">${esc(rec.videoUrl.slice(0,40))}</a>`:''}</div>
@@ -1595,6 +1667,7 @@ function renderDB(records,q){
       ${hitsHtml}
       <div class="db-actions" onclick="event.stopPropagation()">
         <button class="db-txt-btn" onclick="downloadCombinedText(${rec.id})">↓ TEXT</button>
+        <button class="db-edit-btn" onclick="startEdit(${rec.id})">✏ 編集</button>
         <button class="db-del" onclick="delVideo(${rec.id})">削除</button>
       </div>
     </div>`;
@@ -1608,8 +1681,42 @@ async function delVideo(id){
     _dbCache=_dbCache.filter(r=>r.id!==id);
     renderDB(sortedCache(),document.getElementById('db-q').value.trim());
     toast('削除しました','ok');
+    ghSync(true);
   }catch(e){
     toast('削除失敗: '+e.message,'err');
+  }
+}
+
+function startEdit(id){
+  event&&event.stopPropagation();
+  const rec=_dbCache.find(r=>r.id===id);
+  if(!rec)return;
+  const card=document.getElementById('dbcard-'+id);
+  if(!card)return;
+  card.ondblclick=null;
+  card.innerHTML='<div onclick="event.stopPropagation()">'
+    +'<div class="db-edit-row"><label>タイトル</label><input class="db-edit-in" id="edi-t-'+id+'" value="'+esc(rec.title||'')+'"></div>'
+    +'<div class="db-edit-row"><label>URL</label><input class="db-edit-in" id="edi-u-'+id+'" value="'+esc(rec.videoUrl||'')+'"></div>'
+    +'<div class="db-edit-row"><label>配信開始時刻</label><input class="db-edit-in" id="edi-s-'+id+'" value="'+esc(rec.streamStart||'')+'"></div>'
+    +'<div style="display:flex;gap:6px;margin-top:10px">'
+    +'<button class="db-txt-btn" onclick="saveCardEdit('+id+')">保存</button>'
+    +'<button class="db-del" onclick="loadAndRenderDB()">キャンセル</button>'
+    +'</div></div>';
+}
+
+async function saveCardEdit(id){
+  try{
+    const title=document.getElementById('edi-t-'+id).value;
+    const url=document.getElementById('edi-u-'+id).value.trim();
+    const start=document.getElementById('edi-s-'+id).value.trim();
+    await dbUpdate(id,{title,videoUrl:url,streamStart:start});
+    const idx=_dbCache.findIndex(r=>r.id===id);
+    if(idx>=0)_dbCache[idx]={..._dbCache[idx],title,videoUrl:url,streamStart:start};
+    renderDB(sortedCache(),document.getElementById('db-q').value.trim());
+    toast('更新しました','ok');
+    ghSync(true);
+  }catch(e){
+    toast('更新失敗: '+e.message,'err');
   }
 }
 
@@ -1704,6 +1811,76 @@ function exportBackup(){
   const json=JSON.stringify(_dbCache,null,2);
   dl(json,'fastcut_backup_'+new Date().toISOString().slice(0,10)+'.json','application/json');
   toast('バックアップをダウンロードしました','ok');
+}
+
+async function importBackup(file){
+  try{
+    const text=await file.text();
+    const data=JSON.parse(text);
+    if(!Array.isArray(data))throw new Error('不正なフォーマット');
+    const existing=new Set(_dbCache.map(r=>r.registeredAt));
+    const newRecs=data.filter(r=>r.registeredAt&&!existing.has(r.registeredAt));
+    if(!newRecs.length){toast('新しいデータはありませんでした','wrn');return;}
+    await dbAddMany(newRecs);
+    await loadAndRenderDB();
+    toast(newRecs.length+'件を読み込みました','ok');
+  }catch(e){
+    toast('読み込み失敗: '+e.message,'err');
+  }
+}
+
+// ─── §21 GITHUB SYNC ─────────────────────────────────────────────────────────
+let _ghCfg={repo:'',path:'fastcut_data.json',token:''};
+
+function loadGhCfg(){
+  try{const s=localStorage.getItem('fc_gh');if(s)_ghCfg={..._ghCfg,...JSON.parse(s)};}catch{}
+}
+function saveGhCfg(){localStorage.setItem('fc_gh',JSON.stringify(_ghCfg));}
+function ghEnabled(){return!!(_ghCfg.repo&&_ghCfg.token);}
+
+async function ghGet(){
+  const url='https://api.github.com/repos/'+_ghCfg.repo+'/contents/'+_ghCfg.path;
+  const res=await fetch(url,{headers:{'Authorization':'token '+_ghCfg.token,'Accept':'application/vnd.github.v3+json'}});
+  if(res.status===404)return{data:[],sha:null};
+  if(!res.ok)throw new Error('GitHub取得失敗 ('+res.status+')');
+  const json=await res.json();
+  const data=JSON.parse(decodeURIComponent(escape(atob(json.content.replace(/\s/g,'')))));
+  return{data,sha:json.sha};
+}
+
+async function ghPut(data,sha){
+  const url='https://api.github.com/repos/'+_ghCfg.repo+'/contents/'+_ghCfg.path;
+  const content=btoa(unescape(encodeURIComponent(JSON.stringify(data,null,2))));
+  const body={message:'FASTCUT sync '+new Date().toISOString().slice(0,16),content};
+  if(sha)body.sha=sha;
+  const res=await fetch(url,{method:'PUT',headers:{'Authorization':'token '+_ghCfg.token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!res.ok)throw new Error('GitHub書き込み失敗 ('+res.status+')');
+}
+
+async function ghSync(silent){
+  if(!ghEnabled())return;
+  const st=document.getElementById('gh-status');
+  try{
+    if(st)st.textContent='同期中...';
+    // pull: add records from GitHub not in local
+    const remote=await ghGet();
+    const existing=new Set(_dbCache.map(r=>r.registeredAt));
+    const newRecs=remote.data.filter(r=>r.registeredAt&&!existing.has(r.registeredAt));
+    if(newRecs.length)await dbAddMany(newRecs);
+    // push: merge and upload all
+    const local=await dbAll();
+    const map=new Map();
+    for(const r of remote.data)if(r.registeredAt)map.set(r.registeredAt,r);
+    for(const r of local)if(r.registeredAt)map.set(r.registeredAt,r);
+    const merged=[...map.values()].sort((a,b)=>a.registeredAt<b.registeredAt?-1:1);
+    await ghPut(merged,remote.sha);
+    if(newRecs.length){_dbCache=await dbAll();renderDB(sortedCache(),document.getElementById('db-q').value.trim());}
+    if(st)st.textContent='同期完了 '+new Date().toLocaleTimeString('ja-JP');
+    if(!silent)toast('GitHub同期完了','ok');
+  }catch(e){
+    if(st)st.textContent='エラー: '+e.message;
+    if(!silent)toast('GitHub同期失敗: '+e.message,'err');
+  }
 }
 
 function buildCombinedText(rec){
@@ -1937,11 +2114,71 @@ document.addEventListener('DOMContentLoaded',()=>{
     });
   });
 
+  // import backup
+  safe('db-import-file',()=>{
+    document.getElementById('db-import-file').addEventListener('change',async function(){
+      if(this.files[0])await importBackup(this.files[0]);
+      this.value='';
+    });
+  });
+
+  // GitHub sync modal
+  safe('gh-settings-btn',()=>{
+    document.getElementById('gh-settings-btn').addEventListener('click',()=>{
+      document.getElementById('gh-repo').value=_ghCfg.repo;
+      document.getElementById('gh-path').value=_ghCfg.path;
+      document.getElementById('gh-token').value=_ghCfg.token;
+      document.getElementById('gh-status').textContent='';
+      document.getElementById('gh-modal').classList.add('open');
+    });
+  });
+  safe('gh-close-btn',()=>{
+    document.getElementById('gh-close-btn').addEventListener('click',()=>document.getElementById('gh-modal').classList.remove('open'));
+  });
+  document.getElementById('gh-modal').addEventListener('click',()=>document.getElementById('gh-modal').classList.remove('open'));
+  safe('gh-save-btn',()=>{
+    document.getElementById('gh-save-btn').addEventListener('click',()=>{
+      _ghCfg.repo=document.getElementById('gh-repo').value.trim();
+      _ghCfg.path=document.getElementById('gh-path').value.trim()||'fastcut_data.json';
+      _ghCfg.token=document.getElementById('gh-token').value.trim();
+      saveGhCfg();
+      toast('GitHub設定を保存しました','ok');
+    });
+  });
+  safe('gh-sync-now',()=>{
+    document.getElementById('gh-sync-now').addEventListener('click',()=>ghSync(false));
+  });
+
+  loadGhCfg();
   openDB().catch(e=>{
     console.warn('IndexedDB init error:',e);
     setTimeout(()=>toast('IndexedDB が使えません ('+e.message+')。データ登録は無効です。','err',8000),800);
   });
 });
 </script>
+
+<div class="gh-modal" id="gh-modal">
+  <div class="gh-inner" onclick="event.stopPropagation()">
+    <h3>⚙ GitHub 同期設定</h3>
+    <div class="gh-row">
+      <label>リポジトリ（owner/repo）</label>
+      <input class="gh-in" id="gh-repo" placeholder="例: username/myrepo">
+    </div>
+    <div class="gh-row">
+      <label>データファイルパス</label>
+      <input class="gh-in" id="gh-path" placeholder="fastcut_data.json">
+    </div>
+    <div class="gh-row">
+      <label>Personal Access Token（PAT）— Contents: Read & Write</label>
+      <input class="gh-in" id="gh-token" type="password" placeholder="ghp_...">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:center">
+      <button class="db-bar-btn" id="gh-save-btn">保存</button>
+      <button class="db-bar-btn" id="gh-sync-now">今すぐ同期</button>
+      <button class="db-bar-btn" id="gh-close-btn" style="margin-left:auto">✕ 閉じる</button>
+    </div>
+    <div class="gh-status" id="gh-status"></div>
+  </div>
+</div>
 </body>
 </html>
