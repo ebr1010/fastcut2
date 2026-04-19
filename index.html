@@ -1856,11 +1856,20 @@ async function ghGet(){
   if(res.status===404)return{data:[],sha:null};
   if(!res.ok)throw new Error('GitHub取得失敗 ('+res.status+')');
   const json=await res.json();
+  let text;
+  if(!json.content||json.content.trim()===''){
+    // 1MB超のファイルはcontent空になるのでdownload_urlから取得
+    if(!json.download_url)throw new Error('ファイルが大きすぎて取得できません');
+    const dl=await fetch(json.download_url);
+    if(!dl.ok)throw new Error('ダウンロード失敗 ('+dl.status+')');
+    text=await dl.text();
+  }else{
+    text=_b64dec(json.content);
+  }
   try{
-    const data=JSON.parse(_b64dec(json.content));
+    const data=JSON.parse(text);
     return{data:Array.isArray(data)?data:[],sha:json.sha};
   }catch{
-    // ファイルが壊れている場合は空として扱い、次のpushで上書きする
     return{data:[],sha:json.sha};
   }
 }
@@ -1890,7 +1899,10 @@ async function ghSync(silent){
     for(const r of remote.data)if(r.registeredAt)map.set(r.registeredAt,r);
     for(const r of local)if(r.registeredAt)map.set(r.registeredAt,r);
     const merged=[...map.values()].sort((a,b)=>a.registeredAt<b.registeredAt?-1:1);
-    await ghPut(merged,remote.sha);
+    // リモートより少ない件数での上書きを防ぐ
+    if(merged.length>=remote.data.length&&merged.length>0){
+      await ghPut(merged,remote.sha);
+    }
     _dbCache=await dbAll();
     renderDB(sortedCache(),document.getElementById('db-q').value.trim());
     if(st)st.textContent='同期完了 '+new Date().toLocaleTimeString('ja-JP')+'（'+_dbCache.length+'件）';
