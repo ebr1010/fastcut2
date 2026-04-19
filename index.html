@@ -1838,19 +1838,31 @@ function loadGhCfg(){
 function saveGhCfg(){localStorage.setItem('fc_gh',JSON.stringify(_ghCfg));}
 function ghEnabled(){return!!(_ghCfg.repo&&_ghCfg.token);}
 
+function _b64enc(str){
+  const bytes=new TextEncoder().encode(str);
+  let bin='';for(const b of bytes)bin+=String.fromCharCode(b);
+  return btoa(bin);
+}
+function _b64dec(b64){
+  const bin=atob(b64.replace(/\s/g,''));
+  const bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
 async function ghGet(){
   const url='https://api.github.com/repos/'+_ghCfg.repo+'/contents/'+_ghCfg.path;
   const res=await fetch(url,{headers:{'Authorization':'token '+_ghCfg.token,'Accept':'application/vnd.github.v3+json'}});
   if(res.status===404)return{data:[],sha:null};
   if(!res.ok)throw new Error('GitHub取得失敗 ('+res.status+')');
   const json=await res.json();
-  const data=JSON.parse(decodeURIComponent(escape(atob(json.content.replace(/\s/g,'')))));
+  const data=JSON.parse(_b64dec(json.content));
   return{data,sha:json.sha};
 }
 
 async function ghPut(data,sha){
   const url='https://api.github.com/repos/'+_ghCfg.repo+'/contents/'+_ghCfg.path;
-  const content=btoa(unescape(encodeURIComponent(JSON.stringify(data,null,2))));
+  const content=_b64enc(JSON.stringify(data,null,2));
   const body={message:'FASTCUT sync '+new Date().toISOString().slice(0,16),content};
   if(sha)body.sha=sha;
   const res=await fetch(url,{method:'PUT',headers:{'Authorization':'token '+_ghCfg.token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
