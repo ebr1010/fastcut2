@@ -289,7 +289,7 @@ input[type=range]{
 .ep-badge-n{font-size:20px;color:var(--t0)}
 .db-title{font-size:13px;color:var(--t0);flex:1;line-height:1.4;word-break:break-all}
 .db-meta{font-size:10px;color:var(--t2);margin-bottom:6px}
-.db-hits{display:flex;flex-direction:column;gap:3px;margin-top:6px;max-height:260px;overflow-y:auto}
+.db-hits{display:flex;flex-direction:column;gap:3px;margin-top:6px;max-height:260px;overflow-y:auto;overflow-x:hidden}
 .db-hits::-webkit-scrollbar{width:3px}
 .db-hits::-webkit-scrollbar-thumb{background:var(--r2);border-radius:2px}
 .db-hit{font-size:11px;color:var(--t1);display:flex;gap:6px;align-items:flex-start}
@@ -326,6 +326,45 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 /* slider & field descriptions */
 .sl-desc{font-size:10px;color:var(--t2);line-height:1.4;margin-top:2px}
 .fi-desc{font-size:10px;color:var(--t2);line-height:1.4;margin-top:2px}
+/* tag pills on cards */
+.db-tags{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 6px}
+.tp{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;border:1px solid transparent;line-height:1.5}
+.tp-del{cursor:pointer;opacity:0.5;font-size:11px;margin-left:1px}
+.tp-del:hover{opacity:1}
+.tp-add{background:none;border:1px dashed var(--r3);border-radius:10px;color:var(--t2);padding:2px 8px;font-size:10px;cursor:pointer;line-height:1.5}
+.tp-add:hover{border-color:var(--r1);color:var(--t0)}
+/* tag filter bar */
+.db-tag-bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;align-items:center}
+.tf-chip{padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--r3);background:none;color:var(--t1);transition:all 0.15s;white-space:nowrap}
+.tf-chip:hover{border-color:var(--r4);color:var(--t0)}
+/* tag manager modal */
+.tg-modal{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center}
+.tg-modal.open{display:flex}
+.tg-inner{background:var(--bg2);border:1px solid var(--r3);border-radius:8px;padding:22px;width:460px;max-width:92vw;max-height:80vh;overflow-y:auto}
+.tg-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--r3)}
+.tg-name{flex:1;font-size:13px}
+.tg-color{width:32px;height:24px;border:none;border-radius:3px;cursor:pointer;padding:0;background:none}
+.tg-del{background:none;border:1px solid var(--r3);border-radius:var(--rad);color:var(--t1);padding:2px 8px;font-size:11px;cursor:pointer}
+.tg-del:hover{border-color:var(--r1);color:var(--r1)}
+.tg-new{display:flex;gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap}
+.tg-in{background:var(--bg1);border:1px solid var(--r3);border-radius:var(--rad);color:var(--t0);padding:5px 8px;font-size:12px;outline:none;font-family:var(--bf)}
+.tg-in:focus{border-color:var(--r1)}
+/* ranking view */
+#view-rank{display:none;padding:16px;height:calc(100vh - 50px);overflow-y:auto}
+#view-rank::-webkit-scrollbar{width:6px}
+#view-rank::-webkit-scrollbar-thumb{background:var(--r2);border-radius:3px}
+.rank-bar{display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.rank-q{background:var(--bg1);border:1px solid var(--r3);border-radius:var(--rad);color:var(--t0);padding:6px 10px;font-size:13px;outline:none;width:220px}
+.rank-q:focus{border-color:var(--r1)}
+.rank-tag-sel{background:var(--bg1);border:1px solid var(--r3);border-radius:var(--rad);color:var(--t0);padding:6px 8px;font-size:12px;outline:none;cursor:pointer}
+.rank-table{width:100%;border-collapse:collapse;font-size:12px}
+.rank-table th{text-align:left;color:var(--t1);font-size:11px;padding:6px 10px;border-bottom:1px solid var(--r3);font-family:var(--hf);font-weight:500;letter-spacing:1px;text-transform:uppercase}
+.rank-table td{padding:7px 10px;border-bottom:1px solid rgba(185,24,40,0.08);vertical-align:middle}
+.rank-table tr:hover td{background:rgba(255,255,255,0.025)}
+.rank-num{color:var(--t2);width:50px;font-family:var(--mf);font-size:11px;text-align:center}
+.rank-name{font-family:var(--mf);color:var(--t0)}
+.rank-cnt{font-family:var(--hf);font-size:20px;font-weight:700;color:var(--r1);text-align:right;width:100px}
+.rank-vids{color:var(--t2);font-size:11px;text-align:right;width:70px}
 /* db inline edit */
 .db-edit-row{display:flex;flex-direction:column;gap:2px;margin-bottom:8px}
 .db-edit-row label{font-size:10px;color:var(--t2)}
@@ -352,6 +391,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
+    <button class="tab" id="tab-rank">ランキング</button>
   </div>
   <span class="header-sub">VTuber Clip Analyzer</span>
 </header>
@@ -496,7 +536,27 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     <button id="gh-settings-btn" class="db-bar-btn">⚙ 同期</button>
     <button id="db-kw-csv-btn" class="db-bar-btn" disabled>↓ KW マーカー CSV</button>
   </div>
+  <div class="db-tag-bar" id="db-tag-bar" style="display:none"></div>
   <div class="db-grid" id="db-grid"></div>
+</div>
+
+<div id="view-rank" style="display:none">
+  <div class="rank-bar">
+    <input class="rank-q" id="rank-q" placeholder="@アカウント名で検索..." oninput="renderRanking()">
+    <select class="rank-tag-sel" id="rank-tag" onchange="renderRanking()">
+      <option value="">すべてのタグ</option>
+    </select>
+    <span id="rank-info" style="font-size:11px;color:var(--t2)"></span>
+  </div>
+  <table class="rank-table">
+    <thead><tr>
+      <th style="text-align:center">#</th>
+      <th>アカウント</th>
+      <th style="text-align:right">チャット数</th>
+      <th style="text-align:right">動画数</th>
+    </tr></thead>
+    <tbody id="rank-tbody"><tr><td colspan="4" style="color:var(--t2);text-align:center;padding:40px">データベースタブで動画を読み込むとランキングが表示されます</td></tr></tbody>
+  </table>
 </div>
 
 <script>
@@ -1984,23 +2044,223 @@ function buildKwMarkerCSV(q){
   toast(`KWマーカー CSV: ${rows.length}件`,'ok');
 }
 
+// ─── §19 TAG SYSTEM ───────────────────────────────────────────────────────────
+let _tags=[];
+let _tagFilter={};
+let _tpTarget=null;
+
+function loadTags(){try{const s=localStorage.getItem('fc_tags');if(s)_tags=JSON.parse(s);}catch{}}
+function saveTags(){localStorage.setItem('fc_tags',JSON.stringify(_tags));}
+function getTagColor(n){const t=_tags.find(t=>t.name===n);return t?t.color:null;}
+
+function openTgModal(){renderTgList();document.getElementById('tg-modal').classList.add('open');}
+function closeTgModal(){document.getElementById('tg-modal').classList.remove('open');}
+
+function renderTgList(){
+  const el=document.getElementById('tg-list');
+  if(!_tags.length){el.innerHTML='<div style="color:var(--t2);font-size:12px;padding:8px 0">タグがありません</div>';return;}
+  el.innerHTML=_tags.map((t,i)=>
+    '<div class="tg-row">'
+    +'<span class="tg-name">'+esc(t.name)+'</span>'
+    +'<input type="color" class="tg-color" value="'+t.color+'" oninput="updateTagColor('+i+',this.value)">'
+    +'<button class="tg-del" onclick="deleteTag('+i+')">削除</button>'
+    +'</div>'
+  ).join('');
+}
+
+function addTag(){
+  const name=document.getElementById('tg-new-name').value.trim();
+  const color=document.getElementById('tg-new-color').value;
+  if(!name)return;
+  if(_tags.find(t=>t.name===name)){toast('同名のタグが既にあります','wrn');return;}
+  _tags.push({name,color});
+  saveTags();
+  renderTgList();
+  renderTagBar();
+  renderRankTagSel();
+  document.getElementById('tg-new-name').value='';
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim());
+}
+
+function deleteTag(idx){
+  const name=_tags[idx].name;
+  if(!confirm('タグ「'+name+'」を削除しますか？\n（動画に付いているタグも外れます）'))return;
+  _tags.splice(idx,1);
+  saveTags();
+  for(const r of _dbCache){
+    if((r.tags||[]).includes(name)){
+      r.tags=(r.tags||[]).filter(t=>t!==name);
+      dbUpdate(r.id,{tags:r.tags});
+    }
+  }
+  delete _tagFilter[name];
+  renderTgList();
+  renderTagBar();
+  renderRankTagSel();
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim());
+}
+
+function updateTagColor(idx,color){
+  _tags[idx].color=color;
+  saveTags();
+  renderTagBar();
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim());
+}
+
+function renderTagBar(){
+  const bar=document.getElementById('db-tag-bar');
+  if(!bar)return;
+  if(!_tags.length){bar.style.display='none';return;}
+  bar.style.display='flex';
+  const allActive=!Object.values(_tagFilter).some(v=>v);
+  let html='<button class="tf-chip" style="'+(allActive?'background:var(--r2);border-color:var(--r1);color:var(--t0)':'')+'" onclick="clearTagFilter()">すべて</button>';
+  for(const t of _tags){
+    const state=_tagFilter[t.name]||null;
+    const c=t.color;
+    const sty=state==='show'?'background:'+c+';border-color:'+c+';color:#fff'
+             :state==='hide'?'border-color:'+c+'66;color:'+c+'66;text-decoration:line-through'
+             :'border-color:'+c+'55;color:'+c;
+    html+='<button class="tf-chip" style="'+sty+'" onclick="cycleTagFilter(\''+t.name.replace(/'/g,"\\'")+'\')" title="クリック: 絞り込み → 非表示 → リセット">'+esc(t.name)+'</button>';
+  }
+  html+='<button class="db-bar-btn" style="margin-left:auto" onclick="openTgModal()">⚙ タグ管理</button>';
+  bar.innerHTML=html;
+}
+
+function cycleTagFilter(name){
+  const cur=_tagFilter[name]||null;
+  if(cur===null)_tagFilter[name]='show';
+  else if(cur==='show')_tagFilter[name]='hide';
+  else delete _tagFilter[name];
+  renderTagBar();
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim());
+}
+
+function clearTagFilter(){
+  _tagFilter={};
+  renderTagBar();
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim());
+}
+
+function applyTagFilter(recs){
+  const show=Object.entries(_tagFilter).filter(([,v])=>v==='show').map(([k])=>k);
+  const hide=Object.entries(_tagFilter).filter(([,v])=>v==='hide').map(([k])=>k);
+  if(show.length)recs=recs.filter(r=>show.some(t=>(r.tags||[]).includes(t)));
+  if(hide.length)recs=recs.filter(r=>!hide.some(t=>(r.tags||[]).includes(t)));
+  return recs;
+}
+
+function openTpPop(videoId,btn){
+  _tpTarget=videoId;
+  const rec=_dbCache.find(r=>r.id===videoId);
+  const cur=rec?rec.tags||[]:[];
+  const avail=_tags.filter(t=>!cur.includes(t.name));
+  const pop=document.getElementById('tp-pop');
+  if(!avail.length){toast('追加できるタグがありません。タグ管理から作成してください','wrn');return;}
+  pop.innerHTML='<div style="font-size:10px;color:var(--t2);margin-bottom:6px">タグを追加</div>'
+    +avail.map(t=>'<button class="db-bar-btn" style="display:block;width:100%;text-align:left;margin-bottom:3px;border-left:3px solid '+t.color+'" onclick="addTagToVideo('+videoId+',\''+t.name.replace(/'/g,"\\'")+'\')" >'+esc(t.name)+'</button>').join('');
+  const rect=btn.getBoundingClientRect();
+  pop.style.left=Math.min(rect.left,window.innerWidth-180)+'px';
+  pop.style.top=(rect.bottom+4)+'px';
+  pop.style.display='block';
+}
+
+async function addTagToVideo(videoId,tagName){
+  document.getElementById('tp-pop').style.display='none';
+  const rec=_dbCache.find(r=>r.id===videoId);
+  if(!rec)return;
+  const tags=[...(rec.tags||[])];
+  if(tags.includes(tagName))return;
+  tags.push(tagName);
+  await dbUpdate(videoId,{tags});
+  const idx=_dbCache.findIndex(r=>r.id===videoId);
+  if(idx>=0)_dbCache[idx]={..._dbCache[idx],tags};
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim());
+  renderRankTagSel();
+  ghSync(true);
+}
+
+async function rmTag(videoId,tagName){
+  const rec=_dbCache.find(r=>r.id===videoId);
+  if(!rec)return;
+  const tags=(rec.tags||[]).filter(t=>t!==tagName);
+  await dbUpdate(videoId,{tags});
+  const idx=_dbCache.findIndex(r=>r.id===videoId);
+  if(idx>=0)_dbCache[idx]={..._dbCache[idx],tags};
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim());
+}
+
+function computeRanking(tagFilter){
+  const map=new Map();
+  let recs=_dbCache;
+  if(tagFilter)recs=recs.filter(r=>(r.tags||[]).includes(tagFilter));
+  for(const rec of recs){
+    for(const c of (rec.chatData||[])){
+      if(!c.username)continue;
+      const key=c.username.toLowerCase();
+      if(!map.has(key))map.set(key,{username:c.username,count:0,vids:new Set()});
+      const e=map.get(key);e.count++;e.vids.add(rec.id);
+    }
+  }
+  return[...map.values()].map(e=>({username:e.username,count:e.count,vids:e.vids.size})).sort((a,b)=>b.count-a.count);
+}
+
+function renderRankTagSel(){
+  const sel=document.getElementById('rank-tag');
+  if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">すべてのタグ</option>'
+    +_tags.map(t=>'<option value="'+esc(t.name)+'"'+(t.name===cur?' selected':'')+'>'+esc(t.name)+'</option>').join('');
+}
+
+function renderRanking(){
+  const q=(document.getElementById('rank-q')?document.getElementById('rank-q').value:'').trim().toLowerCase().replace(/^@/,'');
+  const tagF=(document.getElementById('rank-tag')?document.getElementById('rank-tag').value:'');
+  const data=computeRanking(tagF||null);
+  const filtered=q?data.filter(e=>e.username.toLowerCase().includes(q)):data;
+  const info=document.getElementById('rank-info');
+  if(info)info.textContent=filtered.length+'人';
+  const medals=['🥇','🥈','🥉'];
+  if(!filtered.length){
+    document.getElementById('rank-tbody').innerHTML='<tr><td colspan="4" style="color:var(--t2);text-align:center;padding:40px">データがありません</td></tr>';
+    return;
+  }
+  document.getElementById('rank-tbody').innerHTML=filtered.slice(0,200).map((e,i)=>{
+    const r=i+1;
+    return'<tr>'
+      +'<td class="rank-num">'+(r<=3?medals[r-1]:r)+'</td>'
+      +'<td class="rank-name">@'+esc(e.username)+'</td>'
+      +'<td class="rank-cnt">'+e.count.toLocaleString()+'</td>'
+      +'<td class="rank-vids">'+e.vids+'動画</td>'
+      +'</tr>';
+  }).join('');
+}
+
 // ─── §20 TAB SWITCH ───────────────────────────────────────────────────────────
 function switchTab(name){
   const layout=document.getElementById('layout');
   const viewDb=document.getElementById('view-db');
+  const viewRank=document.getElementById('view-rank');
   const tabA=document.getElementById('tab-analyze');
   const tabD=document.getElementById('tab-db');
+  const tabR=document.getElementById('tab-rank');
+  [tabA,tabD,tabR].forEach(t=>t&&t.classList.remove('active'));
+  layout.style.display='none';
+  viewDb.style.display='none';
+  if(viewRank)viewRank.style.display='none';
   if(name==='db'){
-    layout.style.display='none';
-    viewDb.style.display='block';
-    tabA.classList.remove('active');
     tabD.classList.add('active');
+    viewDb.style.display='block';
     loadAndRenderDB();
+  }else if(name==='rank'){
+    if(tabR)tabR.classList.add('active');
+    if(viewRank){
+      viewRank.style.display='block';
+      renderRankTagSel();
+      renderRanking();
+    }
   }else{
-    layout.style.display='grid';
-    viewDb.style.display='none';
     tabA.classList.add('active');
-    tabD.classList.remove('active');
+    layout.style.display='grid';
   }
 }
 
@@ -2214,5 +2474,20 @@ document.addEventListener('DOMContentLoaded',()=>{
     <div class="gh-status" id="gh-status"></div>
   </div>
 </div>
+
+<div class="tg-modal" id="tg-modal" onclick="closeTgModal()">
+  <div class="tg-inner" onclick="event.stopPropagation()">
+    <h3 style="margin-bottom:12px">タグ管理</h3>
+    <div id="tg-list"></div>
+    <div class="tg-new">
+      <input class="tg-in" id="tg-new-name" placeholder="タグ名" style="flex:1" maxlength="20" onkeydown="if(event.key==='Enter')addTag()">
+      <input type="color" class="tg-color" id="tg-new-color" value="#4a9eff">
+      <button class="db-bar-btn" onclick="addTag()">追加</button>
+      <button class="db-bar-btn" onclick="closeTgModal()">✕ 閉じる</button>
+    </div>
+  </div>
+</div>
+
+<div id="tp-pop" style="position:fixed;z-index:600;background:var(--bg2);border:1px solid var(--r3);border-radius:6px;padding:10px;display:none;box-shadow:0 4px 20px rgba(0,0,0,0.5);min-width:160px"></div>
 </body>
 </html>
