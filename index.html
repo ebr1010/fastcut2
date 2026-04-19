@@ -365,6 +365,12 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .rank-name{font-family:var(--mf);color:var(--t0)}
 .rank-cnt{font-family:var(--hf);font-size:20px;font-weight:700;color:var(--r1);text-align:right;width:100px}
 .rank-vids{color:var(--t2);font-size:11px;text-align:right;width:70px}
+.rank-row{cursor:pointer}
+.rank-detail td{background:rgba(185,24,40,0.05);padding:8px 16px;font-size:11px;border-bottom:1px solid var(--r3)}
+.rank-detail-line{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;margin-bottom:3px}
+.rank-detail-line:last-child{margin-bottom:0}
+/* left panel tag section */
+.left-tag-row{display:flex;flex-wrap:wrap;gap:4px;min-height:22px;margin-top:4px}
 /* db inline edit */
 .db-edit-row{display:flex;flex-direction:column;gap:2px;margin-bottom:8px}
 .db-edit-row label{font-size:10px;color:var(--t2)}
@@ -439,6 +445,11 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     <div class="fi-group">
       <div class="fi-lbl">配信番号</div>
       <input class="fi" type="text" id="fi-ep" placeholder="例: 042">
+    </div>
+
+    <div class="fi-group" id="left-tag-group" style="display:none">
+      <div class="fi-lbl">タグ（この動画）</div>
+      <div class="left-tag-row" id="left-tags"></div>
     </div>
 
     <div class="fi-group">
@@ -523,6 +534,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <div id="view-db" style="display:none">
   <div class="db-bar">
     <input type="text" class="db-search" id="db-q" placeholder="キーワードで全動画から検索...">
+    <input type="text" class="db-search" id="db-acct" placeholder="@アカウント名で絞り込み..." style="width:200px">
     <span id="db-cnt"></span>
     <select id="db-sort" class="db-sort" title="並び替え">
       <option value="date">新しい順</option>
@@ -534,9 +546,10 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     <label for="db-import-file" class="db-bar-btn" style="cursor:pointer">↑ 読み込み</label>
     <input type="file" id="db-import-file" accept=".json" style="display:none">
     <button id="gh-settings-btn" class="db-bar-btn">⚙ 同期</button>
+    <button class="db-bar-btn" onclick="openTgModal()">🏷 タグ管理</button>
     <button id="db-kw-csv-btn" class="db-bar-btn" disabled>↓ KW マーカー CSV</button>
   </div>
-  <div class="db-tag-bar" id="db-tag-bar" style="display:none"></div>
+  <div class="db-tag-bar" id="db-tag-bar"></div>
   <div class="db-grid" id="db-grid"></div>
 </div>
 
@@ -1624,35 +1637,44 @@ async function loadAndRenderDB(){
       }catch(e){console.warn('GitHub pull:',e);}
     }
   }catch{_dbCache=[];}
-  renderDB(sortedCache(),'');
+  renderDB(applyTagFilter(sortedCache()),'',getAcctSearch());
+  renderTagBar();
   document.getElementById('db-q').value='';
 }
 
-function searchDB(q){
-  renderDB(sortedCache(),q.trim());
+function getAcctSearch(){
+  const el=document.getElementById('db-acct');
+  return el?el.value.trim():'';
 }
 
-function parseEpBadge(ep){
+function searchDB(q){
+  renderDB(applyTagFilter(sortedCache()),q.trim(),getAcctSearch());
+}
+
+function parseEpBadge(ep,color){
   if(!ep)return'';
   const m=ep.match(/^([A-Za-z]*)(\d+.*)$/);
   const prefix=m?m[1]:'';
   const num=m?m[2]:ep;
-  return'<div class="ep-badge">'
+  const style=color?' style="border-color:'+color+'"':'';
+  return'<div class="ep-badge"'+style+'>'
     +(prefix?'<div class="ep-badge-p">'+esc(prefix)+'</div>':'')
     +'<div class="ep-badge-n">'+esc(num||prefix)+'</div>'
     +'</div>';
 }
 
-function renderDB(records,q){
+function renderDB(records,q,acct){
+  acct=acct||'';
   const grid=document.getElementById('db-grid');
   const ql=q.toLowerCase();
+  const al=acct.toLowerCase().replace(/^@/,'');
 
   // update KW CSV button state
   const kwCsvBtn=document.getElementById('db-kw-csv-btn');
-  if(kwCsvBtn)kwCsvBtn.disabled=!q;
+  if(kwCsvBtn)kwCsvBtn.disabled=!(q||al);
 
-  // filter when searching
-  const filtered=q
+  // keyword filter
+  let filtered=q
     ?records.filter(rec=>
         (rec.chatData||[]).some(c=>c.message.toLowerCase().includes(ql))||
         (rec.trData||[]).some(t=>t.text.toLowerCase().includes(ql))||
@@ -1661,44 +1683,85 @@ function renderDB(records,q){
       )
     :records;
 
-  document.getElementById('db-cnt').textContent=(q?`${filtered.length} / ${records.length}件`:records.length+'件');
+  // account filter (applied on top of keyword filter)
+  if(al){
+    filtered=filtered.filter(rec=>(rec.chatData||[]).some(c=>(c.username||'').toLowerCase().includes(al)));
+  }
+
+  // count label
+  const total=records.length;
+  let cntLabel=filtered.length<total?filtered.length+' / '+total+'件':total+'件';
+  if(al)cntLabel+=' @'+acct;
+  document.getElementById('db-cnt').textContent=cntLabel;
 
   if(!filtered.length){
     grid.innerHTML='<div class="db-empty">'+(records.length?'該当する動画がありません':'登録済み動画がありません')+'</div>';
     return;
   }
 
-  function hlStr(s,q){
-    if(!q)return esc(s);
-    return esc(s).replace(new RegExp(esc(q).replace(/[.*+?^\${}()|[\]\\]/g,'\\$&'),'gi'),m=>`<mark>${m}</mark>`);
+  function hlStr(s,kw){
+    if(!kw)return esc(s);
+    return esc(s).replace(new RegExp(esc(kw).replace(/[.*+?^\${}()|[\]\\]/g,'\\$&'),'gi'),m=>'<mark>'+m+'</mark>');
   }
 
-  function makeHitRow(h,q){
+  function makeHitRow(h,kw){
     const t=fmtSec(h.sec);
-    const link=h.vid?`<a href="https://www.youtube.com/watch?v=${esc(h.vid)}&t=${Math.floor(h.sec)}" target="_blank">${esc(t)}</a>`:esc(t);
-    return`<div class="db-hit"><div class="tc">${link}</div><div class="db-hit-txt">${hlStr(h.txt,q)}</div></div>`;
+    const link=h.vid?'<a href="https://www.youtube.com/watch?v='+esc(h.vid)+'&t='+Math.floor(h.sec)+'" target="_blank">'+esc(t)+'</a>':esc(t);
+    return'<div class="db-hit"><div class="tc">'+link+'</div><div class="db-hit-txt">'+hlStr(h.txt,kw)+'</div></div>';
   }
 
   grid.innerHTML=filtered.map(rec=>{
-    const ep=parseEpBadge(rec.episodeNum);
+    const tagColor=(rec.tags||[]).map(n=>getTagColor(n)).find(Boolean)||null;
+    const ep=parseEpBadge(rec.episodeNum,tagColor);
     const title=(rec.title||'(タイトル不明)').replace(/^\(\d+\)\s*/,'');
     const date=rec.streamStart||'';
     const chatData=rec.chatData||[];
     const trData=rec.trData||[];
 
-    // counts
-    const chatMatchCnt=q?chatData.filter(c=>c.message.toLowerCase().includes(ql)).length:chatData.length;
-    const trMatchCnt=q?trData.filter(t=>t.text.toLowerCase().includes(ql)).length:trData.length;
-    const countsHtml=`<div class="db-counts">
-      <span class="cnt-chip chat">チャット <b>${chatMatchCnt}</b>件</span>
-      <span class="cnt-chip tr">音声 <b>${trMatchCnt}</b>件</span>
-    </div>`;
+    // tag pills
+    const tagPills='<div class="db-tags">'
+      +(rec.tags||[]).map(n=>{
+        const c=getTagColor(n)||'#888888';
+        return'<span class="tp" style="background:'+c+'22;color:'+c+';border-color:'+c+'55">'
+          +esc(n)
+          +'<span class="tp-del" onclick="event.stopPropagation();rmTag('+rec.id+',\''+n.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')" title="タグを外す">×</span>'
+          +'</span>';
+      }).join('')
+      +'<button class="tp-add" onclick="event.stopPropagation();openTpPop('+rec.id+',this)">＋タグ</button>'
+      +'</div>';
 
-    // hits list (all matches when searching, all data when not)
+    // counts — reflect current search mode
+    let chatMatchCnt,trMatchCnt;
+    if(al){
+      chatMatchCnt=chatData.filter(c=>(c.username||'').toLowerCase().includes(al)).length;
+      trMatchCnt=trData.length; // tr data not filtered by account
+    }else if(q){
+      chatMatchCnt=chatData.filter(c=>c.message.toLowerCase().includes(ql)).length;
+      trMatchCnt=trData.filter(t=>t.text.toLowerCase().includes(ql)).length;
+    }else{
+      chatMatchCnt=chatData.length;
+      trMatchCnt=trData.length;
+    }
+    const acctLabel=al?'@'+acct+' ':'チャット ';
+    const countsHtml='<div class="db-counts">'
+      +'<span class="cnt-chip chat">'+esc(acctLabel)+'<b>'+chatMatchCnt+'</b>件</span>'
+      +(al?'':'<span class="cnt-chip tr">音声 <b>'+trMatchCnt+'</b>件</span>')
+      +'</div>';
+
+    // hits list
     let hitsHtml='';
-    if(q){
+    if(al){
+      // account mode: show this user's chats only
+      const userHits=chatData
+        .filter(c=>(c.username||'').toLowerCase().includes(al))
+        .map(c=>({sec:c.sec,txt:'@'+c.username+' '+c.message,vid:rec.videoId}))
+        .sort((a,b)=>a.sec-b.sec);
+      if(userHits.length){
+        hitsHtml='<div class="db-hits">'+userHits.map(h=>makeHitRow(h,'')).join('')+'</div>';
+      }
+    }else if(q){
       const chatHits=chatData.filter(c=>c.message.toLowerCase().includes(ql))
-        .map(c=>({sec:c.sec,txt:`@${c.username} ${c.message}`,vid:rec.videoId}));
+        .map(c=>({sec:c.sec,txt:'@'+c.username+' '+c.message,vid:rec.videoId}));
       const trHits=trData.filter(t=>t.text.toLowerCase().includes(ql))
         .map(t=>({sec:t.sec,txt:t.text,vid:rec.videoId}));
       const allHits=[...chatHits,...trHits].sort((a,b)=>a.sec-b.sec);
@@ -1709,27 +1772,26 @@ function renderDB(records,q){
       // show all data scrollable
       const allRows=[
         ...trData.map(t=>({sec:t.sec,txt:t.text,vid:rec.videoId})),
-        ...chatData.map(c=>({sec:c.sec,txt:`@${c.username} ${c.message}`,vid:rec.videoId})),
+        ...chatData.map(c=>({sec:c.sec,txt:'@'+c.username+' '+c.message,vid:rec.videoId})),
       ].sort((a,b)=>a.sec-b.sec);
       if(allRows.length){
         hitsHtml='<div class="db-hits">'+allRows.map(h=>makeHitRow(h,'')).join('')+'</div>';
       }
     }
 
-    return`<div class="db-card" id="dbcard-${rec.id}" ondblclick="loadRecordToAnalysis(${rec.id})" title="ダブルクリックで解析画面に読み込む">
-      <div class="db-card-h">
-        ${ep}
-        <div class="db-title">${hlStr(title,q)}</div>
-      </div>
-      <div class="db-meta">${date}${rec.videoUrl?` | <a href="${esc(rec.videoUrl)}" target="_blank" style="color:var(--r1);text-decoration:none" onclick="event.stopPropagation()">${esc(rec.videoUrl.slice(0,40))}</a>`:''}</div>
-      ${countsHtml}
-      ${hitsHtml}
-      <div class="db-actions" onclick="event.stopPropagation()">
-        <button class="db-txt-btn" onclick="downloadCombinedText(${rec.id})">↓ TEXT</button>
-        <button class="db-edit-btn" onclick="startEdit(${rec.id})">✏ 編集</button>
-        <button class="db-del" onclick="delVideo(${rec.id})">削除</button>
-      </div>
-    </div>`;
+    const metaUrl=rec.videoUrl?' | <a href="'+esc(rec.videoUrl)+'" target="_blank" style="color:var(--r1);text-decoration:none" onclick="event.stopPropagation()">'+esc(rec.videoUrl.slice(0,40))+'</a>':'';
+    return'<div class="db-card" id="dbcard-'+rec.id+'" ondblclick="loadRecordToAnalysis('+rec.id+')" title="ダブルクリックで解析画面に読み込む">'
+      +'<div class="db-card-h">'+ep+'<div class="db-title">'+hlStr(title,q)+'</div></div>'
+      +'<div class="db-meta">'+esc(date)+metaUrl+'</div>'
+      +tagPills
+      +countsHtml
+      +hitsHtml
+      +'<div class="db-actions" onclick="event.stopPropagation()">'
+      +'<button class="db-txt-btn" onclick="downloadCombinedText('+rec.id+')">↓ TEXT</button>'
+      +' <button class="db-edit-btn" onclick="startEdit('+rec.id+')">✏ 編集</button>'
+      +' <button class="db-del" onclick="delVideo('+rec.id+')">削除</button>'
+      +'</div>'
+      +'</div>';
   }).join('');
 }
 
@@ -1738,12 +1800,57 @@ async function delVideo(id){
   try{
     await dbDel(id);
     _dbCache=_dbCache.filter(r=>r.id!==id);
-    renderDB(sortedCache(),document.getElementById('db-q').value.trim());
+    renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
     toast('削除しました','ok');
     ghSync(true);
   }catch(e){
     toast('削除失敗: '+e.message,'err');
   }
+}
+
+function renderEditTags(id){
+  const el=document.getElementById('edi-tags-'+id);
+  if(!el)return;
+  const rec=_dbCache.find(r=>r.id===id);
+  if(!rec)return;
+  const curTags=rec.tags||[];
+  const avail=_tags.filter(t=>!curTags.includes(t.name));
+  el.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">'
+    +curTags.map(n=>{
+      const c=getTagColor(n)||'#888888';
+      return'<span class="tp" style="background:'+c+'22;color:'+c+';border-color:'+c+'55">'
+        +esc(n)
+        +'<span class="tp-del" onclick="removeTagInEdit('+id+',\''+n.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')">×</span>'
+        +'</span>';
+    }).join('')
+    +(avail.length
+      ? avail.map(t=>'<button class="tp-add" style="border-color:'+t.color+'55;color:'+t.color+'" onclick="addTagInEdit('+id+',\''+t.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')">＋'+esc(t.name)+'</button>').join('')
+      : '<button class="tp-add" onclick="openTgModal()" style="border-color:var(--r3);color:var(--t2)">🏷 タグ管理</button>')
+    +'</div>';
+}
+
+async function addTagInEdit(id,tagName){
+  const rec=_dbCache.find(r=>r.id===id);
+  if(!rec)return;
+  const tags=[...(rec.tags||[])];
+  if(tags.includes(tagName))return;
+  tags.push(tagName);
+  await dbUpdate(id,{tags});
+  const idx=_dbCache.findIndex(r=>r.id===id);
+  if(idx>=0)_dbCache[idx]={..._dbCache[idx],tags};
+  renderEditTags(id);
+  renderLeftTags();
+}
+
+async function removeTagInEdit(id,tagName){
+  const rec=_dbCache.find(r=>r.id===id);
+  if(!rec)return;
+  const tags=(rec.tags||[]).filter(t=>t!==tagName);
+  await dbUpdate(id,{tags});
+  const idx=_dbCache.findIndex(r=>r.id===id);
+  if(idx>=0)_dbCache[idx]={..._dbCache[idx],tags};
+  renderEditTags(id);
+  renderLeftTags();
 }
 
 function startEdit(id){
@@ -1757,10 +1864,12 @@ function startEdit(id){
     +'<div class="db-edit-row"><label>タイトル</label><input class="db-edit-in" id="edi-t-'+id+'" value="'+esc(rec.title||'')+'"></div>'
     +'<div class="db-edit-row"><label>URL</label><input class="db-edit-in" id="edi-u-'+id+'" value="'+esc(rec.videoUrl||'')+'"></div>'
     +'<div class="db-edit-row"><label>配信開始時刻</label><input class="db-edit-in" id="edi-s-'+id+'" value="'+esc(rec.streamStart||'')+'"></div>'
+    +'<div class="db-edit-row"><label>タグ</label><div id="edi-tags-'+id+'"></div></div>'
     +'<div style="display:flex;gap:6px;margin-top:10px">'
     +'<button class="db-txt-btn" onclick="saveCardEdit('+id+')">保存</button>'
     +'<button class="db-del" onclick="loadAndRenderDB()">キャンセル</button>'
     +'</div></div>';
+  renderEditTags(id);
 }
 
 async function saveCardEdit(id){
@@ -1771,7 +1880,7 @@ async function saveCardEdit(id){
     await dbUpdate(id,{title,videoUrl:url,streamStart:start});
     const idx=_dbCache.findIndex(r=>r.id===id);
     if(idx>=0)_dbCache[idx]={..._dbCache[idx],title,videoUrl:url,streamStart:start};
-    renderDB(sortedCache(),document.getElementById('db-q').value.trim());
+    renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
     toast('更新しました','ok');
     ghSync(true);
   }catch(e){
@@ -1783,6 +1892,8 @@ async function saveCardEdit(id){
 async function loadRecordToAnalysis(id){
   const rec=_dbCache.find(r=>r.id===id);
   if(!rec){toast('データが見つかりません','err');return;}
+
+  _loadedRecId=id;
 
   // populate form fields
   if(rec.streamStart) document.getElementById('fi-start').value=rec.streamStart;
@@ -1816,6 +1927,7 @@ async function loadRecordToAnalysis(id){
 
   // switch to analyze tab and run
   switchTab('analyze');
+  renderLeftTags();
   toast('DBから読み込み中...','ok');
   await runFromLoaded();
 }
@@ -1968,7 +2080,7 @@ async function ghSync(silent){
     }
     await new Promise(r=>setTimeout(r,800));
     _dbCache=await dbAll();
-    renderDB(sortedCache(),document.getElementById('db-q').value.trim());
+    renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
     if(st)st.textContent='同期完了（'+_dbCache.length+'件）';
     if(!silent)toast('GitHub同期完了 '+_dbCache.length+'件','ok');
   }catch(e){
@@ -2048,6 +2160,25 @@ function buildKwMarkerCSV(q){
 let _tags=[];
 let _tagFilter={};
 let _tpTarget=null;
+let _loadedRecId=null;  // currently loaded DB record (for left-panel tag display)
+
+function renderLeftTags(){
+  const el=document.getElementById('left-tags');
+  const grp=document.getElementById('left-tag-group');
+  if(!el||!grp)return;
+  if(_loadedRecId===null){grp.style.display='none';return;}
+  grp.style.display='';
+  const rec=_dbCache.find(r=>r.id===_loadedRecId);
+  if(!rec){el.innerHTML='';return;}
+  el.innerHTML=(rec.tags||[]).map(n=>{
+    const c=getTagColor(n)||'#888888';
+    return'<span class="tp" style="background:'+c+'22;color:'+c+';border-color:'+c+'55">'
+      +esc(n)
+      +'<span class="tp-del" onclick="removeTagInEdit('+_loadedRecId+',\''+n.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\');renderLeftTags()" title="タグを外す">×</span>'
+      +'</span>';
+  }).join('')
+  +'<button class="tp-add" onclick="openTpPop('+_loadedRecId+',this)">＋タグ</button>';
+}
 
 function loadTags(){try{const s=localStorage.getItem('fc_tags');if(s)_tags=JSON.parse(s);}catch{}}
 function saveTags(){localStorage.setItem('fc_tags',JSON.stringify(_tags));}
@@ -2077,9 +2208,10 @@ function addTag(){
   saveTags();
   renderTgList();
   renderTagBar();
+  renderLeftTags();
   renderRankTagSel();
   document.getElementById('tg-new-name').value='';
-  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim());
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
 }
 
 function deleteTag(idx){
@@ -2097,21 +2229,21 @@ function deleteTag(idx){
   renderTgList();
   renderTagBar();
   renderRankTagSel();
-  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim());
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
 }
 
 function updateTagColor(idx,color){
   _tags[idx].color=color;
   saveTags();
   renderTagBar();
-  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim());
+  renderLeftTags();
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
 }
 
 function renderTagBar(){
   const bar=document.getElementById('db-tag-bar');
   if(!bar)return;
-  if(!_tags.length){bar.style.display='none';return;}
-  bar.style.display='flex';
+  if(!_tags.length){bar.innerHTML='';return;}
   const allActive=!Object.values(_tagFilter).some(v=>v);
   let html='<button class="tf-chip" style="'+(allActive?'background:var(--r2);border-color:var(--r1);color:var(--t0)':'')+'" onclick="clearTagFilter()">すべて</button>';
   for(const t of _tags){
@@ -2122,7 +2254,6 @@ function renderTagBar(){
              :'border-color:'+c+'55;color:'+c;
     html+='<button class="tf-chip" style="'+sty+'" onclick="cycleTagFilter(\''+t.name.replace(/'/g,"\\'")+'\')" title="クリック: 絞り込み → 非表示 → リセット">'+esc(t.name)+'</button>';
   }
-  html+='<button class="db-bar-btn" style="margin-left:auto" onclick="openTgModal()">⚙ タグ管理</button>';
   bar.innerHTML=html;
 }
 
@@ -2132,13 +2263,13 @@ function cycleTagFilter(name){
   else if(cur==='show')_tagFilter[name]='hide';
   else delete _tagFilter[name];
   renderTagBar();
-  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim());
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
 }
 
 function clearTagFilter(){
   _tagFilter={};
   renderTagBar();
-  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim());
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
 }
 
 function applyTagFilter(recs){
@@ -2155,7 +2286,16 @@ function openTpPop(videoId,btn){
   const cur=rec?rec.tags||[]:[];
   const avail=_tags.filter(t=>!cur.includes(t.name));
   const pop=document.getElementById('tp-pop');
-  if(!avail.length){toast('追加できるタグがありません。タグ管理から作成してください','wrn');return;}
+  if(!avail.length){
+    pop.innerHTML='<div style="font-size:11px;color:var(--t2);margin-bottom:8px">'
+      +(!_tags.length?'タグがまだありません':'すべてのタグが付いています')+'</div>'
+      +'<button class="db-bar-btn" style="width:100%" onclick="document.getElementById(\'tp-pop\').style.display=\'none\';openTgModal()">🏷 タグ管理を開く</button>';
+    const rect=btn.getBoundingClientRect();
+    pop.style.left=Math.min(rect.left,window.innerWidth-200)+'px';
+    pop.style.top=(rect.bottom+4)+'px';
+    pop.style.display='block';
+    return;
+  }
   pop.innerHTML='<div style="font-size:10px;color:var(--t2);margin-bottom:6px">タグを追加</div>'
     +avail.map(t=>'<button class="db-bar-btn" style="display:block;width:100%;text-align:left;margin-bottom:3px;border-left:3px solid '+t.color+'" onclick="addTagToVideo('+videoId+',\''+t.name.replace(/'/g,"\\'")+'\')" >'+esc(t.name)+'</button>').join('');
   const rect=btn.getBoundingClientRect();
@@ -2174,7 +2314,8 @@ async function addTagToVideo(videoId,tagName){
   await dbUpdate(videoId,{tags});
   const idx=_dbCache.findIndex(r=>r.id===videoId);
   if(idx>=0)_dbCache[idx]={..._dbCache[idx],tags};
-  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim());
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
+  renderLeftTags();
   renderRankTagSel();
   ghSync(true);
 }
@@ -2186,7 +2327,8 @@ async function rmTag(videoId,tagName){
   await dbUpdate(videoId,{tags});
   const idx=_dbCache.findIndex(r=>r.id===videoId);
   if(idx>=0)_dbCache[idx]={..._dbCache[idx],tags};
-  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim());
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
+  renderLeftTags();
 }
 
 function computeRanking(tagFilter){
@@ -2226,13 +2368,60 @@ function renderRanking(){
   }
   document.getElementById('rank-tbody').innerHTML=filtered.slice(0,200).map((e,i)=>{
     const r=i+1;
-    return'<tr>'
+    return'<tr class="rank-row" onclick="toggleRankDetail(this)" data-username="'+esc(e.username)+'">'
       +'<td class="rank-num">'+(r<=3?medals[r-1]:r)+'</td>'
       +'<td class="rank-name">@'+esc(e.username)+'</td>'
       +'<td class="rank-cnt">'+e.count.toLocaleString()+'</td>'
       +'<td class="rank-vids">'+e.vids+'動画</td>'
       +'</tr>';
   }).join('');
+}
+
+function toggleRankDetail(row){
+  const next=row.nextElementSibling;
+  if(next&&next.classList.contains('rank-detail')){next.remove();return;}
+
+  const username=row.getAttribute('data-username');
+  const lowerName=(username||'').toLowerCase();
+  const tagF=document.getElementById('rank-tag')?document.getElementById('rank-tag').value:'';
+  let recs=_dbCache;
+  if(tagF)recs=recs.filter(r=>(r.tags||[]).includes(tagF));
+
+  let first=null,last=null;
+  for(const rec of recs){
+    const base=rec.streamStart?new Date(rec.streamStart).getTime():null;
+    for(const c of (rec.chatData||[])){
+      if((c.username||'').toLowerCase()!==lowerName)continue;
+      const absTime=base!==null?base+c.sec*1000:c.sec;
+      if(!first||absTime<first.absTime)first={rec,c,absTime};
+      if(!last||absTime>last.absTime) last={rec,c,absTime};
+    }
+  }
+
+  function chatLine(label,item){
+    if(!item)return'<div class="rank-detail-line">'+label+' — データなし</div>';
+    const{rec,c}=item;
+    const t=fmtSec(c.sec);
+    const url=rec.videoId?'https://www.youtube.com/watch?v='+encodeURIComponent(rec.videoId)+'&t='+Math.floor(c.sec):null;
+    const timeHtml=url
+      ?'<a href="'+url+'" target="_blank" style="color:var(--r1);font-family:var(--mf);font-size:11px;text-decoration:none;flex-shrink:0">'+esc(t)+'</a>'
+      :'<span style="color:var(--t2);font-family:var(--mf);font-size:11px;flex-shrink:0">'+esc(t)+'</span>';
+    const videoTitle=(rec.title||'').replace(/^\(\d+\)\s*/,'').slice(0,22)||'(タイトル不明)';
+    const msg=esc(c.message).slice(0,80)+(c.message.length>80?'…':'');
+    return'<div class="rank-detail-line">'+label
+      +timeHtml
+      +'<span style="color:var(--t2);font-size:10px">['+esc(videoTitle)+']</span>'
+      +'<span style="color:var(--t1)">'+msg+'</span>'
+      +'</div>';
+  }
+
+  const det=document.createElement('tr');
+  det.className='rank-detail';
+  det.innerHTML='<td colspan="4">'
+    +chatLine('📅 初回&ensp;',first)
+    +chatLine('🔔 最新&ensp;',last)
+    +'</td>';
+  row.after(det);
 }
 
 // ─── §20 TAB SWITCH ───────────────────────────────────────────────────────────
@@ -2383,16 +2572,30 @@ document.addEventListener('DOMContentLoaded',()=>{
   safe('tabs',()=>{
     document.getElementById('tab-analyze').addEventListener('click',()=>switchTab('analyze'));
     document.getElementById('tab-db').addEventListener('click',()=>switchTab('db'));
+    const tabR=document.getElementById('tab-rank');
+    if(tabR)tabR.addEventListener('click',()=>switchTab('rank'));
+  });
+
+  // popover: close on outside click
+  document.addEventListener('click',e=>{
+    const pop=document.getElementById('tp-pop');
+    if(pop&&pop.style.display!=='none'&&!pop.contains(e.target))pop.style.display='none';
   });
 
   safe('db-q',()=>{
     document.getElementById('db-q').addEventListener('input',function(){searchDB(this.value);});
   });
 
+  safe('db-acct',()=>{
+    document.getElementById('db-acct').addEventListener('input',function(){
+      renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),this.value.trim());
+    });
+  });
+
   safe('db-sort',()=>{
     document.getElementById('db-sort').addEventListener('change',function(){
       _dbSort=this.value;
-      renderDB(sortedCache(),document.getElementById('db-q').value.trim());
+      renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
     });
   });
 
@@ -2444,6 +2647,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   });
 
   loadGhCfg();
+  loadTags();
   openDB().catch(e=>{
     console.warn('IndexedDB init error:',e);
     setTimeout(()=>toast('IndexedDB が使えません ('+e.message+')。データ登録は無効です。','err',8000),800);
