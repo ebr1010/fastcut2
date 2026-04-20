@@ -1528,16 +1528,39 @@ let _db=null;
 
 function openDB(){
   return new Promise((res,rej)=>{
-    const req=indexedDB.open('fastcut_db',1);
+    const req=indexedDB.open('fastcut_db',2);
     req.onupgradeneeded=e=>{
       const db=e.target.result;
       if(!db.objectStoreNames.contains('videos')){
         db.createObjectStore('videos',{keyPath:'id',autoIncrement:true});
       }
+      if(!db.objectStoreNames.contains('settings')){
+        db.createObjectStore('settings',{keyPath:'key'});
+      }
     };
     req.onsuccess=e=>{_db=e.target.result;res(_db);};
     req.onerror=e=>rej(e.target.error);
   });
+}
+
+function dbGetSetting(key){
+  return new Promise((res)=>{
+    if(!_db){res(null);return;}
+    try{
+      const tx=_db.transaction('settings','readonly');
+      const req=tx.objectStore('settings').get(key);
+      req.onsuccess=()=>res(req.result?req.result.value:null);
+      req.onerror=()=>res(null);
+    }catch{res(null);}
+  });
+}
+
+function dbPutSetting(key,value){
+  if(!_db)return;
+  try{
+    const tx=_db.transaction('settings','readwrite');
+    tx.objectStore('settings').put({key,value});
+  }catch{}
 }
 
 function dbAll(){
@@ -1652,7 +1675,12 @@ async function loadAndRenderDB(){
         if(remote.tags&&remote.tags.length){
           const localNames=new Set(_tags.map(t=>t.name));
           const newTags=remote.tags.filter(t=>t.name&&!localNames.has(t.name));
-          if(newTags.length){_tags=[..._tags,...newTags];saveTags();}
+          if(newTags.length){
+            _tags=[..._tags,...newTags];
+            saveTags(); // IDB + localStorage
+            renderLeftTags();
+            renderRankTagSel();
+          }
         }
         // Apply remote videos
         const existing=new Set(_dbCache.map(r=>r.registeredAt));
@@ -2004,23 +2032,51 @@ async function runFromLoaded(){
 
 // ─── §20a BACKUP & COMBINED TEXT ─────────────────────────────────────────────
 function exportBackup(){
-  if(!_dbCache.length){toast('登録データがありません','wrn');return;}
-  const json=JSON.stringify(_dbCache,null,2);
+  if(!_dbCache.length&&!_tags.length){toast('登録データがありません','wrn');return;}
+  const payload={v:_dbCache,t:_tags};
+  const json=JSON.stringify(payload,null,2);
   dl(json,'fastcut_backup_'+new Date().toISOString().slice(0,10)+'.json','application/json');
-  toast('バックアップをダウンロードしました','ok');
+  toast('バックアップ: 動画'+_dbCache.length+'件 / タグ'+_tags.length+'件','ok');
 }
 
 async function importBackup(file){
   try{
     const text=await file.text();
-    const data=JSON.parse(text);
+    const parsed=JSON.parse(text);
+    // 新フォーマット {v:[videos], t:[tags]} / 旧フォーマット [...videos]
+    const data=Array.isArray(parsed)?parsed:(parsed.v||[]);
+    const importedTags=Array.isArray(parsed)?[]:(parsed.t||[]);
     if(!Array.isArray(data))throw new Error('不正なフォーマット');
+
+    // タグ定義を読み込み（未登録のものを追加）
+    let tagAdded=0;
+    if(importedTags.length){
+      const localNames=new Set(_tags.map(t=>t.name));
+      for(const t of importedTags){
+        if(t.name&&!localNames.has(t.name)){
+          _tags.push({name:t.name,color:t.color||'#4a9eff'});
+          localNames.add(t.name);
+          tagAdded++;
+        }
+      }
+      if(tagAdded){
+        saveTags();
+        renderTagBar();
+        renderLeftTags();
+        renderRankTagSel();
+      }
+    }
+
+    // 動画データを読み込み
     const existing=new Set(_dbCache.map(r=>r.registeredAt));
     const newRecs=data.filter(r=>r.registeredAt&&!existing.has(r.registeredAt));
-    if(!newRecs.length){toast('新しいデータはありませんでした','wrn');return;}
-    await dbAddMany(newRecs);
+    if(!newRecs.length&&!tagAdded){toast('新しいデータはありませんでした','wrn');return;}
+    if(newRecs.length)await dbAddMany(newRecs);
     await loadAndRenderDB();
-    toast(newRecs.length+'件を読み込みました','ok');
+    const msg=[];
+    if(newRecs.length)msg.push('動画'+newRecs.length+'件');
+    if(tagAdded)msg.push('タグ'+tagAdded+'件');
+    toast(msg.join(' / ')+' を読み込みました','ok');
   }catch(e){
     toast('読み込み失敗: '+e.message,'err');
   }
@@ -2096,9 +2152,10 @@ async function ghSync(silent){
     }
     if(tagChanged){
       _tags=[...localTagMap.values()];
-      saveTags();
+      saveTags(); // IDB + localStorage に保存
       renderTagBar();
       renderLeftTags();
+      renderRankTagSel();
     }
     // マージ後のタグ（ローカル優先でリモートにないタグも含む）
     const mergedTagMap=new Map((remote.tags||[]).map(t=>[t.name,t]));
@@ -2141,10 +2198,13 @@ function buildCombinedText(rec){
   const ep=rec.episodeNum||'';
   const url=rec.videoUrl||'';
   const start=rec.streamStart||'';
+  const tags=(rec.tags||[]);
   const trData=rec.trData||[];
   const chatData=rec.chatData||[];
 
-  const lines=[ep,url,start,''];
+  const lines=[ep,url,start];
+  if(tags.length)lines.push('タグ: '+tags.join(', '));
+  lines.push('');
 
   if(trData.length){
     lines.push('[音声データ]');
@@ -2228,8 +2288,24 @@ function renderLeftTags(){
   +'<button class="tp-add" onclick="openTpPop('+_loadedRecId+',this)">＋タグ</button>';
 }
 
-function loadTags(){try{const s=localStorage.getItem('fc_tags');if(s)_tags=JSON.parse(s);}catch{}}
-function saveTags(){localStorage.setItem('fc_tags',JSON.stringify(_tags));}
+function loadTagsSync(){
+  // 同期読み込み（起動時localStorage fallback用）
+  try{const s=localStorage.getItem('fc_tags');if(s)_tags=JSON.parse(s);}catch{}
+}
+async function loadTagsFromIDB(){
+  // IDB優先で読み込み、なければlocalStorageからマイグレート
+  const idbTags=await dbGetSetting('tags');
+  if(idbTags&&Array.isArray(idbTags)&&idbTags.length){
+    _tags=idbTags;
+  }else{
+    // IDBに未保存ならlocalStorageからマイグレート
+    try{const s=localStorage.getItem('fc_tags');if(s){_tags=JSON.parse(s);if(_tags.length)dbPutSetting('tags',_tags);}}catch{}
+  }
+}
+function saveTags(){
+  localStorage.setItem('fc_tags',JSON.stringify(_tags)); // 後方互換
+  dbPutSetting('tags',_tags);                            // IDBが主
+}
 function getTagColor(n){const t=_tags.find(t=>t.name===n);return t?t.color:null;}
 
 function openTgModal(){renderTgList();document.getElementById('tg-modal').classList.add('open');}
@@ -2699,22 +2775,27 @@ document.addEventListener('DOMContentLoaded',()=>{
   });
 
   loadGhCfg();
-  loadTags();
+  loadTagsSync(); // 即時にlocalStorageから仮読み（IDB準備前のflicker防止）
   openDB().then(async()=>{
+    // IDB（settings store）からタグを読み込む（主要ストレージ）
+    await loadTagsFromIDB();
+    renderTagBar();
+    renderLeftTags();
+    renderRankTagSel();
+
+    // GitHubが設定済みなら起動時に自動同期（タグ含む）
     if(ghEnabled()){
       try{
         const r=await ghGet();
-        if(r.tags&&r.tags.length){
-          const names=new Set(_tags.map(t=>t.name));
-          const newT=r.tags.filter(t=>t.name&&!names.has(t.name));
-          if(newT.length){_tags=[..._tags,...newT];saveTags();}
-          // also update colors if remote differs
-          let colorChanged=false;
-          for(const rt of r.tags){
-            const local=_tags.find(t=>t.name===rt.name);
-            if(local&&local.color!==rt.color){local.color=rt.color;colorChanged=true;}
-          }
-          if(colorChanged)saveTags();
+        // タグをマージ（リモート優先で名前が新しいものを追加、色はローカル優先）
+        let changed=false;
+        const localMap=new Map(_tags.map(t=>[t.name,t]));
+        for(const rt of (r.tags||[])){
+          if(!localMap.has(rt.name)){localMap.set(rt.name,rt);changed=true;}
+        }
+        if(changed){
+          _tags=[...localMap.values()];
+          saveTags();
           renderTagBar();
           renderLeftTags();
           renderRankTagSel();
