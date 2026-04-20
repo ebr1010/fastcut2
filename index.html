@@ -1671,18 +1671,7 @@ async function loadAndRenderDB(){
     if(ghEnabled()){
       try{
         const remote=await ghGet();
-        // Apply remote tags (add ones not in local)
-        if(remote.tags&&remote.tags.length){
-          const localNames=new Set(_tags.map(t=>t.name));
-          const newTags=remote.tags.filter(t=>t.name&&!localNames.has(t.name));
-          if(newTags.length){
-            _tags=[..._tags,...newTags];
-            saveTags(); // IDB + localStorage
-            renderLeftTags();
-            renderRankTagSel();
-          }
-        }
-        // Apply remote videos
+        // Apply remote videos (タグは syncTags で独立管理)
         const existing=new Set(_dbCache.map(r=>r.registeredAt));
         const newRecs=remote.data.filter(r=>r.registeredAt&&!existing.has(r.registeredAt));
         if(newRecs.length){await dbAddMany(newRecs);_dbCache=await dbAll();}
@@ -2103,87 +2092,146 @@ function _b64dec(b64){
   return new TextDecoder().decode(bytes);
 }
 
-async function ghGet(){
-  const url='https://api.github.com/repos/'+_ghCfg.repo+'/contents/'+_ghCfg.path;
+// ── GitHub ファイル操作共通 ──────────────────────────────────────────────────
+function ghTagsPath(){
+  // タグ専用ファイル例: fastcut_data.json → fastcut_data_tags.json
+  return _ghCfg.path.replace(/(\.[^./]+)$/,'_tags$1');
+}
+
+async function _ghFetchFile(path){
+  const url='https://api.github.com/repos/'+_ghCfg.repo+'/contents/'+path;
   const res=await fetch(url,{headers:{'Authorization':'token '+_ghCfg.token,'Accept':'application/vnd.github.v3+json'}});
-  if(res.status===404)return{data:[],sha:null};
-  if(!res.ok)throw new Error('GitHub取得失敗 (HTTP '+res.status+')');
+  if(res.status===404)return{content:null,sha:null};
+  if(!res.ok)throw new Error('GitHub取得失敗 (HTTP '+res.status+' '+path+')');
   const json=await res.json();
   let text;
   if(!json.content||json.content.trim()===''){
-    if(!json.download_url)throw new Error('content空 + download_urlなし (size:'+json.size+')');
+    if(!json.download_url)throw new Error('content空 (size:'+json.size+')');
     const dl=await fetch(json.download_url);
     if(!dl.ok)throw new Error('download_url失敗 (HTTP '+dl.status+')');
     text=await dl.text();
   }else{
     text=_b64dec(json.content);
   }
-  const parsed=JSON.parse(text);
-  // New format: {v:[...videos], t:[...tags]}
-  // Old format: [...videos]  ← backward compat
-  const data=Array.isArray(parsed)?parsed:(parsed.v||[]);
-  const tags=Array.isArray(parsed)?[]:(parsed.t||[]);
-  if(!Array.isArray(data))throw new Error('データが配列ではありません');
-  return{data,tags,sha:json.sha};
+  return{content:JSON.parse(text),sha:json.sha};
 }
 
-async function ghPut(data,sha){
-  const url='https://api.github.com/repos/'+_ghCfg.repo+'/contents/'+_ghCfg.path;
-  const content=_b64enc(JSON.stringify(data,null,2));
-  const body={message:'FASTCUT sync '+new Date().toISOString().slice(0,16),content};
+async function _ghWriteFile(path,data,sha,msg){
+  const url='https://api.github.com/repos/'+_ghCfg.repo+'/contents/'+path;
+  const body={message:msg||('FASTCUT '+new Date().toISOString().slice(0,16)),content:_b64enc(JSON.stringify(data,null,2))};
   if(sha)body.sha=sha;
   const res=await fetch(url,{method:'PUT',headers:{'Authorization':'token '+_ghCfg.token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
   if(!res.ok)throw new Error('GitHub書き込み失敗 ('+res.status+')');
+  const json=await res.json();
+  return json.content?json.content.sha:null;
+}
+
+// ── タグ専用同期（動画データとは完全に独立） ────────────────────────────────
+let _tagSyncSha=null;
+let _tagSyncing=false; // 二重実行防止
+
+async function syncTags(silent){
+  if(!ghEnabled()){
+    if(!silent)toast('GitHub未設定 — タグはこのデバイスのみ保存されます','wrn');
+    return;
+  }
+  if(_tagSyncing)return; // 二重実行ガード
+  _tagSyncing=true;
+  const statusEl=document.getElementById('tg-sync-status');
+  try{
+    if(statusEl)statusEl.textContent='同期中...';
+
+    // 1. リモートのタグファイルを取得（404なら空配列）
+    const remote=await _ghFetchFile(ghTagsPath());
+    const remoteTags=Array.isArray(remote.content)?remote.content:[];
+    _tagSyncSha=remote.sha;
+
+    // 2. 双方向マージ（ローカル優先：同名タグはローカルの色を使う）
+    const mergedMap=new Map(remoteTags.map(t=>[t.name,t]));
+    for(const t of _tags)mergedMap.set(t.name,t); // ローカル上書き
+    const mergedArr=[...mergedMap.values()];
+
+    // 3. リモート起源の新規タグをローカルに追加
+    const localNames=new Set(_tags.map(t=>t.name));
+    for(const rt of remoteTags){
+      if(!localNames.has(rt.name)){
+        _tags.push(rt);
+        localNames.add(rt.name);
+      }
+    }
+    // 常に保存・再描画（変化の有無にかかわらず）
+    saveTags();
+    renderTagBar();
+    renderLeftTags();
+    renderRankTagSel();
+
+    // 4. マージ済みタグをリモートにプッシュ
+    _tagSyncSha=await _ghWriteFile(
+      ghTagsPath(),mergedArr,_tagSyncSha,
+      'FASTCUT tags '+new Date().toISOString().slice(0,16)
+    );
+
+    if(statusEl)statusEl.textContent='✓ 同期完了 ('+_tags.length+'件) '+new Date().toLocaleTimeString();
+    if(!silent)toast('タグ同期完了 '+_tags.length+'件','ok');
+  }catch(e){
+    console.error('syncTags error:',e);
+    if(statusEl)statusEl.textContent='✗ エラー: '+e.message;
+    if(!silent)toast('タグ同期失敗: '+e.message,'err');
+    // silentでも致命的エラーはトースト表示
+    else toast('タグ同期エラー: '+e.message,'err');
+  }finally{
+    _tagSyncing=false;
+  }
+}
+
+// ── 動画データ同期（タグとは独立） ──────────────────────────────────────────
+async function ghGet(){
+  const remote=await _ghFetchFile(_ghCfg.path);
+  if(!remote.content)return{data:[],sha:null};
+  // 旧フォーマット {v,t} / 新フォーマット [...] 両方対応
+  const raw=remote.content;
+  const data=Array.isArray(raw)?raw:(raw.v||[]);
+  if(!Array.isArray(data))throw new Error('データが配列ではありません');
+  return{data,sha:remote.sha};
+}
+
+async function ghPut(videos,sha){
+  await _ghWriteFile(_ghCfg.path,videos,sha,'FASTCUT sync '+new Date().toISOString().slice(0,16));
 }
 
 async function ghSync(silent){
   if(!ghEnabled())return;
   const st=document.getElementById('gh-status');
   try{
-    if(st)st.textContent='同期中... (GitHub取得中)';
+    // タグを先に独立同期
+    if(st)st.textContent='同期中... (タグ同期)';
+    await syncTags(true);
+
+    if(st)st.textContent='同期中... (動画データ取得中)';
     const remote=await ghGet();
-    if(st)st.textContent='[1] GitHub取得: '+remote.data.length+'件 sha:'+(remote.sha?remote.sha.slice(0,7):'null');
+    if(st)st.textContent='[1] GitHub取得: '+remote.data.length+'件';
 
-    // ── タグのマージ（remote にあってローカルにないタグを追加）──
-    let tagChanged=false;
-    const localTagMap=new Map(_tags.map(t=>[t.name,t]));
-    for(const rt of (remote.tags||[])){
-      if(!localTagMap.has(rt.name)){localTagMap.set(rt.name,rt);tagChanged=true;}
-    }
-    if(tagChanged){
-      _tags=[...localTagMap.values()];
-      saveTags(); // IDB + localStorage に保存
-      renderTagBar();
-      renderLeftTags();
-      renderRankTagSel();
-    }
-    // マージ後のタグ（ローカル優先でリモートにないタグも含む）
-    const mergedTagMap=new Map((remote.tags||[]).map(t=>[t.name,t]));
-    for(const t of _tags)mergedTagMap.set(t.name,t); // local wins color
-    const mergedTags=[...mergedTagMap.values()];
-
-    await new Promise(r=>setTimeout(r,400));
+    await new Promise(r=>setTimeout(r,300));
     const existing=new Set(_dbCache.map(r=>r.registeredAt));
     const newRecs=remote.data.filter(r=>r.registeredAt&&!existing.has(r.registeredAt));
     if(st)st.textContent='[2] 新着: '+newRecs.length+'件をローカルに追加中...';
     if(newRecs.length)await dbAddMany(newRecs);
     const local=await dbAll();
     if(st)st.textContent='[3] ローカル取得後: '+local.length+'件';
-    await new Promise(r=>setTimeout(r,400));
+    await new Promise(r=>setTimeout(r,300));
     const map=new Map();
     for(const r of remote.data)if(r.registeredAt)map.set(r.registeredAt,r);
     for(const r of local)if(r.registeredAt)map.set(r.registeredAt,r);
     const merged=[...map.values()].sort((a,b)=>a.registeredAt<b.registeredAt?-1:1);
-    if(st)st.textContent='[4] マージ後: '+merged.length+'件 → GitHubにプッシュ中...';
-    await new Promise(r=>setTimeout(r,400));
+    if(st)st.textContent='[4] マージ後: '+merged.length+'件 → プッシュ中...';
+    await new Promise(r=>setTimeout(r,300));
     if(merged.length>=remote.data.length&&merged.length>0){
-      // 新フォーマット {v:[...videos], t:[...tags]} でプッシュ
-      await ghPut({v:merged,t:mergedTags},remote.sha);
-      if(st)st.textContent='[5] プッシュ完了: '+merged.length+'件 / タグ '+mergedTags.length+'件';
+      await ghPut(merged,remote.sha);
+      if(st)st.textContent='[5] プッシュ完了: '+merged.length+'件';
     }else{
       if(st)st.textContent='[5] プッシュスキップ (merged:'+merged.length+' remote:'+remote.data.length+')';
     }
-    await new Promise(r=>setTimeout(r,400));
+    await new Promise(r=>setTimeout(r,300));
     _dbCache=await dbAll();
     renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
     if(st)st.textContent='同期完了（動画'+_dbCache.length+'件 / タグ'+_tags.length+'件）';
@@ -2308,7 +2356,12 @@ function saveTags(){
 }
 function getTagColor(n){const t=_tags.find(t=>t.name===n);return t?t.color:null;}
 
-function openTgModal(){renderTgList();document.getElementById('tg-modal').classList.add('open');}
+function openTgModal(){
+  renderTgList();
+  const st=document.getElementById('tg-sync-status');
+  if(st)st.textContent=ghEnabled()?'GitHub: '+ghTagsPath():' GitHub未設定 — このデバイスのみ保存';
+  document.getElementById('tg-modal').classList.add('open');
+}
 function closeTgModal(){document.getElementById('tg-modal').classList.remove('open');}
 
 function renderTgList(){
@@ -2336,7 +2389,7 @@ function addTag(){
   renderRankTagSel();
   document.getElementById('tg-new-name').value='';
   renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
-  ghSync(true); // タグ定義をGitHubに即プッシュ
+  syncTags(true); // タグ専用ファイルに即プッシュ
 }
 
 function deleteTag(idx){
@@ -2355,7 +2408,7 @@ function deleteTag(idx){
   renderTagBar();
   renderRankTagSel();
   renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
-  ghSync(true);
+  syncTags(true); // タグ専用ファイルに即プッシュ
 }
 
 function updateTagColor(idx,color){
@@ -2364,7 +2417,7 @@ function updateTagColor(idx,color){
   renderTagBar();
   renderLeftTags();
   renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
-  ghSync(true);
+  syncTags(true); // タグ専用ファイルに即プッシュ
 }
 
 function renderTagBar(){
@@ -2775,32 +2828,18 @@ document.addEventListener('DOMContentLoaded',()=>{
   });
 
   loadGhCfg();
-  loadTagsSync(); // 即時にlocalStorageから仮読み（IDB準備前のflicker防止）
+  loadTagsSync(); // localStorage から仮読み（IDB 開く前の一瞬のため）
   openDB().then(async()=>{
-    // IDB（settings store）からタグを読み込む（主要ストレージ）
+    // ① IDB（settings store）からタグを正式ロード
     await loadTagsFromIDB();
     renderTagBar();
     renderLeftTags();
     renderRankTagSel();
 
-    // GitHubが設定済みなら起動時に自動同期（タグ含む）
+    // ② GitHub設定済みなら「タグ専用ファイル」を起動時に自動同期
+    //    動画データが0件でもタグは独立して同期される
     if(ghEnabled()){
-      try{
-        const r=await ghGet();
-        // タグをマージ（リモート優先で名前が新しいものを追加、色はローカル優先）
-        let changed=false;
-        const localMap=new Map(_tags.map(t=>[t.name,t]));
-        for(const rt of (r.tags||[])){
-          if(!localMap.has(rt.name)){localMap.set(rt.name,rt);changed=true;}
-        }
-        if(changed){
-          _tags=[...localMap.values()];
-          saveTags();
-          renderTagBar();
-          renderLeftTags();
-          renderRankTagSel();
-        }
-      }catch(e){console.warn('startup tag pull:',e);}
+      syncTags(true); // 非ブロッキング（UIをブロックしない）
     }
   }).catch(e=>{
     console.warn('IndexedDB init error:',e);
@@ -2840,13 +2879,17 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 <div class="tg-modal" id="tg-modal" onclick="closeTgModal()">
   <div class="tg-inner" onclick="event.stopPropagation()">
-    <h3 style="margin-bottom:12px">タグ管理</h3>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <h3 style="flex:1">タグ管理</h3>
+      <button class="db-bar-btn" onclick="syncTags(false)" title="タグをGitHubと同期">↑↓ タグ同期</button>
+      <button class="db-bar-btn" onclick="closeTgModal()">✕</button>
+    </div>
+    <div id="tg-sync-status" style="font-size:10px;color:var(--t2);margin-bottom:8px;min-height:14px"></div>
     <div id="tg-list"></div>
     <div class="tg-new">
       <input class="tg-in" id="tg-new-name" placeholder="タグ名" style="flex:1" maxlength="20" onkeydown="if(event.key==='Enter')addTag()">
       <input type="color" class="tg-color" id="tg-new-color" value="#4a9eff">
       <button class="db-bar-btn" onclick="addTag()">追加</button>
-      <button class="db-bar-btn" onclick="closeTgModal()">✕ 閉じる</button>
     </div>
   </div>
 </div>
