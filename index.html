@@ -333,6 +333,13 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .tp-del:hover{opacity:1}
 .tp-add{background:none;border:1px dashed var(--r3);border-radius:10px;color:var(--t2);padding:2px 8px;font-size:10px;cursor:pointer;line-height:1.5}
 .tp-add:hover{border-color:var(--r1);color:var(--t0)}
+/* Sub-tag pills */
+.db-subtags{display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 6px}
+.stp{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:500;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);color:var(--t1);line-height:1.5}
+.stp-del{cursor:pointer;opacity:0.4;font-size:11px;margin-left:1px;line-height:1}
+.stp-del:hover{opacity:1;color:var(--r1)}
+.stp-add{background:none;border:1px dashed rgba(255,255,255,0.1);border-radius:4px;color:var(--t2);padding:2px 8px;font-size:10px;cursor:pointer;line-height:1.5}
+.stp-add:hover{border-color:rgba(255,255,255,0.25);color:var(--t1)}
 /* tag filter bar */
 .db-tag-bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;align-items:center}
 .tf-chip{padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--r3);background:none;color:var(--t1);transition:all 0.15s;white-space:nowrap}
@@ -1716,13 +1723,14 @@ function renderDB(records,q,acct){
   const kwCsvBtn=document.getElementById('db-kw-csv-btn');
   if(kwCsvBtn)kwCsvBtn.disabled=!(q||al);
 
-  // keyword filter
+  // keyword filter（サブタグも検索対象）
   let filtered=q
     ?records.filter(rec=>
         (rec.chatData||[]).some(c=>c.message.toLowerCase().includes(ql))||
         (rec.trData||[]).some(t=>t.text.toLowerCase().includes(ql))||
         (rec.title||'').toLowerCase().includes(ql)||
-        (rec.episodeNum||'').toLowerCase().includes(ql)
+        (rec.episodeNum||'').toLowerCase().includes(ql)||
+        (rec.subTags||[]).some(s=>s.toLowerCase().includes(ql))
       )
     :records;
 
@@ -1761,7 +1769,7 @@ function renderDB(records,q,acct){
     const chatData=rec.chatData||[];
     const trData=rec.trData||[];
 
-    // tag pills
+    // main tag pills（色付き）
     const tagPills='<div class="db-tags">'
       +(rec.tags||[]).map(n=>{
         const c=getTagColor(n)||'#888888';
@@ -1771,6 +1779,16 @@ function renderDB(records,q,acct){
           +'</span>';
       }).join('')
       +'<button class="tp-add" onclick="event.stopPropagation();openTpPop('+rec.id+',this)">＋タグ</button>'
+      +'</div>';
+
+    // sub-tag pills（自由テキスト）
+    const subTagPills='<div class="db-subtags">'
+      +(rec.subTags||[]).map(n=>
+        '<span class="stp">'+esc(n)
+        +'<span class="stp-del" onclick="event.stopPropagation();rmSubTag('+rec.id+',\''+n.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')" title="サブタグを外す">×</span>'
+        +'</span>'
+      ).join('')
+      +'<button class="stp-add" onclick="event.stopPropagation();openStpPop('+rec.id+',this)">＋サブタグ</button>'
       +'</div>';
 
     // counts — reflect current search mode
@@ -1827,6 +1845,7 @@ function renderDB(records,q,acct){
       +'<div class="db-card-h">'+ep+'<div class="db-title">'+hlStr(title,q)+'</div></div>'
       +'<div class="db-meta">'+esc(date)+metaUrl+'</div>'
       +tagPills
+      +subTagPills
       +countsHtml
       +hitsHtml
       +'<div class="db-actions" onclick="event.stopPropagation()">'
@@ -1896,6 +1915,49 @@ async function removeTagInEdit(id,tagName){
   renderLeftTags();
 }
 
+function renderEditSubTags(id){
+  const el=document.getElementById('edi-subtags-'+id);
+  if(!el)return;
+  const rec=_dbCache.find(r=>r.id===id);
+  const cur=rec?rec.subTags||[]:[];
+  el.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;align-items:center">'
+    +cur.map(n=>
+      '<span class="stp">'+esc(n)
+      +'<span class="stp-del" onclick="rmSubTagInEdit('+id+',\''+n.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')">×</span>'
+      +'</span>'
+    ).join('')
+    +'<div style="display:flex;gap:4px;align-items:center;margin-left:2px">'
+    +'<input class="tg-in" id="edi-stp-'+id+'" placeholder="＋サブタグ" style="width:110px;padding:2px 6px;font-size:11px" '
+    +'onkeydown="if(event.key===\'Enter\'){event.stopPropagation();addSubTagInEdit('+id+',document.getElementById(\'edi-stp-'+id+'\').value)}">'
+    +'<button class="stp-add" style="border:1px solid var(--r3);border-radius:3px" onclick="addSubTagInEdit('+id+',document.getElementById(\'edi-stp-'+id+'\').value)">追加</button>'
+    +'</div>'
+    +'</div>';
+}
+
+async function addSubTagInEdit(id,text){
+  text=(text||'').trim();
+  if(!text)return;
+  const rec=_dbCache.find(r=>r.id===id);
+  if(!rec)return;
+  const subTags=[...(rec.subTags||[])];
+  if(subTags.includes(text)){toast('同名のサブタグが既にあります','wrn');return;}
+  subTags.push(text);
+  await dbUpdate(id,{subTags});
+  const idx=_dbCache.findIndex(r=>r.id===id);
+  if(idx>=0)_dbCache[idx]={..._dbCache[idx],subTags};
+  renderEditSubTags(id);
+}
+
+async function rmSubTagInEdit(id,text){
+  const rec=_dbCache.find(r=>r.id===id);
+  if(!rec)return;
+  const subTags=(rec.subTags||[]).filter(t=>t!==text);
+  await dbUpdate(id,{subTags});
+  const idx=_dbCache.findIndex(r=>r.id===id);
+  if(idx>=0)_dbCache[idx]={..._dbCache[idx],subTags};
+  renderEditSubTags(id);
+}
+
 function startEdit(id){
   event&&event.stopPropagation();
   const rec=_dbCache.find(r=>r.id===id);
@@ -1908,11 +1970,13 @@ function startEdit(id){
     +'<div class="db-edit-row"><label>URL</label><input class="db-edit-in" id="edi-u-'+id+'" value="'+esc(rec.videoUrl||'')+'"></div>'
     +'<div class="db-edit-row"><label>配信開始時刻</label><input class="db-edit-in" id="edi-s-'+id+'" value="'+esc(rec.streamStart||'')+'"></div>'
     +'<div class="db-edit-row"><label>タグ</label><div id="edi-tags-'+id+'"></div></div>'
+    +'<div class="db-edit-row"><label>サブタグ</label><div id="edi-subtags-'+id+'"></div></div>'
     +'<div style="display:flex;gap:6px;margin-top:10px">'
     +'<button class="db-txt-btn" onclick="saveCardEdit('+id+')">保存</button>'
     +'<button class="db-del" onclick="loadAndRenderDB()">キャンセル</button>'
     +'</div></div>';
   renderEditTags(id);
+  renderEditSubTags(id);
 }
 
 async function saveCardEdit(id){
@@ -2219,9 +2283,22 @@ async function ghSync(silent){
     const local=await dbAll();
     if(st)st.textContent='[3] ローカル取得後: '+local.length+'件';
     await new Promise(r=>setTimeout(r,300));
-    const map=new Map();
-    for(const r of remote.data)if(r.registeredAt)map.set(r.registeredAt,r);
-    for(const r of local)if(r.registeredAt)map.set(r.registeredAt,r);
+    // マージ: 既存レコードはタグ/サブタグを union、その他はローカル優先
+    const remoteMap=new Map();
+    for(const r of remote.data)if(r.registeredAt)remoteMap.set(r.registeredAt,r);
+    const map=new Map(remoteMap);
+    for(const r of local){
+      if(!r.registeredAt)continue;
+      const rem=remoteMap.get(r.registeredAt);
+      if(rem){
+        // tags と subTags は両デバイスの union を保持
+        const tags=[...new Set([...(rem.tags||[]),...(r.tags||[])])];
+        const subTags=[...new Set([...(rem.subTags||[]),...(r.subTags||[])])];
+        map.set(r.registeredAt,{...rem,...r,tags,subTags});
+      }else{
+        map.set(r.registeredAt,r);
+      }
+    }
     const merged=[...map.values()].sort((a,b)=>a.registeredAt<b.registeredAt?-1:1);
     if(st)st.textContent='[4] マージ後: '+merged.length+'件 → プッシュ中...';
     await new Promise(r=>setTimeout(r,300));
@@ -2250,8 +2327,10 @@ function buildCombinedText(rec){
   const trData=rec.trData||[];
   const chatData=rec.chatData||[];
 
+  const subTags=(rec.subTags||[]);
   const lines=[ep,url,start];
   if(tags.length)lines.push('タグ: '+tags.join(', '));
+  if(subTags.length)lines.push('サブタグ: '+subTags.join(', '));
   lines.push('');
 
   if(trData.length){
@@ -2509,6 +2588,51 @@ async function rmTag(videoId,tagName){
   if(idx>=0)_dbCache[idx]={..._dbCache[idx],tags};
   renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
   renderLeftTags();
+  ghSync(true);
+}
+
+// ── サブタグ操作 ────────────────────────────────────────────────────────────
+function openStpPop(videoId,btn){
+  _tpTarget=videoId;
+  const pop=document.getElementById('tp-pop');
+  pop.innerHTML='<div style="font-size:10px;color:var(--t2);margin-bottom:6px;font-family:var(--hf);letter-spacing:1px">SUBTAG</div>'
+    +'<div style="display:flex;gap:4px">'
+    +'<input class="tg-in" id="stp-input" placeholder="サブタグ名を入力" style="flex:1;min-width:0" '
+    +'onkeydown="if(event.key===\'Enter\'){event.stopPropagation();addSubTag('+videoId+',document.getElementById(\'stp-input\').value)}">'
+    +'<button class="db-bar-btn" onclick="addSubTag('+videoId+',document.getElementById(\'stp-input\').value)">追加</button>'
+    +'</div>';
+  const rect=btn.getBoundingClientRect();
+  pop.style.left=Math.min(rect.left,window.innerWidth-240)+'px';
+  pop.style.top=(rect.bottom+4)+'px';
+  pop.style.display='block';
+  setTimeout(()=>{const i=document.getElementById('stp-input');if(i)i.focus();},30);
+}
+
+async function addSubTag(videoId,text){
+  document.getElementById('tp-pop').style.display='none';
+  text=(text||'').trim();
+  if(!text)return;
+  const rec=_dbCache.find(r=>r.id===videoId);
+  if(!rec)return;
+  const subTags=[...(rec.subTags||[])];
+  if(subTags.includes(text)){toast('同名のサブタグが既にあります','wrn');return;}
+  subTags.push(text);
+  await dbUpdate(videoId,{subTags});
+  const idx=_dbCache.findIndex(r=>r.id===videoId);
+  if(idx>=0)_dbCache[idx]={..._dbCache[idx],subTags};
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
+  ghSync(true);
+}
+
+async function rmSubTag(videoId,text){
+  const rec=_dbCache.find(r=>r.id===videoId);
+  if(!rec)return;
+  const subTags=(rec.subTags||[]).filter(t=>t!==text);
+  await dbUpdate(videoId,{subTags});
+  const idx=_dbCache.findIndex(r=>r.id===videoId);
+  if(idx>=0)_dbCache[idx]={..._dbCache[idx],subTags};
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
+  ghSync(true);
 }
 
 function computeRanking(tagFilter){
