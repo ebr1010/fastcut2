@@ -570,8 +570,10 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     <label for="db-import-file" class="db-bar-btn" style="cursor:pointer">↑ 読み込み</label>
     <input type="file" id="db-import-file" accept=".json" style="display:none">
     <button id="gh-settings-btn" class="db-bar-btn">⚙ 同期</button>
+    <span id="last-sync-label" style="font-size:10px;color:var(--t2);white-space:nowrap"></span>
     <button class="db-bar-btn" onclick="openTgModal()">🏷 タグ管理</button>
     <button id="db-kw-csv-btn" class="db-bar-btn" disabled>↓ KW マーカー CSV</button>
+    <button id="db-clear-btn" class="db-bar-btn" style="color:var(--r1);border-color:var(--r3)" title="ローカルのDBデータを全件消去します">⚠ 全消去</button>
   </div>
   <div class="db-tag-bar" id="db-tag-bar"></div>
   <div class="db-grid" id="db-grid"></div>
@@ -1277,10 +1279,15 @@ async function run(){
       if(!S.videoTitle&&tr.header.title)S.videoTitle=tr.header.title;
       S.chatConv=[];
       hideOv();
-      addMsg('文字起こしのみ読み込みました（'+S.trRecs.length+'件）。DBに登録できます。','info');
       histSave('fc_start_hist',startISO);
       if(urlVal)histSave('fc_url_hist',urlVal);
       if(epVal)histSave('fc_ep_hist',epVal);
+      // 登録ボタンを表示するために result-area を出す
+      document.getElementById('empty').style.display='none';
+      document.getElementById('result-area').style.display='block';
+      document.getElementById('stats-bar').innerHTML='<span style="color:var(--t1)">音声データのみ — チャット: 0件 / 音声: '+S.trRecs.length+'件</span>';
+      document.getElementById('hl-list').innerHTML='<div style="color:var(--t2);font-size:12px;padding:8px 0">音声データのみモードです。チャットのハイライトはありません。<br>「＋ データ登録」でDBに登録できます。</div>';
+      addMsg('文字起こしのみ読み込みました（'+S.trRecs.length+'件）。「＋ データ登録」を押してDBに登録できます。','info');
     }catch(e){hideOv();addMsg('文字起こし解析失敗: '+e.message,'error');}
     return;
   }
@@ -1698,6 +1705,44 @@ let _dbCache=[];
 let _dbSort='date';
 let _expandedCards=new Set(); // 展開中カードのid集合
 
+// ── 最終同期ラベル ────────────────────────────────────────────────────────────
+function updateLastSyncLabel(isoStr){
+  const el=document.getElementById('last-sync-label');
+  if(!el||!isoStr)return;
+  const d=new Date(isoStr);
+  const now=new Date();
+  const diffMin=Math.floor((now-d)/60000);
+  let txt;
+  if(diffMin<1)txt='同期: たった今';
+  else if(diffMin<60)txt='同期: '+diffMin+'分前';
+  else if(diffMin<1440)txt='同期: '+Math.floor(diffMin/60)+'時間前';
+  else{const mo=(d.getMonth()+1);const dy=d.getDate();const hh=String(d.getHours()).padStart(2,'0');const mm=String(d.getMinutes()).padStart(2,'0');txt='同期: '+mo+'/'+dy+' '+hh+':'+mm;}
+  el.textContent=txt;
+}
+
+// ── 旧タグデータ（rec.tags[]）→ rec.mainTag マイグレーション ─────────────────
+async function migrateOldTagsToMainTag(){
+  try{
+    const done=await dbGetSetting('migration_main_tag_v1');
+    if(done)return;
+    const all=await dbAll();
+    let migrated=0;
+    for(const rec of all){
+      if(!rec.mainTag&&rec.tags&&rec.tags.length>0){
+        const tagName=rec.tags[0];
+        // mainTagsに存在しなければ自動追加（色はデフォルト）
+        if(!_mainTags.find(t=>t.name===tagName)){
+          _mainTags.push({name:tagName,color:'#4a9eff'});
+        }
+        await dbUpdate(rec.id,{mainTag:tagName});
+        migrated++;
+      }
+    }
+    if(migrated>0){saveTagDefs();console.log('[migrate] tags→mainTag:',migrated,'件');}
+    await dbPutSetting('migration_main_tag_v1',true);
+  }catch(e){console.warn('migration error:',e);}
+}
+
 function toggleCardExpand(e,id){
   e.stopPropagation();
   if(_expandedCards.has(id))_expandedCards.delete(id);
@@ -1726,18 +1771,47 @@ async function loadAndRenderDB(){
     if(ghEnabled()){
       try{
         const remote=await ghGet();
-        // Apply remote videos
-        const existing=new Set(_dbCache.map(r=>r.registeredAt));
-        const newRecs=remote.data.filter(r=>r.registeredAt&&!existing.has(r.registeredAt)&&!_deletedRats.has(r.registeredAt));
-        if(newRecs.length){await dbAddMany(newRecs);_dbCache=await dbAll();}
-        // 同期済みIDを更新
+
+        // ① タグ定義をリモートからマージ（新規のものを追加）
+        if((remote.mainTags&&remote.mainTags.length)||(remote.subTagDefs&&remote.subTagDefs.length)){
+          const m=new Map(_mainTags.map(t=>[t.name,t]));
+          for(const t of(remote.mainTags||[]))if(!m.has(t.name))m.set(t.name,t);
+          _mainTags=[...m.values()];
+          const sNames=new Set(_subTagDefs.map(t=>t.name));
+          for(const t of(remote.subTagDefs||[]))if(!sNames.has(t.name)){_subTagDefs.push(t);sNames.add(t.name);}
+          saveTagDefs();
+        }
+
+        // ② 新規レコードを追加
+        const localByRat=new Map(_dbCache.map(r=>[r.registeredAt,r]));
+        const newRecs=remote.data.filter(r=>r.registeredAt&&!localByRat.has(r.registeredAt)&&!_deletedRats.has(r.registeredAt));
+        if(newRecs.length)await dbAddMany(newRecs);
+
+        // ③ 既存レコードの mainTag / subTags をリモートから更新
+        for(const r of remote.data){
+          if(!r.registeredAt||_deletedRats.has(r.registeredAt))continue;
+          const local=localByRat.get(r.registeredAt);
+          if(!local)continue; // 新規は②で追加済み
+          const patch={};
+          if(r.mainTag!==undefined&&r.mainTag!==local.mainTag)patch.mainTag=r.mainTag;
+          if(r.subTags!==undefined&&JSON.stringify(r.subTags||[])!==JSON.stringify(local.subTags||[]))patch.subTags=r.subTags;
+          if(Object.keys(patch).length)await dbUpdate(local.id,patch);
+        }
+
+        _dbCache=await dbAll();
+        // ④ 同期済みIDを更新
         for(const r of remote.data)if(r.syncId)_syncedIds.add(r.syncId);
         saveSyncedIds();
+        // ⑤ 最終同期時刻を記録
+        const now=new Date().toISOString();
+        await dbPutSetting('last_synced_at',now);
+        updateLastSyncLabel(now);
       }catch(e){console.warn('GitHub pull:',e);}
     }
   }catch{_dbCache=[];}
   renderDB(applyTagFilter(sortedCache()),'',getAcctSearch());
   renderTagBar();
+  renderRankTagSel();
   document.getElementById('db-q').value='';
 }
 
@@ -1928,6 +2002,23 @@ async function delVideo(id){
   }catch(e){
     toast('削除失敗: '+e.message,'err');
   }
+}
+
+async function clearAllVideos(){
+  const n=_dbCache.length;
+  if(!n){toast('削除するデータがありません','wrn');return;}
+  if(!confirm('ローカルに保存されている全'+n+'件のデータを消去します。\nGitHub上のデータは消えません（再同期すれば戻ります）。\nよろしいですか？'))return;
+  try{
+    // トゥームストーンに全件追加
+    for(const r of _dbCache){if(r.registeredAt)_deletedRats.add(r.registeredAt);}
+    saveDeletedRats();
+    _syncedIds.clear();saveSyncedIds();
+    // IDB から全件削除
+    for(const r of _dbCache)await dbDel(r.id);
+    _dbCache=[];
+    renderDB([],'','');
+    toast('全'+n+'件を消去しました','ok');
+  }catch(e){toast('消去失敗: '+e.message,'err');}
 }
 
 function renderEditMainTag(id){
@@ -2257,6 +2348,10 @@ async function ghSync(silent){
     await new Promise(r=>setTimeout(r,300));
     _dbCache=await dbAll();
     renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
+    // 最終同期時刻を記録
+    const syncNow=new Date().toISOString();
+    await dbPutSetting('last_synced_at',syncNow);
+    updateLastSyncLabel(syncNow);
     if(st)st.textContent='同期完了（動画'+_dbCache.length+'件 / タグ'+_mainTags.length+'件）';
     if(!silent)toast('GitHub同期完了 '+_dbCache.length+'件','ok');
   }catch(e){
@@ -2839,6 +2934,11 @@ document.addEventListener('DOMContentLoaded',()=>{
     });
   });
 
+  // 全消去ボタン
+  safe('db-clear-btn',()=>{
+    document.getElementById('db-clear-btn').addEventListener('click',clearAllVideos);
+  });
+
   // import backup
   safe('db-import-file',()=>{
     document.getElementById('db-import-file').addEventListener('change',async function(){
@@ -2881,10 +2981,15 @@ document.addEventListener('DOMContentLoaded',()=>{
     await loadDeletedRats();
     await loadSyncedIds();
 
-    // ② IDB（settings store）からタグ定義をロード
+    // ② IDB（settings store）からタグ定義をロード + 旧データマイグレーション
     await loadTagDefsFromIDB();
+    await migrateOldTagsToMainTag();
     renderTagBar();
     renderRankTagSel();
+
+    // ③ 最終同期ラベルを復元
+    const lsa=await dbGetSetting('last_synced_at');
+    if(lsa)updateLastSyncLabel(lsa);
   }).catch(e=>{
     console.warn('IndexedDB init error:',e);
     setTimeout(()=>toast('IndexedDB が使えません ('+e.message+')。データ登録は無効です。','err',8000),800);
