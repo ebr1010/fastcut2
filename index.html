@@ -2428,6 +2428,13 @@ async function ghSync(silent){
     if(newRecs.length)await dbAddMany(newRecs);
     const local=await dbAll();
     if(st)st.textContent='[3] ローカル取得後: '+local.length+'件';
+
+    // 腐ったtombstoneを掃除: IDBに実在するレコードはtombstoneから除去
+    const localRats=new Set(local.map(r=>r.registeredAt).filter(Boolean));
+    let staleCleaned=0;
+    for(const rat of [..._deletedRats]){if(localRats.has(rat)){_deletedRats.delete(rat);staleCleaned++;}}
+    if(staleCleaned){saveDeletedRats();console.log('[tombstone] stale cleaned:',staleCleaned);}
+
     // マージ: mainTag/subTags はローカル優先、その他もローカル優先
     const remoteMap=new Map();
     for(const r of remote.data)if(r.registeredAt)remoteMap.set(r.registeredAt,r);
@@ -2443,8 +2450,9 @@ async function ghSync(silent){
         map.set(r.registeredAt,r);
       }
     }
-    // トゥームストーン: 削除済みレコードを除外
-    const merged=[...map.values()].filter(r=>!_deletedRats.has(r.registeredAt)).sort((a,b)=>a.registeredAt<b.registeredAt?-1:1);
+    // tombstoneフィルタ: IDBに実在するレコードは除外しない（IDBにある＝削除されていない）
+    // remote専用レコードのみtombstoneで除外（他デバイスで削除されたものを引き継がない）
+    const merged=[...map.values()].filter(r=>localRats.has(r.registeredAt)||!_deletedRats.has(r.registeredAt)).sort((a,b)=>a.registeredAt<b.registeredAt?-1:1);
     if(st)st.textContent='[4] マージ後: '+merged.length+'件 → プッシュ中...';
     // 常にプッシュ: 削除・追加・タグ変更いずれも remote に反映させる
     if(merged.length>0||remote.data.length>0){
