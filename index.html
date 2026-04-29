@@ -2006,18 +2006,17 @@ async function delVideo(id){
 
 async function clearAllVideos(){
   const n=_dbCache.length;
-  if(!n){toast('削除するデータがありません','wrn');return;}
-  if(!confirm('ローカルに保存されている全'+n+'件のデータを消去します。\nGitHub上のデータは消えません（再同期すれば戻ります）。\nよろしいですか？'))return;
+  if(!confirm('ローカルに保存されている全'+n+'件のデータを消去します。\nGitHub上のデータは消えません（DBタブを開くと自動で再取得されます）。\nよろしいですか？'))return;
   try{
-    // トゥームストーンに全件追加
-    for(const r of _dbCache){if(r.registeredAt)_deletedRats.add(r.registeredAt);}
-    saveDeletedRats();
-    _syncedIds.clear();saveSyncedIds();
     // IDB から全件削除
     for(const r of _dbCache)await dbDel(r.id);
     _dbCache=[];
+    // ローカルリセットなので削除履歴・同期履歴もクリア
+    // （次のDB表示で GitHub から全件再取得される）
+    _deletedRats=new Set();saveDeletedRats();
+    _syncedIds=new Set();saveSyncedIds();
     renderDB([],'','');
-    toast('全'+n+'件を消去しました','ok');
+    toast('全'+n+'件を消去しました。DBタブを開くと再同期されます。','ok');
   }catch(e){toast('消去失敗: '+e.message,'err');}
 }
 
@@ -2209,9 +2208,14 @@ async function importBackup(file){
     if(tagAdded){saveTagDefs();renderTagBar();renderRankTagSel();}
 
     // 動画データをマージ
+    // ※ バックアップ読み込みはユーザーの明示操作なので _deletedRats を尊重せず上書き
     const existing=new Set(_dbCache.map(r=>r.registeredAt));
-    const newRecs=data.filter(r=>r.registeredAt&&!existing.has(r.registeredAt)&&!_deletedRats.has(r.registeredAt));
-    if(!newRecs.length&&!tagAdded){toast('新しいデータはありませんでした','wrn');return;}
+    const newRecs=data.filter(r=>r.registeredAt&&!existing.has(r.registeredAt));
+    // インポートしたレコードのトゥームストーンを解除（全消去後の復元など）
+    let tombstonesCleared=0;
+    for(const r of newRecs){if(r.registeredAt&&_deletedRats.has(r.registeredAt)){_deletedRats.delete(r.registeredAt);tombstonesCleared++;}}
+    if(tombstonesCleared)saveDeletedRats();
+    if(!newRecs.length&&!tagAdded){toast('新しいデータはありませんでした（全件インポート済みです）','wrn');return;}
     if(newRecs.length)await dbAddMany(newRecs);
     await loadAndRenderDB();
     const msg=[];
@@ -2263,29 +2267,81 @@ async function _ghFetchFile(path){
   return{content:JSON.parse(text),sha:json.sha};
 }
 
+// ── GitHub ファイル書き込み（Contents API → サイズ超過時は Git Data API へ自動切替）
 async function _ghWriteFile(path,data,sha,msg){
+  const jsonStr=JSON.stringify(data);
+  const b64=_b64enc(jsonStr);
+  const kb=Math.round(b64.length/1024);
+  console.log('[ghWrite]',kb,'KB');
+  // 750KB超えは Contents API の上限に近いので Git Data API を使う
+  if(b64.length>750*1024){
+    console.log('[ghWrite] large file → Git Data API');
+    return await _ghWriteGitData(path,jsonStr,msg);
+  }
   const url='https://api.github.com/repos/'+_ghCfg.repo+'/contents/'+path;
   const hdrs={'Authorization':'token '+_ghCfg.token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'};
-  // minified JSON でサイズ削減（pretty-print は不要）
-  const jsonStr=JSON.stringify(data);
-  const kb=Math.round(_b64enc(jsonStr).length/1024);
-  if(kb>900)console.warn('[ghWrite] payload',kb,'KB — GitHub Contents API limit is ~1MB base64');
-  const makeBody=(s)=>{const b={message:msg||('FASTCUT '+new Date().toISOString().slice(0,16)),content:_b64enc(jsonStr)};if(s)b.sha=s;return JSON.stringify(b);};
+  const makeBody=(s)=>{const b={message:msg||('FASTCUT '+new Date().toISOString().slice(0,16)),content:b64};if(s)b.sha=s;return JSON.stringify(b);};
   let res=await fetch(url,{method:'PUT',headers:hdrs,body:makeBody(sha)});
-  // 422 = SHA競合（別デバイスが先に書き込んだ）→ SHAを再取得して1回リトライ
+  // 422 = SHA競合 → SHAを再取得して1回リトライ
   if(res.status===422){
-    console.warn('[ghWrite] 422 SHA conflict — retrying with fresh SHA');
     const fresh=await _ghFetchFile(path);
     res=await fetch(url,{method:'PUT',headers:hdrs,body:makeBody(fresh.sha)});
   }
   if(!res.ok){
-    let detail='';
-    try{const j=await res.json();detail=j.message||'';}catch{}
-    if(res.status===422&&detail.includes('too large'))throw new Error('ファイルサイズが大きすぎます（GitHub上限1MB）。データが多すぎる可能性があります。');
+    let detail='';try{const j=await res.json();detail=j.message||'';}catch{}
+    // サイズ超過エラーでも Git Data API にフォールバック
+    if(res.status===422||(detail&&detail.toLowerCase().includes('large'))){
+      console.log('[ghWrite] contents API rejected → fallback Git Data API');
+      return await _ghWriteGitData(path,jsonStr,msg);
+    }
     throw new Error('GitHub書き込み失敗 ('+res.status+(detail?' — '+detail:'')+')');
   }
   const json=await res.json();
   return json.content?json.content.sha:null;
+}
+
+// ── Git Data API 経由の書き込み（ファイルサイズ無制限）─────────────────────────
+async function _ghWriteGitData(path,jsonStr,msg){
+  const repo=_ghCfg.repo;
+  const hdrs={'Authorization':'token '+_ghCfg.token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'};
+  const api='https://api.github.com/repos/'+repo;
+  const ok=async(r,label)=>{if(!r.ok){let d='';try{const j=await r.json();d=j.message||'';}catch{}throw new Error(label+' ('+r.status+(d?' — '+d:'')+')');} return r.json();};
+
+  // 1. Blob 作成（UTF-8 テキストとして直接送信 → base64 不要でサイズ削減）
+  const blob=await ok(await fetch(api+'/git/blobs',{method:'POST',headers:hdrs,
+    body:JSON.stringify({content:jsonStr,encoding:'utf-8'})}),'blob作成失敗');
+
+  // 2. デフォルトブランチの HEAD SHA を取得（main → master の順で試行）
+  let branch=null,headSha=null;
+  for(const b of['main','master','gh-pages']){
+    const r=await fetch(api+'/git/refs/heads/'+b,{headers:hdrs});
+    if(r.ok){const d=await r.json();branch=b;headSha=d.object.sha;break;}
+  }
+  if(!branch){
+    // refs/heads が見つからない場合はリポジトリ情報から default_branch を取得
+    const ri=await ok(await fetch(api,{headers:hdrs}),'リポジトリ情報取得失敗');
+    const rb=ri.default_branch||'main';
+    const rr=await fetch(api+'/git/refs/heads/'+rb,{headers:hdrs});
+    if(rr.ok){const d=await rr.json();branch=rb;headSha=d.object.sha;}
+  }
+  if(!branch)throw new Error('ブランチが見つかりません。リポジトリにコミットが1件以上必要です。');
+
+  // 3. 現在のコミットからツリー SHA を取得
+  const commit=await ok(await fetch(api+'/git/commits/'+headSha,{headers:hdrs}),'コミット取得失敗');
+
+  // 4. 新しいツリーを作成（指定パスのみ更新）
+  const tree=await ok(await fetch(api+'/git/trees',{method:'POST',headers:hdrs,
+    body:JSON.stringify({base_tree:commit.tree.sha,tree:[{path,mode:'100644',type:'blob',sha:blob.sha}]})}),'tree作成失敗');
+
+  // 5. 新しいコミットを作成
+  const newCommit=await ok(await fetch(api+'/git/commits',{method:'POST',headers:hdrs,
+    body:JSON.stringify({message:msg||('FASTCUT '+new Date().toISOString().slice(0,16)),tree:tree.sha,parents:[headSha]})}),'コミット作成失敗');
+
+  // 6. ブランチの HEAD を更新
+  await ok(await fetch(api+'/git/refs/heads/'+branch,{method:'PATCH',headers:hdrs,
+    body:JSON.stringify({sha:newCommit.sha})}),'ref更新失敗');
+
+  return newCommit.sha;
 }
 
 // ── 動画データ同期 ──────────────────────────────────────────────────────────
