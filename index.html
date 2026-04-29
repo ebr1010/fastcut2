@@ -2265,10 +2265,25 @@ async function _ghFetchFile(path){
 
 async function _ghWriteFile(path,data,sha,msg){
   const url='https://api.github.com/repos/'+_ghCfg.repo+'/contents/'+path;
-  const body={message:msg||('FASTCUT '+new Date().toISOString().slice(0,16)),content:_b64enc(JSON.stringify(data,null,2))};
-  if(sha)body.sha=sha;
-  const res=await fetch(url,{method:'PUT',headers:{'Authorization':'token '+_ghCfg.token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
-  if(!res.ok)throw new Error('GitHub書き込み失敗 ('+res.status+')');
+  const hdrs={'Authorization':'token '+_ghCfg.token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'};
+  // minified JSON でサイズ削減（pretty-print は不要）
+  const jsonStr=JSON.stringify(data);
+  const kb=Math.round(_b64enc(jsonStr).length/1024);
+  if(kb>900)console.warn('[ghWrite] payload',kb,'KB — GitHub Contents API limit is ~1MB base64');
+  const makeBody=(s)=>{const b={message:msg||('FASTCUT '+new Date().toISOString().slice(0,16)),content:_b64enc(jsonStr)};if(s)b.sha=s;return JSON.stringify(b);};
+  let res=await fetch(url,{method:'PUT',headers:hdrs,body:makeBody(sha)});
+  // 422 = SHA競合（別デバイスが先に書き込んだ）→ SHAを再取得して1回リトライ
+  if(res.status===422){
+    console.warn('[ghWrite] 422 SHA conflict — retrying with fresh SHA');
+    const fresh=await _ghFetchFile(path);
+    res=await fetch(url,{method:'PUT',headers:hdrs,body:makeBody(fresh.sha)});
+  }
+  if(!res.ok){
+    let detail='';
+    try{const j=await res.json();detail=j.message||'';}catch{}
+    if(res.status===422&&detail.includes('too large'))throw new Error('ファイルサイズが大きすぎます（GitHub上限1MB）。データが多すぎる可能性があります。');
+    throw new Error('GitHub書き込み失敗 ('+res.status+(detail?' — '+detail:'')+')');
+  }
   const json=await res.json();
   return json.content?json.content.sha:null;
 }
@@ -2309,14 +2324,12 @@ async function ghSync(silent){
       saveTagDefs();renderTagBar();renderRankTagSel();
     }
 
-    await new Promise(r=>setTimeout(r,300));
     const existing=new Set(_dbCache.map(r=>r.registeredAt));
     const newRecs=remote.data.filter(r=>r.registeredAt&&!existing.has(r.registeredAt)&&!_deletedRats.has(r.registeredAt));
     if(st)st.textContent='[2] 新着: '+newRecs.length+'件をローカルに追加中...';
     if(newRecs.length)await dbAddMany(newRecs);
     const local=await dbAll();
     if(st)st.textContent='[3] ローカル取得後: '+local.length+'件';
-    await new Promise(r=>setTimeout(r,300));
     // マージ: mainTag/subTags はローカル優先、その他もローカル優先
     const remoteMap=new Map();
     for(const r of remote.data)if(r.registeredAt)remoteMap.set(r.registeredAt,r);
@@ -2335,7 +2348,6 @@ async function ghSync(silent){
     // トゥームストーン: 削除済みレコードを除外
     const merged=[...map.values()].filter(r=>!_deletedRats.has(r.registeredAt)).sort((a,b)=>a.registeredAt<b.registeredAt?-1:1);
     if(st)st.textContent='[4] マージ後: '+merged.length+'件 → プッシュ中...';
-    await new Promise(r=>setTimeout(r,300));
     if(merged.length>=remote.data.length&&merged.length>0){
       await ghPut(merged,remote.sha);
       // 同期済みIDを記録
@@ -2345,7 +2357,6 @@ async function ghSync(silent){
     }else{
       if(st)st.textContent='[5] プッシュスキップ (merged:'+merged.length+' remote:'+remote.data.length+')';
     }
-    await new Promise(r=>setTimeout(r,300));
     _dbCache=await dbAll();
     renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
     // 最終同期時刻を記録
@@ -2354,6 +2365,7 @@ async function ghSync(silent){
     updateLastSyncLabel(syncNow);
     if(st)st.textContent='同期完了（動画'+_dbCache.length+'件 / タグ'+_mainTags.length+'件）';
     if(!silent)toast('GitHub同期完了 '+_dbCache.length+'件','ok');
+    else updateLastSyncLabel(new Date().toISOString());
   }catch(e){
     if(st)st.textContent='エラー: '+e.message;
     if(!silent)toast('GitHub同期失敗: '+e.message,'err');
