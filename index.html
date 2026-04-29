@@ -553,7 +553,8 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 
 <div id="view-db" style="display:none">
   <div class="db-bar">
-    <input type="text" class="db-search" id="db-q" placeholder="キーワードで全動画から検索...">
+    <input type="text" class="db-search" id="db-q" placeholder="キーワード検索... (Enter)">
+    <button class="db-bar-btn" id="db-search-btn">🔍 検索</button>
     <input type="text" class="db-search" id="db-acct" placeholder="@アカウント名で絞り込み..." style="width:200px">
     <span id="db-cnt"></span>
     <select id="db-sort" class="db-sort" title="並び替え">
@@ -2238,7 +2239,8 @@ function ghEnabled(){return!!(_ghCfg.repo&&_ghCfg.token);}
 
 function _b64enc(str){
   const bytes=new TextEncoder().encode(str);
-  let bin='';for(const b of bytes)bin+=String.fromCharCode(b);
+  let bin='';const CS=8192;
+  for(let i=0;i<bytes.length;i+=CS)bin+=String.fromCharCode(...bytes.subarray(i,i+CS));
   return btoa(bin);
 }
 function _b64dec(b64){
@@ -2246,6 +2248,34 @@ function _b64dec(b64){
   const bytes=new Uint8Array(bin.length);
   for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
   return new TextDecoder().decode(bytes);
+}
+
+// ── gzip 圧縮・展開（大容量データの GitHub 同期に使用）──────────────────────
+async function _gzipB64(str){
+  try{
+    const cs=new CompressionStream('gzip');
+    const w=cs.writable.getWriter();
+    w.write(new TextEncoder().encode(str));w.close();
+    const chunks=[];const r=cs.readable.getReader();
+    for(;;){const{done,value}=await r.read();if(done)break;chunks.push(value);}
+    const tot=new Uint8Array(chunks.reduce((s,c)=>s+c.length,0));
+    let off=0;for(const c of chunks){tot.set(c,off);off+=c.length;}
+    let bin='';const CS=8192;
+    for(let i=0;i<tot.length;i+=CS)bin+=String.fromCharCode(...tot.subarray(i,i+CS));
+    return btoa(bin);
+  }catch(e){console.warn('[gzip]',e);return null;}
+}
+async function _ungzipB64(b64){
+  const bin=atob(b64);
+  const bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+  const cs=new DecompressionStream('gzip');
+  const w=cs.writable.getWriter();w.write(bytes);w.close();
+  const chunks=[];const r=cs.readable.getReader();
+  for(;;){const{done,value}=await r.read();if(done)break;chunks.push(value);}
+  const tot=new Uint8Array(chunks.reduce((s,c)=>s+c.length,0));
+  let off=0;for(const c of chunks){tot.set(c,off);off+=c.length;}
+  return new TextDecoder().decode(tot);
 }
 
 // ── GitHub ファイル操作共通 ──────────────────────────────────────────────────
@@ -2267,37 +2297,37 @@ async function _ghFetchFile(path){
   return{content:JSON.parse(text),sha:json.sha};
 }
 
-// ── GitHub ファイル書き込み（Contents API → サイズ超過時は Git Data API へ自動切替）
+// ── GitHub ファイル書き込み（gzip圧縮 → Contents API → サイズ超過時は Git Data API）
 async function _ghWriteFile(path,data,sha,msg){
   const jsonStr=JSON.stringify(data);
-  const b64=_b64enc(jsonStr);
-  const kb=Math.round(b64.length/1024);
-  console.log('[ghWrite]',kb,'KB');
-  // 750KB超えは Contents API の上限に近いので Git Data API を使う
-  if(b64.length>750*1024){
-    console.log('[ghWrite] large file → Git Data API');
-    return await _ghWriteGitData(path,jsonStr,msg);
-  }
-  const url='https://api.github.com/repos/'+_ghCfg.repo+'/contents/'+path;
-  const hdrs={'Authorization':'token '+_ghCfg.token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'};
-  const makeBody=(s)=>{const b={message:msg||('FASTCUT '+new Date().toISOString().slice(0,16)),content:b64};if(s)b.sha=s;return JSON.stringify(b);};
-  let res=await fetch(url,{method:'PUT',headers:hdrs,body:makeBody(sha)});
-  // 422 = SHA競合 → SHAを再取得して1回リトライ
-  if(res.status===422){
-    const fresh=await _ghFetchFile(path);
-    res=await fetch(url,{method:'PUT',headers:hdrs,body:makeBody(fresh.sha)});
-  }
-  if(!res.ok){
-    let detail='';try{const j=await res.json();detail=j.message||'';}catch{}
-    // サイズ超過エラーでも Git Data API にフォールバック
-    if(res.status===422||(detail&&detail.toLowerCase().includes('large'))){
-      console.log('[ghWrite] contents API rejected → fallback Git Data API');
-      return await _ghWriteGitData(path,jsonStr,msg);
+  const origKb=Math.round(jsonStr.length/1024);
+
+  // gzip 圧縮して {z:1,d:"<b64>"} 形式でラップ
+  const compB64=await _gzipB64(jsonStr);
+  const storeStr=compB64?JSON.stringify({z:1,d:compB64}):jsonStr;
+  const compKb=Math.round(storeStr.length/1024);
+  console.log('[ghWrite]',origKb,'KB →',compKb,'KB (gzip)');
+
+  // Contents API 用 base64（750KB以下なら Contents API、それ以上は Git Data API）
+  const b64=_b64enc(storeStr);
+  if(b64.length<=750*1024){
+    const url='https://api.github.com/repos/'+_ghCfg.repo+'/contents/'+path;
+    const hdrs={'Authorization':'token '+_ghCfg.token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'};
+    const makeBody=(s)=>{const b={message:msg||('FASTCUT '+new Date().toISOString().slice(0,16)),content:b64};if(s)b.sha=s;return JSON.stringify(b);};
+    let res=await fetch(url,{method:'PUT',headers:hdrs,body:makeBody(sha)});
+    if(res.status===422){
+      const fresh=await _ghFetchFile(path);
+      res=await fetch(url,{method:'PUT',headers:hdrs,body:makeBody(fresh.sha)});
     }
-    throw new Error('GitHub書き込み失敗 ('+res.status+(detail?' — '+detail:'')+')');
+    if(res.ok){const j=await res.json();return j.content?j.content.sha:null;}
+    let detail='';try{const j=await res.json();detail=j.message||'';}catch{}
+    if(!detail.toLowerCase().includes('large')&&res.status!==422)
+      throw new Error('GitHub書き込み失敗 ('+res.status+(detail?' — '+detail:'')+')');
+    console.log('[ghWrite] contents API rejected → fallback Git Data API');
+  }else{
+    console.log('[ghWrite] large → Git Data API');
   }
-  const json=await res.json();
-  return json.content?json.content.sha:null;
+  return await _ghWriteGitData(path,storeStr,msg);
 }
 
 // ── Git Data API 経由の書き込み（ファイルサイズ無制限）─────────────────────────
@@ -2348,8 +2378,13 @@ async function _ghWriteGitData(path,jsonStr,msg){
 async function ghGet(){
   const remote=await _ghFetchFile(_ghCfg.path);
   if(!remote.content)return{data:[],sha:null,mainTags:[],subTagDefs:[]};
+  // 圧縮フォーマット {z:1,d:"<b64-gzip>"} を展開
+  let raw=remote.content;
+  if(raw&&raw.z===1&&raw.d){
+    try{raw=JSON.parse(await _ungzipB64(raw.d));}
+    catch(e){throw new Error('データ展開失敗: '+e.message);}
+  }
   // 旧フォーマット {v,t} / 動画のみ配列 / 新フォーマット {v,mainTags,subTagDefs} 全対応
-  const raw=remote.content;
   const data=Array.isArray(raw)?raw:(raw.v||[]);
   if(!Array.isArray(data))throw new Error('データが配列ではありません');
   const mainTags=(!Array.isArray(raw)&&raw.mainTags)||(!Array.isArray(raw)&&raw.t)||[];
@@ -2404,7 +2439,8 @@ async function ghSync(silent){
     // トゥームストーン: 削除済みレコードを除外
     const merged=[...map.values()].filter(r=>!_deletedRats.has(r.registeredAt)).sort((a,b)=>a.registeredAt<b.registeredAt?-1:1);
     if(st)st.textContent='[4] マージ後: '+merged.length+'件 → プッシュ中...';
-    if(merged.length>=remote.data.length&&merged.length>0){
+    // 常にプッシュ: 削除・追加・タグ変更いずれも remote に反映させる
+    if(merged.length>0||remote.data.length>0){
       await ghPut(merged,remote.sha);
       // 同期済みIDを記録
       for(const r of merged)if(r.syncId)_syncedIds.add(r.syncId);
@@ -2974,7 +3010,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   });
 
   safe('db-q',()=>{
-    document.getElementById('db-q').addEventListener('input',function(){searchDB(this.value);});
+    const qEl=document.getElementById('db-q');
+    qEl.addEventListener('keydown',function(e){if(e.key==='Enter')searchDB(this.value);});
+    document.getElementById('db-search-btn').addEventListener('click',()=>searchDB(qEl.value));
   });
 
   safe('db-acct',()=>{
