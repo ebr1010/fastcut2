@@ -1814,6 +1814,13 @@ async function loadAndRenderDB(){
         const now=new Date().toISOString();
         await dbPutSetting('last_synced_at',now);
         updateLastSyncLabel(now);
+        // ⑥ ローカルにGitHubにないレコードがあれば自動プッシュ
+        const remoteRats=new Set(remote.data.map(r=>r.registeredAt).filter(Boolean));
+        const localOnly=_dbCache.filter(r=>r.registeredAt&&!remoteRats.has(r.registeredAt));
+        if(localOnly.length>0){
+          console.log('[loadAndRenderDB] ローカル専用レコード',localOnly.length,'件 → 自動同期開始');
+          ghSync(true);
+        }
       }catch(e){console.warn('GitHub pull:',e);}
     }
   }catch{_dbCache=[];}
@@ -2014,17 +2021,28 @@ async function delVideo(id){
 
 async function clearAllVideos(){
   const n=_dbCache.length;
-  if(!confirm('ローカルに保存されている全'+n+'件のデータを消去します。\nGitHub上のデータは消えません（DBタブを開くと自動で再取得されます）。\nよろしいですか？'))return;
+  const ghOn=ghEnabled();
+  const msg='ローカルに保存されている全'+n+'件のデータを消去します。'
+    +(ghOn?'\nGitHub上のデータも同時に消去します。':'')
+    +'\n\nよろしいですか？';
+  if(!confirm(msg))return;
   try{
-    // IDB から全件削除
     for(const r of _dbCache)await dbDel(r.id);
     _dbCache=[];
-    // ローカルリセットなので削除履歴・同期履歴もクリア
-    // （次のDB表示で GitHub から全件再取得される）
     _deletedRats=new Set();saveDeletedRats();
     _syncedIds=new Set();saveSyncedIds();
     renderDB([],'','');
-    toast('全'+n+'件を消去しました。DBタブを開くと再同期されます。','ok');
+    if(ghOn){
+      try{
+        const remote=await ghGet();
+        await ghPut([],remote.sha);
+        toast('全'+n+'件をローカル・GitHubから消去しました','ok');
+      }catch(e){
+        toast('ローカル消去完了（GitHub消去失敗: '+e.message+'）','wrn');
+      }
+    }else{
+      toast('全'+n+'件を消去しました','ok');
+    }
   }catch(e){toast('消去失敗: '+e.message,'err');}
 }
 
