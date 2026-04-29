@@ -276,8 +276,9 @@ input[type=range]{
 #view-db::-webkit-scrollbar{width:6px}
 #view-db::-webkit-scrollbar-thumb{background:var(--r2);border-radius:3px}
 .db-bar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.db-search-group{display:flex;align-items:center;gap:4px;flex:1;min-width:180px}
 .db-search{
-  flex:1;background:var(--bg2);border:1px solid var(--r3);border-radius:var(--rad);
+  flex:1;min-width:0;background:var(--bg2);border:1px solid var(--r3);border-radius:var(--rad);
   color:var(--t0);padding:8px 12px;font-family:var(--bf);font-size:13px;outline:none;
 }
 .db-search:focus{border-color:var(--r4)}
@@ -403,7 +404,8 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
   .left{overflow-y:visible;max-height:none;border-right:none;border-bottom:1px solid var(--r3)}
   .right{overflow-y:visible}
   #view-db,#view-rank{height:auto;min-height:0;overflow-y:visible}
-  .db-search{width:100%!important;min-width:0}
+  .db-search-group{flex:none;width:100%}
+  .db-search{min-width:0}
   header{flex-wrap:wrap;height:auto;padding:8px 12px;gap:8px}
   .tab-bar{flex-wrap:wrap}
 }
@@ -553,9 +555,14 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 
 <div id="view-db" style="display:none">
   <div class="db-bar">
-    <input type="text" class="db-search" id="db-q" placeholder="キーワード検索... (Enter)">
-    <button class="db-bar-btn" id="db-search-btn">🔍 検索</button>
-    <input type="text" class="db-search" id="db-acct" placeholder="@アカウント名で絞り込み..." style="width:200px">
+    <div class="db-search-group">
+      <input type="text" class="db-search" id="db-q" placeholder="キーワード検索... (Enter)">
+      <button class="db-bar-btn" id="db-search-btn">🔍 検索</button>
+    </div>
+    <div class="db-search-group">
+      <input type="text" class="db-search" id="db-acct" placeholder="@アカウント名で絞り込み...">
+      <button class="db-bar-btn" id="db-acct-btn">🔍</button>
+    </div>
     <span id="db-cnt"></span>
     <select id="db-sort" class="db-sort" title="並び替え">
       <option value="date">登録日 新しい順</option>
@@ -3016,9 +3023,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   });
 
   safe('db-acct',()=>{
-    document.getElementById('db-acct').addEventListener('input',function(){
-      renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),this.value.trim());
-    });
+    const acctEl=document.getElementById('db-acct');
+    const doAcctSearch=()=>renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),acctEl.value.trim());
+    acctEl.addEventListener('keydown',function(e){if(e.key==='Enter')doAcctSearch();});
+    document.getElementById('db-acct-btn').addEventListener('click',doAcctSearch);
   });
 
   safe('db-sort',()=>{
