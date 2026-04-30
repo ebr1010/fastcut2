@@ -582,7 +582,8 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     <label for="db-import-file" class="db-bar-btn" style="cursor:pointer">↑ 読み込み</label>
     <input type="file" id="db-import-file" accept=".json" style="display:none">
     <button id="gh-settings-btn" class="db-bar-btn">⚙ 同期設定</button>
-    <button id="gh-sync-now-btn" class="db-bar-btn" style="display:none">🔄 今すぐ同期</button>
+    <button id="gh-push-btn" class="db-bar-btn" style="display:none" title="ローカルの変更をGitHubに保存">⬆ 保存</button>
+    <button id="gh-pull-btn" class="db-bar-btn" style="display:none" title="GitHubから最新データを取得してローカルを更新">⬇ 更新</button>
     <span id="last-sync-label" style="font-size:10px;color:var(--t2);white-space:nowrap"></span>
     <button class="db-bar-btn" onclick="openTgModal()">🏷 タグ管理</button>
     <button id="db-kw-csv-btn" class="db-bar-btn" disabled>↓ KW マーカー CSV</button>
@@ -1735,8 +1736,11 @@ function updateLastSyncLabel(isoStr){
 
 // ── GitHub UI 表示更新 ────────────────────────────────────────────────────────
 function updateGhUi(){
-  const btn=document.getElementById('gh-sync-now-btn');
-  if(btn)btn.style.display=ghEnabled()?'':'none';
+  const on=ghEnabled();
+  const push=document.getElementById('gh-push-btn');
+  const pull=document.getElementById('gh-pull-btn');
+  if(push)push.style.display=on?'':'none';
+  if(pull)pull.style.display=on?'':'none';
 }
 
 // ── 旧タグデータ（rec.tags[]）→ rec.mainTag マイグレーション ─────────────────
@@ -2438,6 +2442,63 @@ async function ghPut(videos,sha){
   await _ghWriteFile(_ghCfg.path,payload,sha,'FASTCUT sync '+new Date().toISOString().slice(0,16));
 }
 
+// ── GitHubから更新（リモート優先・プッシュなし）─────────────────────────────
+async function ghPull(){
+  if(!ghEnabled())return;
+  const st=document.getElementById('gh-status');
+  try{
+    if(st)st.textContent='GitHub から最新データを取得中...';
+    const remote=await ghGet();
+    if(!remote.sha&&!remote.data.length){
+      if(st)st.textContent='リモートにデータがありません';
+      toast('GitHubにデータがありません','wrn');
+      return;
+    }
+    // タグ定義マージ（tombstone適用・リモート優先）
+    for(const n of(remote.deletedTagNames||[]))_deletedTagNames.add(n);
+    for(const n of(remote.deletedSubNames||[]))_deletedSubNames.add(n);
+    _mainTags=_mainTags.filter(t=>!_deletedTagNames.has(t.name));
+    _subTagDefs=_subTagDefs.filter(t=>!_deletedSubNames.has(t.name));
+    const m=new Map(_mainTags.map(t=>[t.name,t]));
+    for(const t of(remote.mainTags||[]))if(!_deletedTagNames.has(t.name))m.set(t.name,t); // リモート優先
+    _mainTags=[...m.values()];
+    const sNames=new Set(_subTagDefs.map(t=>t.name));
+    for(const t of(remote.subTagDefs||[]))if(!sNames.has(t.name)&&!_deletedSubNames.has(t.name)){_subTagDefs.push(t);sNames.add(t.name);}
+    saveTagDefs();renderTagBar();renderRankTagSel();
+    // レコードマージ（リモート優先: mainTag/subTagsはリモートの値で上書き）
+    const local=await dbAll();
+    const localMap=new Map(local.map(r=>[r.registeredAt,r]));
+    let updated=0,added=0;
+    for(const rem of remote.data){
+      if(!rem.registeredAt||_deletedRats.has(rem.registeredAt))continue;
+      if(localMap.has(rem.registeredAt)){
+        const loc=localMap.get(rem.registeredAt);
+        const remMain=rem.mainTag??null;
+        const remSub=rem.subTags||[];
+        const needsUpdate=(loc.mainTag!==remMain)||
+          JSON.stringify(loc.subTags||[])!==JSON.stringify(remSub);
+        if(needsUpdate){await dbUpdate(loc.id,{mainTag:remMain,subTags:remSub});updated++;}
+      }else{
+        await dbAddMany([rem]);added++;
+      }
+    }
+    _dbCache=await dbAll();
+    for(const r of remote.data)if(r.syncId)_syncedIds.add(r.syncId);
+    saveSyncedIds();
+    renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
+    const now=new Date().toISOString();
+    await dbPutSetting('last_synced_at',now);
+    updateLastSyncLabel(now);
+    const detail=(added||updated)?'(+'+added+'件追加 / '+updated+'件タグ更新)':'(変更なし)';
+    if(st)st.textContent='更新完了 '+_dbCache.length+'件 '+detail;
+    toast('GitHub から更新完了 '+_dbCache.length+'件 '+detail,'ok');
+  }catch(e){
+    if(st)st.textContent='エラー: '+e.message;
+    toast('GitHub更新失敗: '+e.message,'err');
+  }
+}
+
+// ── ローカルをGitHubに保存（ローカル優先マージ→プッシュ）─────────────────────
 async function ghSync(silent){
   if(!ghEnabled())return;
   const st=document.getElementById('gh-status');
@@ -3215,16 +3276,16 @@ document.addEventListener('DOMContentLoaded',()=>{
   safe('gh-sync-now',()=>{
     document.getElementById('gh-sync-now').addEventListener('click',()=>ghSync(false));
   });
-  safe('gh-sync-now-btn',()=>{
-    document.getElementById('gh-sync-now-btn').addEventListener('click',()=>{
-      toast('同期中…','ok',1500);
-      ghSync(false);
-    });
+  safe('gh-push-btn',()=>{
+    document.getElementById('gh-push-btn').addEventListener('click',()=>ghSync(false));
+  });
+  safe('gh-pull-btn',()=>{
+    document.getElementById('gh-pull-btn').addEventListener('click',()=>ghPull());
   });
 
-  // タブ復帰時に自動同期（タブレットで別デバイスの変更をすぐ取り込む）
+  // タブ復帰時に自動更新（タブレットで別デバイスの変更をすぐ取り込む）
   document.addEventListener('visibilitychange',()=>{
-    if(!document.hidden&&_currentTab==='db'&&ghEnabled())loadAndRenderDB();
+    if(!document.hidden&&_currentTab==='db'&&ghEnabled())ghPull();
   });
 
   loadGhCfg();
@@ -3255,8 +3316,9 @@ document.addEventListener('DOMContentLoaded',()=>{
     <h3>⚙ GitHub 同期設定</h3>
     <div style="font-size:11px;color:var(--t1);margin-bottom:12px;line-height:1.6;background:rgba(185,24,40,0.07);border-radius:4px;padding:8px 10px;border-left:2px solid var(--r2)">
       <strong style="color:var(--t0)">各デバイスで1回だけ設定してください。</strong><br>
-      同じリポジトリ・同じファイルパス・同じTokenを入力し「<strong style="color:var(--t0)">保存して同期</strong>」を押すと、このデバイスの設定が保存され即座にデータを同期します。重複登録の心配はありません（差分マージ方式）。<br>
-      設定済みのまま最新データを取り込みたい場合は「<strong style="color:var(--t0)">今すぐ同期</strong>」を押してください。
+      同じリポジトリ・同じファイルパス・同じTokenを入力し「<strong style="color:var(--t0)">保存して同期</strong>」を押すと、このデバイスの設定が保存され即座にデータを同期します。<br>
+      <strong style="color:#4a9eff">⬆ 保存</strong>：ローカルの変更（タグ設定・新規登録・削除）をGitHubに書き込みます。<br>
+      <strong style="color:#4a9eff">⬇ 更新</strong>：GitHubの最新データをローカルに取り込みます（他デバイスの変更を反映）。
     </div>
     <div class="gh-row">
       <label>リポジトリ（owner/repo）</label>
@@ -3271,8 +3333,9 @@ document.addEventListener('DOMContentLoaded',()=>{
       <input class="gh-in" id="gh-token" type="password" placeholder="ghp_...">
     </div>
     <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:center">
-      <button class="db-bar-btn" id="gh-save-btn">保存して同期</button>
-      <button class="db-bar-btn" id="gh-sync-now">今すぐ同期</button>
+      <button class="db-bar-btn" id="gh-save-btn">設定を保存</button>
+      <button class="db-bar-btn" id="gh-sync-now" title="ローカルの変更をGitHubに書き込む">⬆ 保存</button>
+      <button class="db-bar-btn" id="gh-pull-modal-btn" title="GitHubの最新データをローカルに取り込む" onclick="ghPull()">⬇ 更新</button>
       <button class="db-bar-btn" id="gh-close-btn" style="margin-left:auto">✕ 閉じる</button>
     </div>
     <div class="gh-status" id="gh-status"></div>
