@@ -1781,15 +1781,17 @@ async function loadAndRenderDB(){
       try{
         const remote=await ghGet();
 
-        // ① タグ定義をリモートからマージ（新規のものを追加）
-        if((remote.mainTags&&remote.mainTags.length)||(remote.subTagDefs&&remote.subTagDefs.length)){
-          const m=new Map(_mainTags.map(t=>[t.name,t]));
-          for(const t of(remote.mainTags||[]))if(!m.has(t.name))m.set(t.name,t);
-          _mainTags=[...m.values()];
-          const sNames=new Set(_subTagDefs.map(t=>t.name));
-          for(const t of(remote.subTagDefs||[]))if(!sNames.has(t.name)){_subTagDefs.push(t);sNames.add(t.name);}
-          saveTagDefs();
-        }
+        // ① タグ定義をリモートからマージ（tombstone尊重）
+        for(const n of(remote.deletedTagNames||[]))_deletedTagNames.add(n);
+        for(const n of(remote.deletedSubNames||[]))_deletedSubNames.add(n);
+        _mainTags=_mainTags.filter(t=>!_deletedTagNames.has(t.name));
+        _subTagDefs=_subTagDefs.filter(t=>!_deletedSubNames.has(t.name));
+        const _m=new Map(_mainTags.map(t=>[t.name,t]));
+        for(const t of(remote.mainTags||[]))if(!_m.has(t.name)&&!_deletedTagNames.has(t.name))_m.set(t.name,t);
+        _mainTags=[..._m.values()];
+        const _sn=new Set(_subTagDefs.map(t=>t.name));
+        for(const t of(remote.subTagDefs||[]))if(!_sn.has(t.name)&&!_deletedSubNames.has(t.name)){_subTagDefs.push(t);_sn.add(t.name);}
+        saveTagDefs();
 
         // ② 新規レコードを追加
         const localByRat=new Map(_dbCache.map(r=>[r.registeredAt,r]));
@@ -2415,11 +2417,14 @@ async function ghGet(){
   if(!Array.isArray(data))throw new Error('データが配列ではありません');
   const mainTags=(!Array.isArray(raw)&&raw.mainTags)||(!Array.isArray(raw)&&raw.t)||[];
   const subTagDefs=(!Array.isArray(raw)&&raw.subTagDefs)||[];
-  return{data,sha:remote.sha,mainTags,subTagDefs};
+  const deletedTagNames=(!Array.isArray(raw)&&raw.deletedTagNames)||[];
+  const deletedSubNames=(!Array.isArray(raw)&&raw.deletedSubNames)||[];
+  return{data,sha:remote.sha,mainTags,subTagDefs,deletedTagNames,deletedSubNames};
 }
 
 async function ghPut(videos,sha){
-  const payload={v:videos,mainTags:_mainTags,subTagDefs:_subTagDefs};
+  const payload={v:videos,mainTags:_mainTags,subTagDefs:_subTagDefs,
+    deletedTagNames:[..._deletedTagNames],deletedSubNames:[..._deletedSubNames]};
   await _ghWriteFile(_ghCfg.path,payload,sha,'FASTCUT sync '+new Date().toISOString().slice(0,16));
 }
 
@@ -2431,15 +2436,19 @@ async function ghSync(silent){
     const remote=await ghGet();
     if(st)st.textContent='[1] GitHub取得: '+remote.data.length+'件';
 
-    // タグ定義マージ（remote 優先で未知のものを追加）
-    if((remote.mainTags&&remote.mainTags.length)||(remote.subTagDefs&&remote.subTagDefs.length)){
-      const m=new Map(_mainTags.map(t=>[t.name,t]));
-      for(const t of(remote.mainTags||[]))if(!m.has(t.name))m.set(t.name,t);
-      _mainTags=[...m.values()];
-      const sNames=new Set(_subTagDefs.map(t=>t.name));
-      for(const t of(remote.subTagDefs||[]))if(!sNames.has(t.name)){_subTagDefs.push(t);sNames.add(t.name);}
-      saveTagDefs();renderTagBar();renderRankTagSel();
-    }
+    // タグ定義マージ（tombstone に含まれるタグは復活させない）
+    for(const n of(remote.deletedTagNames||[]))_deletedTagNames.add(n);
+    for(const n of(remote.deletedSubNames||[]))_deletedSubNames.add(n);
+    // tombstoneに含まれるタグをローカルからも除去
+    _mainTags=_mainTags.filter(t=>!_deletedTagNames.has(t.name));
+    _subTagDefs=_subTagDefs.filter(t=>!_deletedSubNames.has(t.name));
+    // remoteにしかない新規タグを追加（tombstoneにないもののみ）
+    const m=new Map(_mainTags.map(t=>[t.name,t]));
+    for(const t of(remote.mainTags||[]))if(!m.has(t.name)&&!_deletedTagNames.has(t.name))m.set(t.name,t);
+    _mainTags=[...m.values()];
+    const sNames=new Set(_subTagDefs.map(t=>t.name));
+    for(const t of(remote.subTagDefs||[]))if(!sNames.has(t.name)&&!_deletedSubNames.has(t.name)){_subTagDefs.push(t);sNames.add(t.name);}
+    saveTagDefs();renderTagBar();renderRankTagSel();
 
     const existing=new Set(_dbCache.map(r=>r.registeredAt));
     const newRecs=remote.data.filter(r=>r.registeredAt&&!existing.has(r.registeredAt)&&!_deletedRats.has(r.registeredAt));
@@ -2571,7 +2580,8 @@ function buildKwMarkerCSV(q){
 // ─── §19 TAG SYSTEM ───────────────────────────────────────────────────────────
 let _mainTags=[];    // [{name,color}]
 let _subTagDefs=[];  // [{name}]
-let _tagFilter=null; // string|null — 選択中のメインタグ名
+let _tagFilter=null;    // string|null — 選択中のメインタグ名
+let _subTagFilter=null; // string|null — 選択中のサブタグ名
 
 // ── 永続化 ──────────────────────────────────────────────────────────────────
 async function loadTagDefsFromIDB(){
@@ -2591,10 +2601,18 @@ async function loadTagDefsFromIDB(){
   }
   const sd=await dbGetSetting('sub_tag_defs');
   if(Array.isArray(sd))_subTagDefs=sd;
+  const dtn=await dbGetSetting('deleted_tag_names');
+  if(Array.isArray(dtn))_deletedTagNames=new Set(dtn);
+  const dsn=await dbGetSetting('deleted_sub_names');
+  if(Array.isArray(dsn))_deletedSubNames=new Set(dsn);
 }
+let _deletedTagNames=new Set();  // 削除したメインタグ名
+let _deletedSubNames=new Set();  // 削除したサブタグ名
 function saveTagDefs(){
   dbPutSetting('main_tags',_mainTags);
   dbPutSetting('sub_tag_defs',_subTagDefs);
+  dbPutSetting('deleted_tag_names',[..._deletedTagNames]);
+  dbPutSetting('deleted_sub_names',[..._deletedSubNames]);
 }
 function getMainTagColor(name){
   const t=_mainTags.find(t=>t.name===name);
@@ -2638,6 +2656,7 @@ function addMainTag(){
   if(!name)return;
   if(_mainTags.find(t=>t.name===name)){toast('同名のメインタグが既にあります','wrn');return;}
   _mainTags.push({name,color});
+  _deletedTagNames.delete(name); // 再追加時はtombstone解除
   saveTagDefs();
   renderTgMainList();
   renderTagBar();
@@ -2651,6 +2670,7 @@ function deleteMainTag(idx){
   const name=_mainTags[idx].name;
   if(!confirm('メインタグ「'+name+'」を削除しますか？\n（動画のタグ設定も外れます）'))return;
   _mainTags.splice(idx,1);
+  _deletedTagNames.add(name); // tombstone: 同期時に復活させない
   saveTagDefs();
   for(const r of _dbCache){
     if(r.mainTag===name){r.mainTag=null;dbUpdate(r.id,{mainTag:null});}
@@ -2676,6 +2696,7 @@ function addSubTagDef(){
   if(!name)return;
   if(_subTagDefs.find(t=>t.name===name)){toast('同名のサブタグが既にあります','wrn');return;}
   _subTagDefs.push({name});
+  _deletedSubNames.delete(name); // 再追加時はtombstone解除
   saveTagDefs();
   renderTgSubList();
   document.getElementById('tg-sub-name').value='';
@@ -2685,6 +2706,7 @@ function addSubTagDef(){
 function deleteSubTagDef(idx){
   const name=_subTagDefs[idx].name;
   _subTagDefs.splice(idx,1);
+  _deletedSubNames.add(name); // tombstone
   saveTagDefs();
   for(const r of _dbCache){
     if((r.subTags||[]).includes(name)){
@@ -2701,16 +2723,38 @@ function deleteSubTagDef(idx){
 function renderTagBar(){
   const bar=document.getElementById('db-tag-bar');
   if(!bar)return;
-  if(!_mainTags.length){bar.innerHTML='';return;}
-  const allSel=_tagFilter===null;
-  let html='<button class="tf-chip" style="'+(allSel?'background:var(--r2);border-color:var(--r1);color:var(--t0)':'')+'" onclick="setTagFilter(null)">すべて</button>';
-  for(const t of _mainTags){
-    const sel=_tagFilter===t.name;
-    const c=t.color;
-    const sty=sel?'background:'+c+';border-color:'+c+';color:#fff':'border-color:'+c+'55;color:'+c;
-    html+='<button class="tf-chip" style="'+sty+'" onclick="setTagFilter(\''+t.name.replace(/'/g,"\\'")+'\')" >'+esc(t.name)+'</button>';
+  let html='';
+
+  // ─ メインタグ行 ─
+  if(_mainTags.length){
+    const allSel=_tagFilter===null;
+    html+='<div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:4px">'
+      +'<span style="font-size:9px;color:var(--t2);letter-spacing:1px;text-transform:uppercase;flex-shrink:0;margin-right:2px">MAIN</span>'
+      +'<button class="tf-chip" style="'+(allSel?'background:var(--r2);border-color:var(--r1);color:var(--t0)':'')+'" onclick="setTagFilter(null)">すべて</button>';
+    for(const t of _mainTags){
+      const sel=_tagFilter===t.name;
+      const c=t.color;
+      html+='<button class="tf-chip" style="'+(sel?'background:'+c+';border-color:'+c+';color:#fff':'border-color:'+c+'55;color:'+c)+'" onclick="setTagFilter(\''+t.name.replace(/'/g,"\\'")+'\')">'+esc(t.name)+'</button>';
+    }
+    html+='<button class="db-bar-btn" style="margin-left:auto;flex-shrink:0" onclick="openTgModal()">⚙ タグ管理</button>'
+      +'</div>';
+  }else{
+    html+='<div style="display:flex;justify-content:flex-end;margin-bottom:4px"><button class="db-bar-btn" onclick="openTgModal()">⚙ タグ管理</button></div>';
   }
-  html+='<button class="db-bar-btn" style="margin-left:auto" onclick="openTgModal()">⚙ タグ管理</button>';
+
+  // ─ サブタグ行（定義がある場合のみ表示）─
+  if(_subTagDefs.length){
+    const allSubSel=_subTagFilter===null;
+    html+='<div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">'
+      +'<span style="font-size:9px;color:var(--t2);letter-spacing:1px;text-transform:uppercase;flex-shrink:0;margin-right:2px">SUB</span>'
+      +'<button class="tf-chip" style="font-size:10px;padding:2px 8px;'+(allSubSel?'background:rgba(255,255,255,0.08);color:var(--t0)':'')+'" onclick="setSubTagFilter(null)">すべて</button>';
+    for(const t of _subTagDefs){
+      const sel=_subTagFilter===t.name;
+      html+='<button class="tf-chip" style="font-size:10px;padding:2px 8px;'+(sel?'background:rgba(255,255,255,0.15);border-color:var(--t1);color:var(--t0)':'color:var(--t2)')+'" onclick="setSubTagFilter(\''+t.name.replace(/'/g,"\\'")+'\')">'+esc(t.name)+'</button>';
+    }
+    html+='</div>';
+  }
+
   bar.innerHTML=html;
 }
 
@@ -2720,9 +2764,17 @@ function setTagFilter(name){
   renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
 }
 
+function setSubTagFilter(name){
+  _subTagFilter=name;
+  renderTagBar();
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
+}
+
 function applyTagFilter(recs){
-  if(_tagFilter===null)return recs;
-  return recs.filter(r=>r.mainTag===_tagFilter);
+  let r=recs;
+  if(_tagFilter!==null)r=r.filter(rec=>rec.mainTag===_tagFilter);
+  if(_subTagFilter!==null)r=r.filter(rec=>(rec.subTags||[]).includes(_subTagFilter));
+  return r;
 }
 
 // ── タグポップオーバー ────────────────────────────────────────────────────────
