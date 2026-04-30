@@ -355,6 +355,9 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .tg-color{width:32px;height:22px;border:none;border-radius:3px;cursor:pointer;padding:0;background:none}
 .tg-del{background:none;border:1px solid var(--r3);border-radius:var(--rad);color:var(--t1);padding:2px 8px;font-size:11px;cursor:pointer}
 .tg-del:hover{border-color:var(--r1);color:var(--r1)}
+.tg-mv{background:none;border:1px solid var(--r3);border-radius:3px;color:var(--t2);padding:0 4px;font-size:9px;cursor:pointer;line-height:1.4;min-width:18px}
+.tg-mv:hover:not(:disabled){border-color:var(--t1);color:var(--t0)}
+.tg-mv:disabled{opacity:0.25;cursor:default}
 .tg-new{display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap}
 .tg-in{background:var(--bg1);border:1px solid var(--r3);border-radius:var(--rad);color:var(--t0);padding:5px 8px;font-size:12px;outline:none;font-family:var(--bf)}
 .tg-in:focus{border-color:var(--r1)}
@@ -2630,8 +2633,13 @@ function closeTgModal(){document.getElementById('tg-modal').classList.remove('op
 function renderTgMainList(){
   const el=document.getElementById('tg-main-list');
   if(!_mainTags.length){el.innerHTML='<div style="color:var(--t2);font-size:12px;padding:6px 0">メインタグがありません</div>';return;}
+  const n=_mainTags.length;
   el.innerHTML=_mainTags.map((t,i)=>
     '<div class="tg-row">'
+    +'<div style="display:flex;flex-direction:column;gap:1px;margin-right:4px">'
+    +'<button class="tg-mv" onclick="moveMainTag('+i+',-1)" '+(i===0?'disabled':'')+'>▲</button>'
+    +'<button class="tg-mv" onclick="moveMainTag('+i+',1)" '+(i===n-1?'disabled':'')+'>▼</button>'
+    +'</div>'
     +'<span class="tg-name">'+esc(t.name)+'</span>'
     +'<input type="color" class="tg-color" value="'+t.color+'" oninput="updateMainTagColor('+i+',this.value)">'
     +'<button class="tg-del" onclick="deleteMainTag('+i+')">削除</button>'
@@ -2642,12 +2650,38 @@ function renderTgMainList(){
 function renderTgSubList(){
   const el=document.getElementById('tg-sub-list');
   if(!_subTagDefs.length){el.innerHTML='<div style="color:var(--t2);font-size:12px;padding:6px 0">サブタグがありません</div>';return;}
+  const n=_subTagDefs.length;
   el.innerHTML=_subTagDefs.map((t,i)=>
     '<div class="tg-row">'
+    +'<div style="display:flex;flex-direction:column;gap:1px;margin-right:4px">'
+    +'<button class="tg-mv" onclick="moveSubTagDef('+i+',-1)" '+(i===0?'disabled':'')+'>▲</button>'
+    +'<button class="tg-mv" onclick="moveSubTagDef('+i+',1)" '+(i===n-1?'disabled':'')+'>▼</button>'
+    +'</div>'
     +'<span class="tg-name">'+esc(t.name)+'</span>'
     +'<button class="tg-del" onclick="deleteSubTagDef('+i+')">削除</button>'
     +'</div>'
   ).join('');
+}
+
+function moveMainTag(idx,dir){
+  const ni=idx+dir;
+  if(ni<0||ni>=_mainTags.length)return;
+  [_mainTags[idx],_mainTags[ni]]=[_mainTags[ni],_mainTags[idx]];
+  saveTagDefs();
+  renderTgMainList();
+  renderTagBar();
+  renderRankTagSel();
+  ghSync(true);
+}
+
+function moveSubTagDef(idx,dir){
+  const ni=idx+dir;
+  if(ni<0||ni>=_subTagDefs.length)return;
+  [_subTagDefs[idx],_subTagDefs[ni]]=[_subTagDefs[ni],_subTagDefs[idx]];
+  saveTagDefs();
+  renderTgSubList();
+  renderTagBar();
+  ghSync(true);
 }
 
 function addMainTag(){
@@ -2728,9 +2762,11 @@ function renderTagBar(){
   // ─ メインタグ行 ─
   if(_mainTags.length){
     const allSel=_tagFilter===null;
+    const noneSel=_tagFilter==='__none__';
     html+='<div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:4px">'
       +'<span style="font-size:9px;color:var(--t2);letter-spacing:1px;text-transform:uppercase;flex-shrink:0;margin-right:2px">MAIN</span>'
-      +'<button class="tf-chip" style="'+(allSel?'background:var(--r2);border-color:var(--r1);color:var(--t0)':'')+'" onclick="setTagFilter(null)">すべて</button>';
+      +'<button class="tf-chip" style="'+(allSel?'background:var(--r2);border-color:var(--r1);color:var(--t0)':'')+'" onclick="setTagFilter(null)">すべて</button>'
+      +'<button class="tf-chip" style="'+(noneSel?'background:rgba(255,255,255,0.1);border-color:var(--t2);color:var(--t1)':'color:var(--t2)')+'" onclick="setTagFilter(\'__none__\')">未設定</button>';
     for(const t of _mainTags){
       const sel=_tagFilter===t.name;
       const c=t.color;
@@ -2745,9 +2781,11 @@ function renderTagBar(){
   // ─ サブタグ行（定義がある場合のみ表示）─
   if(_subTagDefs.length){
     const allSubSel=_subTagFilter===null;
+    const noneSubSel=_subTagFilter==='__none__';
     html+='<div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">'
       +'<span style="font-size:9px;color:var(--t2);letter-spacing:1px;text-transform:uppercase;flex-shrink:0;margin-right:2px">SUB</span>'
-      +'<button class="tf-chip" style="font-size:10px;padding:2px 8px;'+(allSubSel?'background:rgba(255,255,255,0.08);color:var(--t0)':'')+'" onclick="setSubTagFilter(null)">すべて</button>';
+      +'<button class="tf-chip" style="font-size:10px;padding:2px 8px;'+(allSubSel?'background:rgba(255,255,255,0.08);color:var(--t0)':'')+'" onclick="setSubTagFilter(null)">すべて</button>'
+      +'<button class="tf-chip" style="font-size:10px;padding:2px 8px;'+(noneSubSel?'background:rgba(255,255,255,0.1);border-color:var(--t2);color:var(--t1)':'color:var(--t2)')+'" onclick="setSubTagFilter(\'__none__\')">未設定</button>';
     for(const t of _subTagDefs){
       const sel=_subTagFilter===t.name;
       html+='<button class="tf-chip" style="font-size:10px;padding:2px 8px;'+(sel?'background:rgba(255,255,255,0.15);border-color:var(--t1);color:var(--t0)':'color:var(--t2)')+'" onclick="setSubTagFilter(\''+t.name.replace(/'/g,"\\'")+'\')">'+esc(t.name)+'</button>';
@@ -2772,8 +2810,10 @@ function setSubTagFilter(name){
 
 function applyTagFilter(recs){
   let r=recs;
-  if(_tagFilter!==null)r=r.filter(rec=>rec.mainTag===_tagFilter);
-  if(_subTagFilter!==null)r=r.filter(rec=>(rec.subTags||[]).includes(_subTagFilter));
+  if(_tagFilter==='__none__')r=r.filter(rec=>!rec.mainTag);
+  else if(_tagFilter!==null)r=r.filter(rec=>rec.mainTag===_tagFilter);
+  if(_subTagFilter==='__none__')r=r.filter(rec=>!(rec.subTags&&rec.subTags.length));
+  else if(_subTagFilter!==null)r=r.filter(rec=>(rec.subTags||[]).includes(_subTagFilter));
   return r;
 }
 
