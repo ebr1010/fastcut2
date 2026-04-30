@@ -581,7 +581,8 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     <button id="db-backup-btn" class="db-bar-btn">↓ バックアップ</button>
     <label for="db-import-file" class="db-bar-btn" style="cursor:pointer">↑ 読み込み</label>
     <input type="file" id="db-import-file" accept=".json" style="display:none">
-    <button id="gh-settings-btn" class="db-bar-btn">⚙ 同期</button>
+    <button id="gh-settings-btn" class="db-bar-btn">⚙ 同期設定</button>
+    <button id="gh-sync-now-btn" class="db-bar-btn" style="display:none">🔄 今すぐ同期</button>
     <span id="last-sync-label" style="font-size:10px;color:var(--t2);white-space:nowrap"></span>
     <button class="db-bar-btn" onclick="openTgModal()">🏷 タグ管理</button>
     <button id="db-kw-csv-btn" class="db-bar-btn" disabled>↓ KW マーカー CSV</button>
@@ -1730,6 +1731,12 @@ function updateLastSyncLabel(isoStr){
   else if(diffMin<1440)txt='同期: '+Math.floor(diffMin/60)+'時間前';
   else{const mo=(d.getMonth()+1);const dy=d.getDate();const hh=String(d.getHours()).padStart(2,'0');const mm=String(d.getMinutes()).padStart(2,'0');txt='同期: '+mo+'/'+dy+' '+hh+':'+mm;}
   el.textContent=txt;
+}
+
+// ── GitHub UI 表示更新 ────────────────────────────────────────────────────────
+function updateGhUi(){
+  const btn=document.getElementById('gh-sync-now-btn');
+  if(btn)btn.style.display=ghEnabled()?'':'none';
 }
 
 // ── 旧タグデータ（rec.tags[]）→ rec.mainTag マイグレーション ─────────────────
@@ -3200,6 +3207,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       _ghCfg.path=document.getElementById('gh-path').value.trim()||'fastcut_data.json';
       _ghCfg.token=document.getElementById('gh-token').value.trim();
       saveGhCfg();
+      updateGhUi();
       toast('GitHub設定を保存しました。同期を開始します…','ok');
       if(ghEnabled()) ghSync(false);
     });
@@ -3207,8 +3215,20 @@ document.addEventListener('DOMContentLoaded',()=>{
   safe('gh-sync-now',()=>{
     document.getElementById('gh-sync-now').addEventListener('click',()=>ghSync(false));
   });
+  safe('gh-sync-now-btn',()=>{
+    document.getElementById('gh-sync-now-btn').addEventListener('click',()=>{
+      toast('同期中…','ok',1500);
+      ghSync(false);
+    });
+  });
+
+  // タブ復帰時に自動同期（タブレットで別デバイスの変更をすぐ取り込む）
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden&&_currentTab==='db'&&ghEnabled())loadAndRenderDB();
+  });
 
   loadGhCfg();
+  updateGhUi();
   openDB().then(async()=>{
     // ① 削除トゥームストーン・同期済みIDをロード
     await loadDeletedRats();
