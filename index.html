@@ -399,11 +399,12 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .gh-status{font-size:11px;color:var(--t2);margin-top:8px;min-height:16px}
 /* ── Tablet / Mobile ─────────────────────────────────────────── */
 @media (max-width:900px){
-  html,body{overflow:auto;height:auto}
-  .layout{grid-template-columns:1fr;height:auto;min-height:0}
+  html{height:auto!important;overflow:auto!important}
+  body{height:auto!important;min-height:100vh;overflow-y:auto!important;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+  .layout{grid-template-columns:1fr;height:auto!important;min-height:0;display:flex;flex-direction:column}
   .left{overflow-y:visible;max-height:none;border-right:none;border-bottom:1px solid var(--r3)}
-  .right{overflow-y:visible}
-  #view-db,#view-rank{height:auto;min-height:0;overflow-y:visible}
+  .right{overflow-y:visible!important;height:auto!important}
+  #view-db,#view-rank{height:auto!important;min-height:0;overflow-y:visible!important}
   .db-search-group{flex:none;width:100%}
   .db-search{min-width:0}
   header{flex-wrap:wrap;height:auto;padding:8px 12px;gap:8px}
