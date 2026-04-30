@@ -2322,19 +2322,19 @@ async function _ungzipB64(b64){
 
 // ── GitHub ファイル操作共通 ──────────────────────────────────────────────────
 async function _ghFetchFile(path){
-  // キャッシュ無効化: タイムスタンプをクエリに付与し、常に最新を取得する
+  // ?_=ts でブラウザ・CDN キャッシュを強制バイパス（Cache-Control ヘッダーは CORS 問題になるので使わない）
   const ts=Date.now();
   const url='https://api.github.com/repos/'+_ghCfg.repo+'/contents/'+path+'?_='+ts;
-  const res=await fetch(url,{headers:{'Authorization':'token '+_ghCfg.token,'Accept':'application/vnd.github.v3+json','Cache-Control':'no-cache'},cache:'no-store'});
+  const res=await fetch(url,{headers:{'Authorization':'token '+_ghCfg.token,'Accept':'application/vnd.github.v3+json'}});
   if(res.status===404)return{content:null,sha:null};
   if(!res.ok)throw new Error('GitHub取得失敗 (HTTP '+res.status+' '+path+')');
   const json=await res.json();
   let text;
   if(!json.content||json.content.trim()===''){
     if(!json.download_url)throw new Error('content空 (size:'+json.size+')');
-    // download_url (raw.githubusercontent.com) もキャッシュ無効化
+    // raw.githubusercontent.com も ?_=ts でキャッシュバイパス
     const dlUrl=json.download_url+(json.download_url.includes('?')?'&':'?')+'_='+ts;
-    const dl=await fetch(dlUrl,{cache:'no-store'});
+    const dl=await fetch(dlUrl);
     if(!dl.ok)throw new Error('download_url失敗 (HTTP '+dl.status+')');
     text=await dl.text();
   }else{
