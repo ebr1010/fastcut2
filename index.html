@@ -314,6 +314,16 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .db-bar-btn{background:var(--bg2);border:1px solid var(--r3);border-radius:var(--rad);color:var(--t1);padding:6px 11px;font-size:12px;cursor:pointer;transition:all 0.15s;white-space:nowrap}
 .db-bar-btn:hover{border-color:var(--r4);color:var(--t0)}
 .db-bar-btn:disabled{opacity:0.35;cursor:default;pointer-events:none}
+/* GitHub 同期中ローディング */
+@keyframes gh-sweep{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@keyframes gh-spin{to{transform:rotate(360deg)}}
+@keyframes gh-btn-pulse{0%,100%{opacity:0.6;transform:scale(0.98)}50%{opacity:1;transform:scale(1)}}
+#gh-progress-bar{position:fixed;top:0;left:0;right:0;height:3px;z-index:9999;display:none;
+  background:linear-gradient(90deg,transparent 0%,var(--r1) 25%,#ff8080 50%,var(--r1) 75%,transparent 100%);
+  background-size:200% 100%;animation:gh-sweep 1s linear infinite}
+#gh-progress-bar.active{display:block}
+.gh-spin{display:inline-block;animation:gh-spin 0.7s linear infinite;margin-right:3px}
+.gh-btn-busy{animation:gh-btn-pulse 1s ease-in-out infinite!important;border-color:var(--r2)!important;color:var(--r1)!important}
 .db-empty{color:var(--t2);font-family:var(--hf);font-size:18px;text-align:center;margin-top:40px}
 .hc-chats{margin-top:5px;display:flex;flex-direction:column;gap:2px}
 .hc-chat-item{font-size:11px;color:var(--t1);padding:2px 0 2px 8px;border-left:2px solid var(--r2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1758,6 +1768,24 @@ function updateGhUi(){
   if(pull)pull.style.display=on?'':'none';
 }
 
+// ── 同期中ローディング表示 ─────────────────────────────────────────────────────
+function setGhBusy(busy,label){
+  const bar=document.getElementById('gh-progress-bar');
+  const push=document.getElementById('gh-push-btn');
+  const pull=document.getElementById('gh-pull-btn');
+  if(bar)bar.classList.toggle('active',busy);
+  if(push){
+    push.disabled=busy;
+    push.classList.toggle('gh-btn-busy',busy&&label==='push');
+    push.innerHTML=busy&&label==='push'?'<span class="gh-spin">⟳</span>保存中…':'⬆ 保存';
+  }
+  if(pull){
+    pull.disabled=busy;
+    pull.classList.toggle('gh-btn-busy',busy&&label==='pull');
+    pull.innerHTML=busy&&label==='pull'?'<span class="gh-spin">⟳</span>更新中…':'⬇ 更新';
+  }
+}
+
 // ── 旧タグデータ（rec.tags[]）→ rec.mainTag マイグレーション ─────────────────
 async function migrateOldTagsToMainTag(){
   try{
@@ -2465,6 +2493,7 @@ async function ghPut(videos,sha){
 async function ghPull(){
   if(!ghEnabled())return;
   const st=document.getElementById('gh-status');
+  setGhBusy(true,'pull');
   try{
     if(st)st.textContent='GitHub から最新データを取得中...';
     const remote=await ghGet();
@@ -2547,6 +2576,8 @@ async function ghPull(){
   }catch(e){
     if(st)st.textContent='エラー: '+e.message;
     toast('GitHub更新失敗: '+e.message,'err');
+  }finally{
+    setGhBusy(false);
   }
 }
 
@@ -2554,6 +2585,7 @@ async function ghPull(){
 async function ghSync(silent){
   if(!ghEnabled())return;
   const st=document.getElementById('gh-status');
+  if(!silent)setGhBusy(true,'push');
   try{
     if(st)st.textContent='同期中... (データ取得中)';
     const remote=await ghGet();
@@ -2644,6 +2676,8 @@ async function ghSync(silent){
   }catch(e){
     if(st)st.textContent='エラー: '+e.message;
     if(!silent)toast('GitHub同期失敗: '+e.message,'err');
+  }finally{
+    if(!silent)setGhBusy(false);
   }
 }
 
@@ -3438,5 +3472,6 @@ document.addEventListener('DOMContentLoaded',()=>{
 </div>
 
 <div id="tag-pop"></div>
+<div id="gh-progress-bar"></div>
 </body>
 </html>
