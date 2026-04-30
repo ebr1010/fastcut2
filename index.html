@@ -1657,6 +1657,21 @@ function dbUpdate(id,changes){
   });
 }
 
+// 複数レコードのフィールドを1トランザクションで一括更新
+function dbPatchMany(patches){ // [{id, changes}]
+  return new Promise((res,rej)=>{
+    if(!_db||!patches.length){res();return;}
+    const tx=_db.transaction('videos','readwrite');
+    const store=tx.objectStore('videos');
+    tx.oncomplete=()=>res();
+    tx.onerror=e=>rej(e.target.error);
+    for(const {id,changes} of patches){
+      const req=store.get(id);
+      req.onsuccess=()=>store.put({...req.result,...changes});
+    }
+  });
+}
+
 function dbAddMany(records){
   return new Promise((res,rej)=>{
     if(!_db){rej(new Error('DB not open'));return;}
@@ -2459,13 +2474,13 @@ async function ghPull(){
       return;
     }
 
-    // ── stale tombstone クリーンアップ（IDBに実在するレコードはtombstoneから除去）
-    const localForClean=await dbAll();
-    const localRatsSet=new Set(localForClean.map(r=>r.registeredAt).filter(Boolean));
-    for(const rat of[..._deletedRats])if(localRatsSet.has(rat)){_deletedRats.delete(rat);}
+    // ── stale tombstone クリーンアップ
+    const local=await dbAll();
+    const localRatsSet=new Set(local.map(r=>r.registeredAt).filter(Boolean));
+    for(const rat of[..._deletedRats])if(localRatsSet.has(rat))_deletedRats.delete(rat);
     saveDeletedRats();
 
-    // ── タグ定義マージ（tombstone適用・リモート優先）
+    // ── タグ定義マージ（リモート優先）
     for(const n of(remote.deletedTagNames||[]))_deletedTagNames.add(n);
     for(const n of(remote.deletedSubNames||[]))_deletedSubNames.add(n);
     _mainTags=_mainTags.filter(t=>!_deletedTagNames.has(t.name));
@@ -2477,28 +2492,35 @@ async function ghPull(){
     for(const t of(remote.subTagDefs||[]))if(!sNames.has(t.name)&&!_deletedSubNames.has(t.name)){_subTagDefs.push(t);sNames.add(t.name);}
     saveTagDefs();renderTagBar();renderRankTagSel();
 
-    // ── レコード更新（リモート優先・比較なしで無条件上書き）
-    const local=await dbAll();
+    // ── レコード差分計算
     const localMap=new Map(local.map(r=>[r.registeredAt,r]));
-    const remTagged=remote.data.filter(r=>r.mainTag).length;
-    if(st)st.textContent='取得完了: '+remote.data.length+'件（タグ付き'+remTagged+'件）、ローカル反映中...';
-    let updated=0,added=0;
+    const patches=[];   // バッチ更新用
+    const newRecs=[];   // 追加用
+    const tagChanges=[]; // 差分ログ用
     for(const rem of remote.data){
       if(!rem.registeredAt)continue;
-      // tombstone チェック: ローカルに実在するなら tombstone を無視して処理する
       if(_deletedRats.has(rem.registeredAt)&&!localRatsSet.has(rem.registeredAt))continue;
       if(localMap.has(rem.registeredAt)){
-        // 常にリモートのタグで上書き（比較 edge case を排除）
         const loc=localMap.get(rem.registeredAt);
         const remMain=rem.mainTag!=null?rem.mainTag:null;
         const locMain=loc.mainTag!=null?loc.mainTag:null;
         const remSub=rem.subTags||[];
-        await dbUpdate(loc.id,{mainTag:remMain,subTags:remSub});
-        if(locMain!==remMain||JSON.stringify(loc.subTags||[])!==JSON.stringify(remSub))updated++;
+        const locSub=loc.subTags||[];
+        const tagChanged=locMain!==remMain||JSON.stringify(locSub)!==JSON.stringify(remSub);
+        // 常にリモートタグで上書き（比較 edge case 排除）
+        patches.push({id:loc.id,changes:{mainTag:remMain,subTags:remSub}});
+        if(tagChanged)tagChanges.push({title:rem.title||rem.episodeNum||rem.registeredAt.slice(0,10),from:locMain,to:remMain});
       }else{
-        await dbAddMany([rem]);added++;
+        newRecs.push(rem);
       }
     }
+
+    // ── 1トランザクションで一括書き込み
+    if(st)st.textContent='ローカルに反映中... ('+patches.length+'件更新 / '+newRecs.length+'件追加)';
+    if(patches.length)await dbPatchMany(patches);
+    if(newRecs.length)await dbAddMany(newRecs);
+
+    // ── キャッシュ・UI 更新
     _dbCache=await dbAll();
     for(const r of remote.data)if(r.syncId)_syncedIds.add(r.syncId);
     saveSyncedIds();
@@ -2506,9 +2528,22 @@ async function ghPull(){
     const now=new Date().toISOString();
     await dbPutSetting('last_synced_at',now);
     updateLastSyncLabel(now);
-    const detail='(リモートのタグ付き:'+remTagged+'件 / +'+added+'件追加 / '+updated+'件タグ更新)';
-    if(st)st.textContent='更新完了 '+_dbCache.length+'件 '+detail;
-    toast('GitHub更新完了 '+_dbCache.length+'件 '+detail,'ok');
+
+    // ── 結果サマリー表示
+    const parts=[];
+    if(newRecs.length)parts.push('新着+'+newRecs.length+'件');
+    if(tagChanges.length){
+      parts.push('タグ変更'+tagChanges.length+'件');
+      // 最大5件まで詳細表示
+      tagChanges.slice(0,5).forEach(c=>{
+        parts.push('　「'+(c.title.length>20?c.title.slice(0,20)+'…':c.title)+'」'+(c.from||'なし')+'→'+(c.to||'なし'));
+      });
+      if(tagChanges.length>5)parts.push('　…他'+(tagChanges.length-5)+'件');
+    }
+    if(!parts.length)parts.push('変更なし（ローカルは最新）');
+    const summary=parts.join('\n');
+    if(st)st.textContent='⬇ 更新完了 '+_dbCache.length+'件\n'+summary;
+    toast('⬇ 更新完了 '+_dbCache.length+'件'+(tagChanges.length?' / タグ変更'+tagChanges.length+'件':(newRecs.length?' / 新着+'+newRecs.length+'件':' / 変更なし')),'ok',6000);
   }catch(e){
     if(st)st.textContent='エラー: '+e.message;
     toast('GitHub更新失敗: '+e.message,'err');
@@ -2551,10 +2586,12 @@ async function ghSync(silent){
     for(const rat of [..._deletedRats]){if(localRats.has(rat)){_deletedRats.delete(rat);staleCleaned++;}}
     if(staleCleaned){saveDeletedRats();console.log('[tombstone] stale cleaned:',staleCleaned);}
 
-    // マージ: mainTag/subTags はローカル優先、その他もローカル優先
+    // ── マージ: ローカル優先（差分を記録）
     const remoteMap=new Map();
     for(const r of remote.data)if(r.registeredAt)remoteMap.set(r.registeredAt,r);
     const map=new Map(remoteMap);
+    const pushNew=[];      // ローカルにのみある新規レコード
+    const pushTagChg=[];   // タグが変わったレコード
     for(const r of local){
       if(!r.registeredAt)continue;
       const rem=remoteMap.get(r.registeredAt);
@@ -2562,33 +2599,48 @@ async function ghSync(silent){
         const mainTag=r.mainTag!==undefined?r.mainTag:rem.mainTag;
         const subTags=r.subTags!==undefined?r.subTags:(rem.subTags||[]);
         map.set(r.registeredAt,{...rem,...r,mainTag,subTags});
+        if((rem.mainTag??null)!==(mainTag??null))
+          pushTagChg.push({title:r.title||r.episodeNum||r.registeredAt.slice(0,10),from:rem.mainTag||'なし',to:mainTag||'なし'});
       }else{
         map.set(r.registeredAt,r);
+        pushNew.push(r.title||r.episodeNum||r.registeredAt.slice(0,10));
       }
     }
-    // tombstoneフィルタ: IDBに実在するレコードは除外しない（IDBにある＝削除されていない）
-    // remote専用レコードのみtombstoneで除外（他デバイスで削除されたものを引き継がない）
     const merged=[...map.values()].filter(r=>localRats.has(r.registeredAt)||!_deletedRats.has(r.registeredAt)).sort((a,b)=>a.registeredAt<b.registeredAt?-1:1);
-    if(st)st.textContent='[4] マージ後: '+merged.length+'件 → プッシュ中...';
-    // 常にプッシュ: 削除・追加・タグ変更いずれも remote に反映させる
+    const deletedCount=remote.data.length-(merged.filter(r=>remoteMap.has(r.registeredAt)).length);
+
+    if(st)st.textContent='プッシュ中... ('+merged.length+'件)';
     if(merged.length>0||remote.data.length>0){
       await ghPut(merged,remote.sha);
-      // 同期済みIDを記録
       for(const r of merged)if(r.syncId)_syncedIds.add(r.syncId);
       saveSyncedIds();
-      if(st)st.textContent='[5] プッシュ完了: '+merged.length+'件';
-    }else{
-      if(st)st.textContent='[5] プッシュスキップ (merged:'+merged.length+' remote:'+remote.data.length+')';
     }
     _dbCache=await dbAll();
     renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
-    // 最終同期時刻を記録
     const syncNow=new Date().toISOString();
     await dbPutSetting('last_synced_at',syncNow);
     updateLastSyncLabel(syncNow);
-    if(st)st.textContent='同期完了（動画'+_dbCache.length+'件 / タグ'+_mainTags.length+'件）';
-    if(!silent)toast('GitHub同期完了 '+_dbCache.length+'件','ok');
-    else updateLastSyncLabel(new Date().toISOString());
+
+    // ── 差分サマリー生成
+    const parts=[];
+    if(pushNew.length){
+      parts.push('新規追加+'+pushNew.length+'件');
+      pushNew.slice(0,3).forEach(t=>parts.push('　＋「'+(t.length>20?t.slice(0,20)+'…':t)+'」'));
+      if(pushNew.length>3)parts.push('　…他'+(pushNew.length-3)+'件');
+    }
+    if(pushTagChg.length){
+      parts.push('タグ変更'+pushTagChg.length+'件');
+      pushTagChg.slice(0,5).forEach(c=>parts.push('　「'+(c.title.length>20?c.title.slice(0,20)+'…':c.title)+'」'+c.from+'→'+c.to));
+      if(pushTagChg.length>5)parts.push('　…他'+(pushTagChg.length-5)+'件');
+    }
+    if(deletedCount>0)parts.push('削除-'+deletedCount+'件');
+    if(!parts.length)parts.push('変更なし');
+    const summary=parts.join('\n');
+    if(st)st.textContent='⬆ 保存完了 '+merged.length+'件\n'+summary;
+    if(!silent){
+      const brief=parts.filter(p=>!p.startsWith('　')).join(' / ');
+      toast('⬆ 保存完了 '+merged.length+'件 / '+brief,'ok',6000);
+    }else updateLastSyncLabel(new Date().toISOString());
   }catch(e){
     if(st)st.textContent='エラー: '+e.message;
     if(!silent)toast('GitHub同期失敗: '+e.message,'err');
