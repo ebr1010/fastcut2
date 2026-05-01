@@ -303,6 +303,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .cnt-chip{font-size:11px;border-radius:2px;padding:2px 7px}
 .cnt-chip.chat{background:rgba(185,24,40,0.12);color:var(--r1)}
 .cnt-chip.tr{background:rgba(58,158,96,0.10);color:#5aae80}
+.cnt-chip.note{background:rgba(62,166,255,0.10);color:#3ea6ff}
 .db-actions{display:flex;gap:6px;margin-top:8px;border-top:1px solid var(--r3);padding-top:8px;flex-wrap:wrap}
 .db-del{
   background:none;border:1px solid rgba(185,24,40,0.2);border-radius:var(--rad);
@@ -1929,13 +1930,17 @@ function renderDB(records,q,acct){
 
   // keyword filter（サブタグも検索対象）
   let filtered=q
-    ?records.filter(rec=>
-        (rec.chatData||[]).some(c=>c.message.toLowerCase().includes(ql))||
-        (rec.trData||[]).some(t=>t.text.toLowerCase().includes(ql))||
-        (rec.title||'').toLowerCase().includes(ql)||
-        (rec.episodeNum||'').toLowerCase().includes(ql)||
-        (rec.subTags||[]).some(s=>s.toLowerCase().includes(ql))
-      )
+    ?records.filter(rec=>{
+        const epStr=String(rec.episodeNum||'');
+        const vidStr=rec.videoId||'';
+        const noteMemo=_ynpMemos?(_ynpMemos.byEp[epStr]||_ynpMemos.byVid[vidStr]||''):'';
+        return (rec.chatData||[]).some(c=>c.message.toLowerCase().includes(ql))||
+          (rec.trData||[]).some(t=>t.text.toLowerCase().includes(ql))||
+          (rec.title||'').toLowerCase().includes(ql)||
+          epStr.toLowerCase().includes(ql)||
+          (rec.subTags||[]).some(s=>s.toLowerCase().includes(ql))||
+          noteMemo.toLowerCase().includes(ql);
+      })
     :records;
 
   // account filter (applied on top of keyword filter)
@@ -1995,7 +2000,10 @@ function renderDB(records,q,acct){
     const _ep=String(rec.episodeNum||'');
     const _vid=rec.videoId||'';
     const _memo=_ynpMemos?(_ynpMemos.byEp[_ep]||_ynpMemos.byVid[_vid]||''):'';
-    const memoHtml=_memo
+    const _memoLines=_memo?_memo.split('\n').filter(l=>l.trim()).length:0;
+    // メモは展開時 or 検索でメモがヒットした時に表示
+    const _memoHit=q&&_memo.toLowerCase().includes(ql);
+    const memoHtml=(isExpanded||_memoHit)&&_memo
       ?'<div class="db-ynp-memo"><div class="db-ynp-memo-label">📝 NOTES</div><pre class="db-ynp-memo-text">'+esc(_memo)+'</pre></div>'
       :'';
 
@@ -2015,6 +2023,7 @@ function renderDB(records,q,acct){
     const countsHtml='<div class="db-counts">'
       +'<span class="cnt-chip chat">'+esc(acctLabel)+'<b>'+chatMatchCnt+'</b>件</span>'
       +(al?'':'<span class="cnt-chip tr">音声 <b>'+trMatchCnt+'</b>件</span>')
+      +(_memoLines?'<span class="cnt-chip note">ノート <b>'+_memoLines+'</b>行</span>':'')
       +'</div>';
 
     // hits list — 検索時は常に表示、検索なしは展開済みカードのみ
@@ -2063,9 +2072,9 @@ function renderDB(records,q,acct){
       +'<div class="db-meta">'+esc(date)+metaUrl+'</div>'
       +mainTagHtml
       +subTagHtml
-      +memoHtml
       +countsHtml
       +hitsHtml
+      +memoHtml
       +expandHint
       +'<div class="db-actions" onclick="event.stopPropagation()">'
       +'<button class="db-txt-btn" onclick="downloadCombinedText('+rec.id+')">↓ TEXT</button>'
