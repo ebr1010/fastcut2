@@ -2001,11 +2001,6 @@ function renderDB(records,q,acct){
     const _vid=rec.videoId||'';
     const _memo=_ynpMemos?(_ynpMemos.byEp[_ep]||_ynpMemos.byVid[_vid]||''):'';
     const _memoLines=_memo?_memo.split('\n').filter(l=>l.trim()).length:0;
-    // メモは展開時 or 検索でメモがヒットした時に表示
-    const _memoHit=q&&_memo.toLowerCase().includes(ql);
-    const memoHtml=(isExpanded||_memoHit)&&_memo
-      ?'<div class="db-ynp-memo"><div class="db-ynp-memo-label">📝 NOTES</div><pre class="db-ynp-memo-text">'+esc(_memo)+'</pre></div>'
-      :'';
 
     // counts — reflect current search mode
     let chatMatchCnt,trMatchCnt;
@@ -2028,6 +2023,10 @@ function renderDB(records,q,acct){
 
     // hits list — 検索時は常に表示、検索なしは展開済みカードのみ
     const isExpanded=_expandedCards.has(rec.id);
+    const _memoHit=q&&_memo.toLowerCase().includes(ql);
+    const memoHtml=(isExpanded||_memoHit)&&_memo
+      ?'<div class="db-ynp-memo"><div class="db-ynp-memo-label">📝 NOTES</div><pre class="db-ynp-memo-text">'+esc(_memo)+'</pre></div>'
+      :'';
     const showHits=q||al||isExpanded;
     let hitsHtml='';
     if(showHits){
