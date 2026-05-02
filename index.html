@@ -457,7 +457,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v1.7.0</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v1.7.1</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -1871,6 +1871,10 @@ function sortedCache(){
 }
 
 async function loadAndRenderDB(){
+  // bridge.js に最新メモデータの再取得を要求（TimeNoteで編集した内容を反映）
+  window.dispatchEvent(new CustomEvent('ynp-bridge-request'));
+  // bridge.js の chrome.storage 読み込みを待つ（通常 10ms 以下）
+  await new Promise(r=>setTimeout(r,80));
   try{
     _dbCache=await dbAll();
     if(ghEnabled()){
