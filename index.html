@@ -488,7 +488,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v1.9.0</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v1.9.1</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -630,8 +630,12 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
   <div class="db-sticky-head" id="db-sticky-head">
   <div class="db-bar">
     <div class="db-search-group">
-      <input type="text" class="db-search" id="db-q" placeholder="キーワード検索... (Enter)">
+      <input type="text" class="db-search" id="db-q" placeholder="チャット・音声検索... (Enter)">
       <button class="db-bar-btn" id="db-search-btn">🔍 検索</button>
+    </div>
+    <div class="db-search-group">
+      <input type="text" class="db-search" id="db-qn" placeholder="📌 ノート検索... (Enter)">
+      <button class="db-bar-btn" id="db-qn-btn">🔍</button>
     </div>
     <div class="db-search-group">
       <input type="text" class="db-search" id="db-acct" placeholder="@アカウント名で絞り込み...">
@@ -2042,19 +2046,29 @@ async function loadAndRenderDB(){
         for(const t of(remote.subTagDefs||[]))if(!_sn.has(t.name)&&!_deletedSubNames.has(t.name)){_subTagDefs.push(t);_sn.add(t.name);}
         saveTagDefs();
 
-        // ② 新規レコードを追加
+        // ② deletedRatsをマージ（リモートで削除されたレコードをローカルからも除去）
+        for(const rat of(remote.deletedRats||[]))_deletedRats.add(rat);
+        const toDeleteLocally2=_dbCache.filter(r=>r.registeredAt&&_deletedRats.has(r.registeredAt));
+        for(const r of toDeleteLocally2)await dbDel(r.id);
+        if(toDeleteLocally2.length){saveDeletedRats();_dbCache=await dbAll();}
+
+        // ③ 新規レコードを追加
         const localByRat=new Map(_dbCache.map(r=>[r.registeredAt,r]));
         const newRecs=remote.data.filter(r=>r.registeredAt&&!localByRat.has(r.registeredAt)&&!_deletedRats.has(r.registeredAt));
         if(newRecs.length)await dbAddMany(newRecs);
 
-        // ③ 既存レコードの mainTag / subTags をリモートから更新
+        // ④ 既存レコードをリモートから更新（タグ・ノート・基本情報）
         for(const r of remote.data){
           if(!r.registeredAt||_deletedRats.has(r.registeredAt))continue;
           const local=localByRat.get(r.registeredAt);
-          if(!local)continue; // 新規は②で追加済み
+          if(!local)continue; // 新規は③で追加済み
           const patch={};
           if(r.mainTag!==undefined&&r.mainTag!==local.mainTag)patch.mainTag=r.mainTag;
           if(r.subTags!==undefined&&JSON.stringify(r.subTags||[])!==JSON.stringify(local.subTags||[]))patch.subTags=r.subTags;
+          if(r.tnotes!==undefined&&r.tnotes!==(local.tnotes||''))patch.tnotes=r.tnotes||'';
+          if(r.title&&r.title!==local.title)patch.title=r.title;
+          if(r.videoUrl&&r.videoUrl!==local.videoUrl)patch.videoUrl=r.videoUrl;
+          if(r.streamStart&&r.streamStart!==local.streamStart)patch.streamStart=r.streamStart;
           if(Object.keys(patch).length)await dbUpdate(local.id,patch);
         }
 
@@ -2090,6 +2104,10 @@ function getAcctSearch(){
 function searchDB(q){
   renderDB(applyTagFilter(sortedCache()),q.trim(),getAcctSearch());
 }
+function setNoteSearch(q){
+  _noteQ=q.trim();
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
+}
 
 function parseEpBadge(ep,color){
   if(!ep)return'';
@@ -2107,6 +2125,7 @@ function renderDB(records,q,acct){
   acct=acct||'';
   const grid=document.getElementById('db-grid');
   const ql=q.toLowerCase();
+  const qnl=_noteQ.toLowerCase();
   const exactAcct=acct.startsWith('@');            // @つき = 完全一致
   const al=acct.toLowerCase().replace(/^@/,'');   // 検索文字列（@ 除去済み）
   const matchUser=u=>!al?true:exactAcct?(u||'').toLowerCase()===(al):(u||'').toLowerCase().includes(al);
@@ -2117,7 +2136,7 @@ function renderDB(records,q,acct){
     const txtEl=document.getElementById('fban-txt');
     const total=_dbCache.length;
     const shown=records.length; // note/tag filter 後の件数（さらにq/acctで絞られる前）
-    const anyActive=_tagFilter!==null||_subTagFilter!==null||_noteFilter!==null||q||acct;
+    const anyActive=_tagFilter!==null||_subTagFilter!==null||_noteFilter!==null||_noteQ||q||acct;
     if(banner&&txtEl){
       if(anyActive){
         const labels=[];
@@ -2126,7 +2145,8 @@ function renderDB(records,q,acct){
         if(_subTagFilter&&_subTagFilter!=='__none__')labels.push('サブ: '+_subTagFilter);
         if(_noteFilter==='has')labels.push('ノートあり');
         else if(_noteFilter==='none')labels.push('ノートなし');
-        if(q)labels.push('検索: "'+q+'"');
+        if(q)labels.push('チャット検索: "'+q+'"');
+        if(_noteQ)labels.push('ノート検索: "'+_noteQ+'"');
         if(acct)labels.push('アカウント: '+acct);
         txtEl.innerHTML='<b>'+shown+'</b> / '+total+' 件  —  '+labels.join(' · ');
         banner.classList.add('active');
@@ -2140,21 +2160,26 @@ function renderDB(records,q,acct){
   const kwCsvBtn=document.getElementById('db-kw-csv-btn');
   if(kwCsvBtn)kwCsvBtn.disabled=!(q||al);
 
-  // keyword filter（サブタグも検索対象）
+  // チャット・音声キーワードフィルタ（ノートは含まない・独立した検索）
   let filtered=q
     ?records.filter(rec=>{
         const epStr=String(rec.episodeNum||'');
-        const vidStr=rec.videoId||'';
-        const noteMemo=_ynpMemos?(_ynpMemos.byEp[epStr]||_ynpMemos.byVid[vidStr]||''):'';
         return (rec.chatData||[]).some(c=>c.message.toLowerCase().includes(ql))||
           (rec.trData||[]).some(t=>t.text.toLowerCase().includes(ql))||
           (rec.title||'').toLowerCase().includes(ql)||
           epStr.toLowerCase().includes(ql)||
-          (rec.subTags||[]).some(s=>s.toLowerCase().includes(ql))||
-          (rec.tnotes||'').toLowerCase().includes(ql)||
-          noteMemo.toLowerCase().includes(ql);
+          (rec.subTags||[]).some(s=>s.toLowerCase().includes(ql));
       })
     :records;
+  // ノートキーワードフィルタ（チャット・音声検索とは独立して適用）
+  if(_noteQ){
+    filtered=filtered.filter(rec=>{
+      const epStr=String(rec.episodeNum||'');
+      const vidStr=rec.videoId||'';
+      const noteMemo=_ynpMemos?(_ynpMemos.byEp[epStr]||_ynpMemos.byVid[vidStr]||''):'';
+      return (rec.tnotes||'').toLowerCase().includes(qnl)||noteMemo.toLowerCase().includes(qnl);
+    });
+  }
 
   // account filter (applied on top of keyword filter)
   if(al){
@@ -2242,14 +2267,14 @@ function renderDB(records,q,acct){
     const isExpanded=_expandedCards.has(rec.id);
     const isTNExpanded=_expandedTN.has(rec.id);
 
-    // ノートセクション（ノート展開時 or 検索ヒット時のみ表示）
-    const _tnHit=q&&_tn.toLowerCase().includes(ql);
+    // ノートセクション（ノート展開時 or ノート検索ヒット時のみ表示）
+    const _tnHit=_noteQ&&_tn.toLowerCase().includes(qnl);
     const tnHtml=(isTNExpanded||_tnHit)&&_tn
-      ?'<div class="db-tn-section"><div class="db-tn-label">📌 タイムラインノート</div><pre class="db-tn-text">'+esc(_tn)+'</pre></div>'
+      ?'<div class="db-tn-section"><div class="db-tn-label">📌 タイムラインノート</div><pre class="db-tn-text">'+(_noteQ?hlStr(_tn,_noteQ):esc(_tn))+'</pre></div>'
       :'';
-    const _memoHit=q&&_memo.toLowerCase().includes(ql);
+    const _memoHit=_noteQ&&_memo.toLowerCase().includes(qnl);
     const memoHtml=(isTNExpanded||_memoHit)&&_memo
-      ?'<div class="db-ynp-memo"><div class="db-ynp-memo-label">📝 YT NOTES</div><pre class="db-ynp-memo-text">'+esc(_memo)+'</pre></div>'
+      ?'<div class="db-ynp-memo"><div class="db-ynp-memo-label">📝 YT NOTES</div><pre class="db-ynp-memo-text">'+(_noteQ?hlStr(_memo,_noteQ):esc(_memo))+'</pre></div>'
       :'';
     const showHits=q||al||isExpanded;
     let hitsHtml='';
@@ -2740,12 +2765,14 @@ async function ghGet(){
   const subTagDefs=(!Array.isArray(raw)&&raw.subTagDefs)||[];
   const deletedTagNames=(!Array.isArray(raw)&&raw.deletedTagNames)||[];
   const deletedSubNames=(!Array.isArray(raw)&&raw.deletedSubNames)||[];
-  return{data,sha:remote.sha,mainTags,subTagDefs,deletedTagNames,deletedSubNames};
+  const deletedRats=(!Array.isArray(raw)&&raw.deletedRats)||[];
+  return{data,sha:remote.sha,mainTags,subTagDefs,deletedTagNames,deletedSubNames,deletedRats};
 }
 
 async function ghPut(videos,sha){
   const payload={v:videos,mainTags:_mainTags,subTagDefs:_subTagDefs,
-    deletedTagNames:[..._deletedTagNames],deletedSubNames:[..._deletedSubNames]};
+    deletedTagNames:[..._deletedTagNames],deletedSubNames:[..._deletedSubNames],
+    deletedRats:[..._deletedRats]};
   await _ghWriteFile(_ghCfg.path,payload,sha,'FASTCUT sync '+new Date().toISOString().slice(0,16));
 }
 
@@ -2763,9 +2790,11 @@ async function ghPull(){
       return;
     }
 
-    // ── stale tombstone クリーンアップ
-    const local=await dbAll();
-    const localRatsSet=new Set(local.map(r=>r.registeredAt).filter(Boolean));
+    // ── リモートのdeletedRatsをローカルにマージ（削除の同期）
+    let local=await dbAll();
+    let localRatsSet=new Set(local.map(r=>r.registeredAt).filter(Boolean));
+    for(const rat of(remote.deletedRats||[]))_deletedRats.add(rat);
+    // stale tombstoneクリーンアップ（IDBに実在するものは除去）
     for(const rat of[..._deletedRats])if(localRatsSet.has(rat))_deletedRats.delete(rat);
     saveDeletedRats();
 
@@ -2780,6 +2809,21 @@ async function ghPull(){
     const sNames=new Set(_subTagDefs.map(t=>t.name));
     for(const t of(remote.subTagDefs||[]))if(!sNames.has(t.name)&&!_deletedSubNames.has(t.name)){_subTagDefs.push(t);sNames.add(t.name);}
     saveTagDefs();renderTagBar();renderRankTagSel();
+
+    // ── リモートに存在しないローカルレコードを削除（他デバイスの削除を反映）
+    const remoteRatsSet=new Set(remote.data.map(r=>r.registeredAt).filter(Boolean));
+    const toDeleteLocally=local.filter(r=>r.registeredAt&&!remoteRatsSet.has(r.registeredAt));
+    let deletedLocalCount=0;
+    for(const r of toDeleteLocally){
+      _deletedRats.add(r.registeredAt);
+      await dbDel(r.id);
+      deletedLocalCount++;
+    }
+    if(deletedLocalCount){
+      saveDeletedRats();
+      local=await dbAll();
+      localRatsSet=new Set(local.map(r=>r.registeredAt).filter(Boolean));
+    }
 
     // ── レコード差分計算
     const localMap=new Map(local.map(r=>[r.registeredAt,r]));
@@ -2796,8 +2840,13 @@ async function ghPull(){
         const remSub=rem.subTags||[];
         const locSub=loc.subTags||[];
         const tagChanged=locMain!==remMain||JSON.stringify(locSub)!==JSON.stringify(remSub);
-        // 常にリモートタグで上書き（比較 edge case 排除）
-        patches.push({id:loc.id,changes:{mainTag:remMain,subTags:remSub}});
+        // リモートの値でローカルを上書き（タグ・ノート・基本情報）
+        const changes={mainTag:remMain,subTags:remSub};
+        if(rem.tnotes!==undefined&&rem.tnotes!==(loc.tnotes||''))changes.tnotes=rem.tnotes||'';
+        if(rem.title&&rem.title!==loc.title)changes.title=rem.title;
+        if(rem.videoUrl&&rem.videoUrl!==loc.videoUrl)changes.videoUrl=rem.videoUrl;
+        if(rem.streamStart&&rem.streamStart!==loc.streamStart)changes.streamStart=rem.streamStart;
+        patches.push({id:loc.id,changes});
         if(tagChanged)tagChanges.push({title:rem.title||rem.episodeNum||rem.registeredAt.slice(0,10),from:locMain,to:remMain});
       }else{
         newRecs.push(rem);
@@ -2805,7 +2854,7 @@ async function ghPull(){
     }
 
     // ── 1トランザクションで一括書き込み
-    if(st)st.textContent='ローカルに反映中... ('+patches.length+'件更新 / '+newRecs.length+'件追加)';
+    if(st)st.textContent='ローカルに反映中... ('+patches.length+'件更新 / '+newRecs.length+'件追加'+(deletedLocalCount?` / ${deletedLocalCount}件削除`:'')+')';
     if(patches.length)await dbPatchMany(patches);
     if(newRecs.length)await dbAddMany(newRecs);
 
@@ -2821,6 +2870,7 @@ async function ghPull(){
     // ── 結果サマリー表示
     const parts=[];
     if(newRecs.length)parts.push('新着+'+newRecs.length+'件');
+    if(deletedLocalCount)parts.push('削除-'+deletedLocalCount+'件');
     if(tagChanges.length){
       parts.push('タグ変更'+tagChanges.length+'件');
       // 最大5件まで詳細表示
@@ -2832,7 +2882,11 @@ async function ghPull(){
     if(!parts.length)parts.push('変更なし（ローカルは最新）');
     const summary=parts.join('\n');
     if(st)st.textContent='⬇ 更新完了 '+_dbCache.length+'件\n'+summary;
-    toast('⬇ 更新完了 '+_dbCache.length+'件'+(tagChanges.length?' / タグ変更'+tagChanges.length+'件':(newRecs.length?' / 新着+'+newRecs.length+'件':' / 変更なし')),'ok',6000);
+    const briefParts=[];
+    if(newRecs.length)briefParts.push('新着+'+newRecs.length+'件');
+    if(deletedLocalCount)briefParts.push('削除-'+deletedLocalCount+'件');
+    if(tagChanges.length)briefParts.push('タグ変更'+tagChanges.length+'件');
+    toast('⬇ 更新完了 '+_dbCache.length+'件'+(briefParts.length?' / '+briefParts.join(' / '):' / 変更なし'),'ok',6000);
   }catch(e){
     if(st)st.textContent='エラー: '+e.message;
     toast('GitHub更新失敗: '+e.message,'err');
@@ -2852,6 +2906,8 @@ async function ghSync(silent){
     if(st)st.textContent='[1] GitHub取得: '+remote.data.length+'件';
 
     // タグ定義マージ（tombstone に含まれるタグは復活させない）
+    for(const rat of(remote.deletedRats||[]))_deletedRats.add(rat);
+    saveDeletedRats();
     for(const n of(remote.deletedTagNames||[]))_deletedTagNames.add(n);
     for(const n of(remote.deletedSubNames||[]))_deletedSubNames.add(n);
     // tombstoneに含まれるタグをローカルからも除去
@@ -3023,6 +3079,7 @@ let _subTagDefs=[];  // [{name}]
 let _tagFilter=null;    // string|null — 選択中のメインタグ名
 let _subTagFilter=null; // string|null — 選択中のサブタグ名
 let _noteFilter=null;   // null | 'has' | 'none' — ノートフィルタ
+let _noteQ='';          // ノートキーワード検索（チャット・音声検索 q とは独立）
 
 // ── 永続化 ──────────────────────────────────────────────────────────────────
 async function loadTagDefsFromIDB(){
@@ -3281,9 +3338,10 @@ function setNoteFilter(v){
 }
 
 function clearAllFilters(){
-  _tagFilter=null; _subTagFilter=null; _noteFilter=null;
+  _tagFilter=null; _subTagFilter=null; _noteFilter=null; _noteQ='';
   document.getElementById('db-q').value='';
   document.getElementById('db-acct').value='';
+  const qnEl=document.getElementById('db-qn');if(qnEl)qnEl.value='';
   renderTagBar();
   renderDB(applyTagFilter(sortedCache()),'','');
 }
@@ -3610,6 +3668,12 @@ document.addEventListener('DOMContentLoaded',()=>{
     const qEl=document.getElementById('db-q');
     qEl.addEventListener('keydown',function(e){if(e.key==='Enter')searchDB(this.value);});
     document.getElementById('db-search-btn').addEventListener('click',()=>searchDB(qEl.value));
+  });
+
+  safe('db-qn',()=>{
+    const qnEl=document.getElementById('db-qn');
+    qnEl.addEventListener('keydown',function(e){if(e.key==='Enter')setNoteSearch(this.value);});
+    document.getElementById('db-qn-btn').addEventListener('click',()=>setNoteSearch(qnEl.value));
   });
 
   safe('db-acct',()=>{
