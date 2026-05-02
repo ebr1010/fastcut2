@@ -374,9 +374,22 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .stag-add{background:none;border:1px dashed rgba(255,255,255,0.1);border-radius:4px;color:var(--t2);padding:2px 8px;font-size:10px;cursor:pointer;line-height:1.5}
 .stag-add:hover{border-color:rgba(255,255,255,0.3);color:var(--t1)}
 /* ── tag filter bar ────────────────────────────────────────────────────────── */
-.db-tag-bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center}
+.db-tag-bar{display:flex;flex-direction:column;gap:5px;margin-bottom:4px}
 .tf-chip{padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--r3);background:none;color:var(--t1);transition:all 0.15s;white-space:nowrap}
 .tf-chip:hover{border-color:var(--r4);color:var(--t0)}
+/* ── filter active banner ─────────────────────────────────────────────────── */
+#db-filter-banner{display:none;align-items:center;gap:8px;padding:5px 10px;margin-top:6px;
+  background:rgba(180,60,40,0.06);border:1px solid rgba(200,80,60,0.18);
+  border-radius:4px;font-size:11px;color:var(--t2)}
+#db-filter-banner.active{display:flex}
+.fban-dot{width:5px;height:5px;border-radius:50%;background:var(--r1);flex-shrink:0;
+  animation:fban-pulse 2.4s ease-in-out infinite}
+@keyframes fban-pulse{0%,100%{opacity:0.9}50%{opacity:0.3}}
+.fban-txt{flex:1;letter-spacing:0.3px}
+.fban-txt b{color:var(--t1);font-weight:600}
+.fban-clear{font-size:10px;color:var(--t2);cursor:pointer;border:1px solid var(--r3);
+  border-radius:3px;padding:1px 6px;transition:all .12s;white-space:nowrap;background:none;font-family:inherit}
+.fban-clear:hover{border-color:var(--r4);color:var(--t0)}
 /* ── tag manager modal ─────────────────────────────────────────────────────── */
 .tg-modal{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center}
 .tg-modal.open{display:flex}
@@ -457,7 +470,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v1.7.1</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v1.8.0</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -629,6 +642,11 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     <button id="db-clear-btn" class="db-bar-btn" style="color:var(--r1);border-color:var(--r3)" title="ローカルのDBデータを全件消去します">⚠ 全消去</button>
   </div>
   <div class="db-tag-bar" id="db-tag-bar"></div>
+  <div id="db-filter-banner">
+    <span class="fban-dot"></span>
+    <span class="fban-txt" id="fban-txt"></span>
+    <button class="fban-clear" onclick="clearAllFilters()">✕ フィルタを解除</button>
+  </div>
   </div><!-- /db-sticky-head -->
   <div class="db-grid" id="db-grid"></div>
 </div>
@@ -1962,6 +1980,31 @@ function renderDB(records,q,acct){
   const al=acct.toLowerCase().replace(/^@/,'');   // 検索文字列（@ 除去済み）
   const matchUser=u=>!al?true:exactAcct?(u||'').toLowerCase()===(al):(u||'').toLowerCase().includes(al);
 
+  // ── フィルターバナー更新 ──────────────────────────────────────────────────
+  {
+    const banner=document.getElementById('db-filter-banner');
+    const txtEl=document.getElementById('fban-txt');
+    const total=_dbCache.length;
+    const shown=records.length; // note/tag filter 後の件数（さらにq/acctで絞られる前）
+    const anyActive=_tagFilter!==null||_subTagFilter!==null||_noteFilter!==null||q||acct;
+    if(banner&&txtEl){
+      if(anyActive){
+        const labels=[];
+        if(_tagFilter&&_tagFilter!=='__none__')labels.push('タグ: '+_tagFilter);
+        else if(_tagFilter==='__none__')labels.push('タグ: 未設定');
+        if(_subTagFilter&&_subTagFilter!=='__none__')labels.push('サブ: '+_subTagFilter);
+        if(_noteFilter==='has')labels.push('ノートあり');
+        else if(_noteFilter==='none')labels.push('ノートなし');
+        if(q)labels.push('検索: "'+q+'"');
+        if(acct)labels.push('アカウント: '+acct);
+        txtEl.innerHTML='<b>'+shown+'</b> / '+total+' 件  —  '+labels.join(' · ');
+        banner.classList.add('active');
+      }else{
+        banner.classList.remove('active');
+      }
+    }
+  }
+
   // update KW CSV button state
   const kwCsvBtn=document.getElementById('db-kw-csv-btn');
   if(kwCsvBtn)kwCsvBtn.disabled=!(q||al);
@@ -2843,6 +2886,7 @@ let _mainTags=[];    // [{name,color}]
 let _subTagDefs=[];  // [{name}]
 let _tagFilter=null;    // string|null — 選択中のメインタグ名
 let _subTagFilter=null; // string|null — 選択中のサブタグ名
+let _noteFilter=null;   // null | 'has' | 'none' — ノートフィルタ
 
 // ── 永続化 ──────────────────────────────────────────────────────────────────
 async function loadTagDefsFromIDB(){
@@ -3051,6 +3095,15 @@ function renderTagBar(){
     html+='</div>';
   }
 
+  // ─ ノートフィルタ行（常に表示）─
+  const nfAll=_noteFilter===null, nfHas=_noteFilter==='has', nfNone=_noteFilter==='none';
+  html+='<div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">'
+    +'<span style="font-size:9px;color:var(--t2);letter-spacing:1px;text-transform:uppercase;flex-shrink:0;margin-right:2px">NOTE</span>'
+    +'<button class="tf-chip" style="font-size:10px;padding:2px 8px;'+(nfAll?'background:rgba(255,255,255,0.08);border-color:var(--t1);color:var(--t0)':'')+'" onclick="setNoteFilter(null)">すべて</button>'
+    +'<button class="tf-chip" style="font-size:10px;padding:2px 8px;'+(nfHas?'background:rgba(232,160,48,0.18);border-color:#e8a030;color:#e8a030':'border-color:rgba(232,160,48,0.3);color:var(--t2)')+'" onclick="setNoteFilter(\'has\')">📌 ノートあり</button>'
+    +'<button class="tf-chip" style="font-size:10px;padding:2px 8px;'+(nfNone?'background:rgba(255,255,255,0.08);border-color:var(--t2);color:var(--t1)':'color:var(--t2)')+'" onclick="setNoteFilter(\'none\')">ノートなし</button>'
+    +'</div>';
+
   bar.innerHTML=html;
 }
 
@@ -3072,7 +3125,30 @@ function applyTagFilter(recs){
   else if(_tagFilter!==null)r=r.filter(rec=>rec.mainTag===_tagFilter);
   if(_subTagFilter==='__none__')r=r.filter(rec=>!(rec.subTags&&rec.subTags.length));
   else if(_subTagFilter!==null)r=r.filter(rec=>(rec.subTags||[]).includes(_subTagFilter));
+  if(_noteFilter!==null){
+    r=r.filter(rec=>{
+      const hasTN=!!(rec.tnotes&&rec.tnotes.trim());
+      const ep=String(rec.episodeNum||''), vid=rec.videoId||'';
+      const hasMemo=!!(_ynpMemos&&(_ynpMemos.byEp[ep]||_ynpMemos.byVid[vid]));
+      const has=hasTN||hasMemo;
+      return _noteFilter==='has'?has:!has;
+    });
+  }
   return r;
+}
+
+function setNoteFilter(v){
+  _noteFilter=v;
+  renderTagBar();
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
+}
+
+function clearAllFilters(){
+  _tagFilter=null; _subTagFilter=null; _noteFilter=null;
+  document.getElementById('db-q').value='';
+  document.getElementById('db-acct').value='';
+  renderTagBar();
+  renderDB(applyTagFilter(sortedCache()),'','');
 }
 
 // ── タグポップオーバー ────────────────────────────────────────────────────────
