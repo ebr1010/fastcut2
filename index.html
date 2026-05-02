@@ -343,7 +343,10 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 /* TN (タイムラインノート) section in DB card */
 .db-tn-section{margin:6px 0 4px;padding:7px 10px;background:rgba(255,165,0,0.05);border-left:2px solid rgba(232,160,48,0.45);border-radius:0 4px 4px 0}
 .db-tn-label{font-size:10px;color:#e8a03099;margin-bottom:3px;font-weight:600;letter-spacing:0.5px}
-.db-tn-text{font-size:12px;color:var(--t0);white-space:pre-wrap;word-break:break-word;margin:0;font-family:inherit;line-height:1.6;opacity:0.88}
+.db-tn-text{font-size:12px;color:var(--t0);white-space:pre-wrap;word-break:break-word;margin:0;font-family:inherit;line-height:1.6;opacity:0.88;max-height:200px;overflow-y:auto;display:block}
+.db-tn-text::-webkit-scrollbar{width:4px}
+.db-tn-text::-webkit-scrollbar-track{background:transparent}
+.db-tn-text::-webkit-scrollbar-thumb{background:#3a3a3a;border-radius:2px}
 /* TN textarea in edit / analysis */
 .db-edit-ta{background:var(--bg1);border:1px solid var(--r3);border-radius:var(--rad);color:var(--t0);padding:6px 9px;font-size:12px;outline:none;width:100%;font-family:var(--bf);resize:vertical;min-height:80px;line-height:1.5}
 .db-edit-ta:focus{border-color:var(--r4)}
