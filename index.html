@@ -656,6 +656,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
       <option value="title-desc">タイトル Z→A</option>
     </select>
     <button id="db-backup-btn" class="db-bar-btn">↓ バックアップ</button>
+    <button id="db-ai-export-btn" class="db-bar-btn" title="AI学習用JSON出力">🤖 AI出力</button>
     <label for="db-import-file" class="db-bar-btn" style="cursor:pointer">↑ 読み込み</label>
     <input type="file" id="db-import-file" accept=".json" style="display:none">
     <button id="gh-settings-btn" class="db-bar-btn">⚙ 同期設定</button>
@@ -2578,6 +2579,69 @@ async function runFromLoaded(){
   }
 }
 
+// ─── §20b AI EXPORT ──────────────────────────────────────────────────────────
+function _estimateAIBytes(records){
+  return records.reduce((n,r)=>{
+    const a=(r.trData||[]).reduce((s,t)=>s+(t.text||'').length,0);
+    const c=(r.chatData||[]).reduce((s,c)=>s+(c.message||'').length+(c.username||'').length,0);
+    return n+a+c;
+  },0)*2.2;
+}
+function _fmtBytes(b){
+  return b<1024?b+'B':b<1048576?(b/1024).toFixed(1)+'KB':(b/1048576).toFixed(1)+'MB';
+}
+function openAiModal(){
+  const records=applyTagFilter(sortedCache());
+  if(!records.length){toast('対象データがありません','wrn');return;}
+  const bytes=_estimateAIBytes(records);
+  const info=document.getElementById('ai-modal-info');
+  const warn=document.getElementById('ai-size-warn');
+  info.innerHTML='<div style="font-size:13px;padding:8px 0;color:var(--t0)">対象: <b>'+records.length+'</b>件 | 推定サイズ: <b>'+_fmtBytes(bytes)+'</b></div>';
+  if(bytes>512*1024){
+    warn.style.display='';
+    warn.textContent='⚠ 推定サイズが大きいです。10件ずつなどで分割することを推奨します。';
+  }else{
+    warn.style.display='none';
+  }
+  document.getElementById('ai-modal').classList.add('open');
+}
+function closeAiModal(){document.getElementById('ai-modal').classList.remove('open');}
+async function doAiExport(){
+  const records=applyTagFilter(sortedCache());
+  const chunkSize=parseInt(document.getElementById('ai-chunk-sel').value)||0;
+  closeAiModal();
+  const filterInfo={};
+  if(_tagFilter!==null)filterInfo.mainTag=_tagFilter;
+  if(_subTagFilter!==null)filterInfo.subTag=_subTagFilter;
+  const tagSlug=(_tagFilter&&_tagFilter!=='__none__')?_tagFilter.replace(/[^\w぀-鿿]/g,'_'):'all';
+  const dateSlug=new Date().toISOString().slice(0,10);
+  const chunks=chunkSize>0
+    ?Array.from({length:Math.ceil(records.length/chunkSize)},(_,i)=>records.slice(i*chunkSize,(i+1)*chunkSize))
+    :[records];
+  const buildPayload=(recs,part,total)=>({
+    exported_at:new Date().toISOString(),
+    filter:filterInfo,
+    ...(total>1?{part,totalParts:total}:{}),
+    totalEpisodes:recs.length,
+    totalAudioSegments:recs.reduce((n,r)=>n+(r.trData||[]).length,0),
+    totalChatMessages:recs.reduce((n,r)=>n+(r.chatData||[]).length,0),
+    episodes:recs.map(rec=>({
+      ep:rec.episodeNum||'',title:rec.title||'',
+      streamStart:rec.streamStart||'',videoUrl:rec.videoUrl||'',
+      mainTag:rec.mainTag||null,subTags:rec.subTags||[],
+      ...((rec.trData||[]).length?{audio:rec.trData.map(t=>({sec:t.sec,text:t.text}))}:{}),
+      ...((rec.chatData||[]).length?{chat:rec.chatData.map(c=>({sec:c.sec,user:c.username,text:c.message}))}:{}),
+    })),
+  });
+  for(let i=0;i<chunks.length;i++){
+    const suffix=chunks.length>1?'_part'+String(i+1).padStart(2,'0'):'';
+    const fname='fastcut_AI_'+tagSlug+'_'+dateSlug+suffix+'.json';
+    await new Promise(r=>setTimeout(r,i===0?0:300));
+    dl(JSON.stringify(buildPayload(chunks[i],i+1,chunks.length),null,2),fname,'application/json');
+  }
+  toast('AI用データ出力完了: '+records.length+'件 / '+chunks.length+'ファイル','ok',5000);
+}
+
 // ─── §20a BACKUP & COMBINED TEXT ─────────────────────────────────────────────
 function exportBackup(){
   if(!_dbCache.length&&!_mainTags.length){toast('登録データがありません','wrn');return;}
@@ -3732,6 +3796,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   safe('db-backup-btn',()=>{
     document.getElementById('db-backup-btn').addEventListener('click',exportBackup);
   });
+  safe('db-ai-export-btn',()=>{
+    document.getElementById('db-ai-export-btn').addEventListener('click',openAiModal);
+  });
 
   safe('db-kw-csv-btn',()=>{
     document.getElementById('db-kw-csv-btn').addEventListener('click',()=>{
@@ -3884,5 +3951,27 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 <div id="tag-pop"></div>
 <div id="gh-progress-bar"></div>
+
+<div class="gh-modal" id="ai-modal" onclick="closeAiModal()">
+  <div class="gh-inner" onclick="event.stopPropagation()" style="max-width:420px">
+    <h3>🤖 AI学習用データ出力</h3>
+    <div id="ai-modal-info"></div>
+    <div class="gh-row">
+      <label>分割サイズ（エピソード数 / ファイル）</label>
+      <select class="gh-in" id="ai-chunk-sel">
+        <option value="0">分割なし（1ファイル）</option>
+        <option value="5">5件ずつ</option>
+        <option value="10" selected>10件ずつ（推奨）</option>
+        <option value="20">20件ずつ</option>
+        <option value="1">1件ずつ</option>
+      </select>
+    </div>
+    <div id="ai-size-warn" style="display:none;color:var(--warn,#e8a030);font-size:11px;margin-top:6px;background:rgba(232,160,48,0.1);padding:6px 8px;border-radius:4px;border-left:2px solid var(--warn,#e8a030)"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="db-bar-btn" onclick="doAiExport()">⬇ ダウンロード</button>
+      <button class="db-bar-btn" onclick="closeAiModal()">✕ キャンセル</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
