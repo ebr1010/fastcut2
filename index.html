@@ -377,6 +377,24 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .db-tag-bar{display:flex;flex-direction:column;gap:5px;margin-bottom:4px}
 .tf-chip{padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--r3);background:none;color:var(--t1);transition:all 0.15s;white-space:nowrap}
 .tf-chip:hover{border-color:var(--r4);color:var(--t0)}
+/* ── multi-select ─────────────────────────────────────────────────────────── */
+.db-sel-cb{display:none;width:15px;height:15px;flex-shrink:0;cursor:pointer;accent-color:var(--r1);margin-right:4px}
+#view-db.select-mode .db-sel-cb{display:block}
+.db-card.sel{outline:1.5px solid var(--r1);background:rgba(232,80,60,0.05)}
+#db-select-bar{display:none;align-items:center;flex-wrap:wrap;gap:6px;
+  padding:7px 10px;margin-top:6px;
+  background:rgba(232,80,60,0.07);border:1px solid rgba(232,80,60,0.3);border-radius:4px}
+#db-select-bar.active{display:flex}
+.sel-cnt{font-size:12px;font-weight:700;color:var(--t0);white-space:nowrap}
+.sel-sep{width:1px;height:16px;background:rgba(255,255,255,0.1);flex-shrink:0}
+.sel-lbl{font-size:10px;color:var(--t2);white-space:nowrap}
+.sel-pick{background:var(--bg2);border:1px solid var(--r3);border-radius:var(--rad);
+  color:var(--t0);padding:3px 6px;font-size:11px;outline:none;font-family:inherit;cursor:pointer;max-width:120px}
+.sel-btn{background:none;border:1px solid var(--r3);border-radius:var(--rad);
+  color:var(--t1);padding:3px 9px;font-size:11px;cursor:pointer;transition:all .12s;white-space:nowrap;font-family:inherit}
+.sel-btn:hover{border-color:var(--r4);color:var(--t0)}
+.sel-btn.danger:hover{border-color:var(--r1);color:var(--r1)}
+.sel-btn.exit{margin-left:auto;color:var(--t2)}
 /* ── filter active banner ─────────────────────────────────────────────────── */
 #db-filter-banner{display:none;align-items:center;gap:8px;padding:5px 10px;margin-top:6px;
   background:rgba(180,60,40,0.06);border:1px solid rgba(200,80,60,0.18);
@@ -470,7 +488,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v1.8.0</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v1.9.0</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -638,6 +656,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     <button id="gh-pull-btn" class="db-bar-btn" style="display:none" title="GitHubから最新データを取得してローカルを更新">⬇ 更新</button>
     <span id="last-sync-label" style="font-size:10px;color:var(--t2);white-space:nowrap"></span>
     <button class="db-bar-btn" onclick="openTgModal()">🏷 タグ管理</button>
+    <button id="db-selmode-btn" class="db-bar-btn" onclick="toggleSelectMode()">☑ 選択</button>
     <button id="db-kw-csv-btn" class="db-bar-btn" disabled>↓ KW マーカー CSV</button>
     <button id="db-clear-btn" class="db-bar-btn" style="color:var(--r1);border-color:var(--r3)" title="ローカルのDBデータを全件消去します">⚠ 全消去</button>
   </div>
@@ -647,6 +666,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     <span class="fban-txt" id="fban-txt"></span>
     <button class="fban-clear" onclick="clearAllFilters()">✕ フィルタを解除</button>
   </div>
+  <div id="db-select-bar"></div>
   </div><!-- /db-sticky-head -->
   <div class="db-grid" id="db-grid"></div>
 </div>
@@ -1341,8 +1361,7 @@ async function run(){
 
   if(!S.chatRaw && !S.trRaw){addMsg('チャットまたは文字起こしファイルを選択してください。','error');return;}
   if(!S.chatRaw && S.trRaw){
-    // トランスクリプトのみモード
-    if(!startISO){addMsg('配信開始時刻を入力してください。','error');document.getElementById('fi-start').classList.add('err');return;}
+    // 音声のみモード（通常動画・ショート・プレミア音声のみ）— 開始時刻は任意
     try{
       showOv('文字起こしを処理中...');await tick();
       S.trRecs=[];
@@ -1351,15 +1370,14 @@ async function run(){
       if(!S.videoTitle&&tr.header.title)S.videoTitle=tr.header.title;
       S.chatConv=[];
       hideOv();
-      histSave('fc_start_hist',startISO);
+      if(startISO)histSave('fc_start_hist',startISO);
       if(urlVal)histSave('fc_url_hist',urlVal);
       if(epVal)histSave('fc_ep_hist',epVal);
-      // 登録ボタンを表示するために result-area を出す
       document.getElementById('empty').style.display='none';
       document.getElementById('result-area').style.display='block';
       document.getElementById('stats-bar').innerHTML='<span style="color:var(--t1)">音声データのみ — チャット: 0件 / 音声: '+S.trRecs.length+'件</span>';
-      document.getElementById('hl-list').innerHTML='<div style="color:var(--t2);font-size:12px;padding:8px 0">音声データのみモードです。チャットのハイライトはありません。<br>「＋ データ登録」でDBに登録できます。</div>';
-      addMsg('文字起こしのみ読み込みました（'+S.trRecs.length+'件）。「＋ データ登録」を押してDBに登録できます。','info');
+      document.getElementById('hl-list').innerHTML='<div style="color:var(--t2);font-size:12px;padding:8px 0">音声データのみモードです（通常動画・ショート・プレミア対応）。<br>「＋ データ登録」でDBに登録できます。</div>';
+      addMsg('音声データ読み込み完了（'+S.trRecs.length+'件）。「＋ データ登録」を押してDBに登録できます。','info');
     }catch(e){hideOv();addMsg('文字起こし解析失敗: '+e.message,'error');}
     return;
   }
@@ -1794,6 +1812,8 @@ let _dbCache=[];
 let _dbSort='date';
 let _expandedCards=new Set(); // チャット・音声展開中のid集合
 let _expandedTN=new Set();    // ノート展開中のid集合
+let _selectMode=false;        // 複数選択モード
+let _selectedIds=new Set();   // 選択中のid集合
 
 // ── 最終同期ラベル ────────────────────────────────────────────────────────────
 function updateLastSyncLabel(isoStr){
@@ -1858,6 +1878,117 @@ async function migrateOldTagsToMainTag(){
     if(migrated>0){saveTagDefs();console.log('[migrate] tags→mainTag:',migrated,'件');}
     await dbPutSetting('migration_main_tag_v1',true);
   }catch(e){console.warn('migration error:',e);}
+}
+
+// ── 複数選択モード ────────────────────────────────────────────────────────────
+function toggleSelectMode(){
+  _selectMode=!_selectMode;
+  _selectedIds.clear();
+  const vdb=document.getElementById('view-db');
+  const btn=document.getElementById('db-selmode-btn');
+  if(_selectMode){
+    vdb?.classList.add('select-mode');
+    if(btn){btn.style.background='var(--r2)';btn.style.borderColor='var(--r1)';btn.style.color='var(--t0)';}
+  }else{
+    vdb?.classList.remove('select-mode');
+    if(btn){btn.style.background='';btn.style.borderColor='';btn.style.color='';}
+  }
+  updateSelectBar();
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
+}
+
+function toggleSelect(e,id){
+  e.stopPropagation();
+  if(_selectedIds.has(id)){_selectedIds.delete(id);document.getElementById('dbcard-'+id)?.classList.remove('sel');}
+  else{_selectedIds.add(id);document.getElementById('dbcard-'+id)?.classList.add('sel');}
+  const cb=document.querySelector('#dbcard-'+id+' .db-sel-cb');
+  if(cb)cb.checked=_selectedIds.has(id);
+  updateSelectBar();
+}
+
+function selectAllVisible(){
+  document.querySelectorAll('.db-card').forEach(card=>{
+    const id=parseInt(card.id.replace('dbcard-',''));
+    if(!isNaN(id)){_selectedIds.add(id);card.classList.add('sel');const cb=card.querySelector('.db-sel-cb');if(cb)cb.checked=true;}
+  });
+  updateSelectBar();
+}
+
+function deselectAll(){
+  _selectedIds.clear();
+  document.querySelectorAll('.db-card.sel').forEach(c=>{c.classList.remove('sel');const cb=c.querySelector('.db-sel-cb');if(cb)cb.checked=false;});
+  updateSelectBar();
+}
+
+function updateSelectBar(){
+  const bar=document.getElementById('db-select-bar');
+  if(!bar)return;
+  if(!_selectMode){bar.innerHTML='';bar.classList.remove('active');return;}
+  bar.classList.add('active');
+  const cnt=_selectedIds.size;
+  const mainOpts=_mainTags.map(t=>'<option value="'+esc(t.name)+'">'+esc(t.name)+'</option>').join('');
+  const subOpts=_subTagDefs.map(t=>'<option value="'+esc(t.name)+'">'+esc(t.name)+'</option>').join('');
+  bar.innerHTML=''
+    +'<span class="sel-cnt">'+cnt+'件選択中</span>'
+    +'<button class="sel-btn" onclick="selectAllVisible()">全て選択</button>'
+    +'<button class="sel-btn" onclick="deselectAll()">全解除</button>'
+    +(mainOpts?'<span class="sel-sep"></span><span class="sel-lbl">メインタグ:</span>'
+      +'<select class="sel-pick" id="sel-main-pick"><option value="">— 選択 —</option>'+mainOpts+'</select>'
+      +'<button class="sel-btn" onclick="bulkSetMainTag()">設定</button>'
+      +'<button class="sel-btn danger" onclick="bulkClearMainTag()">外す</button>':'')
+    +(subOpts?'<span class="sel-sep"></span><span class="sel-lbl">サブタグ:</span>'
+      +'<select class="sel-pick" id="sel-sub-pick"><option value="">— 選択 —</option>'+subOpts+'</select>'
+      +'<button class="sel-btn" onclick="bulkAddSubTag()">追加</button>'
+      +'<button class="sel-btn danger" onclick="bulkRemoveSubTag()">外す</button>':'')
+    +'<button class="sel-btn exit" onclick="toggleSelectMode()">✕ 終了</button>';
+}
+
+async function bulkSetMainTag(){
+  const name=document.getElementById('sel-main-pick')?.value;
+  if(!name||!_selectedIds.size)return;
+  const patches=[..._selectedIds].map(id=>({id,changes:{mainTag:name}}));
+  await dbPatchMany(patches);
+  for(const id of _selectedIds){const i=_dbCache.findIndex(r=>r.id===id);if(i>=0)_dbCache[i]={..._dbCache[i],mainTag:name};}
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
+  ghSync(true);toast(_selectedIds.size+'件にメインタグ「'+name+'」を設定','ok');
+}
+
+async function bulkClearMainTag(){
+  if(!_selectedIds.size)return;
+  const patches=[..._selectedIds].map(id=>({id,changes:{mainTag:null}}));
+  await dbPatchMany(patches);
+  for(const id of _selectedIds){const i=_dbCache.findIndex(r=>r.id===id);if(i>=0)_dbCache[i]={..._dbCache[i],mainTag:null};}
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
+  ghSync(true);toast(_selectedIds.size+'件のメインタグを外しました','ok');
+}
+
+async function bulkAddSubTag(){
+  const name=document.getElementById('sel-sub-pick')?.value;
+  if(!name||!_selectedIds.size)return;
+  const patches=[..._selectedIds].map(id=>{
+    const rec=_dbCache.find(r=>r.id===id);
+    const sub=[...(rec?.subTags||[])];
+    if(!sub.includes(name))sub.push(name);
+    return{id,changes:{subTags:sub}};
+  });
+  await dbPatchMany(patches);
+  for(const{id,changes}of patches){const i=_dbCache.findIndex(r=>r.id===id);if(i>=0)_dbCache[i]={..._dbCache[i],...changes};}
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
+  ghSync(true);toast(_selectedIds.size+'件にサブタグ「'+name+'」を追加','ok');
+}
+
+async function bulkRemoveSubTag(){
+  const name=document.getElementById('sel-sub-pick')?.value;
+  if(!name||!_selectedIds.size)return;
+  const patches=[..._selectedIds].map(id=>{
+    const rec=_dbCache.find(r=>r.id===id);
+    const sub=(rec?.subTags||[]).filter(s=>s!==name);
+    return{id,changes:{subTags:sub}};
+  });
+  await dbPatchMany(patches);
+  for(const{id,changes}of patches){const i=_dbCache.findIndex(r=>r.id===id);if(i>=0)_dbCache[i]={..._dbCache[i],...changes};}
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
+  ghSync(true);toast(_selectedIds.size+'件からサブタグ「'+name+'」を外しました','ok');
 }
 
 function toggleCardExpand(e,id){
@@ -2164,8 +2295,13 @@ function renderDB(records,q,acct){
       :'';
 
     const metaUrl=rec.videoUrl?' | <a href="'+esc(rec.videoUrl)+'" target="_blank" style="color:var(--r1);text-decoration:none" onclick="event.stopPropagation()">'+esc(rec.videoUrl.slice(0,40))+'</a>':'';
-    return'<div class="db-card" id="dbcard-'+rec.id+'" ondblclick="loadRecordToAnalysis('+rec.id+')" title="ダブルクリックで解析画面に読み込む">'
-      +'<div class="db-card-h" onclick="(!event.defaultPrevented)&&toggleCardExpand(event,'+rec.id+')">'+ep+'<div class="db-title">'+hlStr(title,q)+'</div>'+syncBadge+'</div>'
+    const isSel=_selectedIds.has(rec.id);
+    const selCb='<input type="checkbox" class="db-sel-cb"'+(isSel?' checked':'')+' onclick="toggleSelect(event,'+rec.id+')">';
+    const cardClick=_selectMode
+      ?'toggleSelect(event,'+rec.id+')'
+      :'(!event.defaultPrevented)&&toggleCardExpand(event,'+rec.id+')';
+    return'<div class="db-card'+(isSel?' sel':'')+'" id="dbcard-'+rec.id+'" ondblclick="'+(_selectMode?'':'loadRecordToAnalysis('+rec.id+')')+'" title="'+(isSel?'選択中 — クリックで解除':'ダブルクリックで解析画面に読み込む')+'">'
+      +'<div class="db-card-h" onclick="'+cardClick+'">'+selCb+ep+'<div class="db-title">'+hlStr(title,q)+'</div>'+syncBadge+'</div>'
       +'<div class="db-meta">'+esc(date)+metaUrl+'</div>'
       +mainTagHtml
       +subTagHtml
@@ -3057,6 +3193,7 @@ function deleteSubTagDef(idx){
 
 // ── タグフィルタバー ─────────────────────────────────────────────────────────
 function renderTagBar(){
+  updateSelectBar(); // タグ定義が変わったとき select-bar のドロップダウンも更新
   const bar=document.getElementById('db-tag-bar');
   if(!bar)return;
   let html='';
