@@ -288,7 +288,10 @@ input[type=range]{
 #db-cnt{font-size:12px;color:var(--t1);flex-shrink:0}
 .db-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
 .db-card-h{display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;cursor:pointer;user-select:none}
-.db-expand-hint{font-size:9px;color:var(--t2);margin-top:2px;text-align:right;padding-top:2px}
+.db-expand-btns{display:flex;gap:6px;margin-top:6px;padding-top:4px;border-top:1px solid var(--r3)}
+.db-expand-btn{flex:1;background:none;border:1px solid var(--r3);border-radius:var(--rad);color:var(--t2);font-size:10px;padding:3px 0;cursor:pointer;transition:all .12s;font-family:inherit}
+.db-expand-btn:hover{border-color:var(--r4);color:var(--t1)}
+.db-expand-btn.active{background:rgba(255,255,255,0.04);border-color:var(--r4);color:var(--t0)}
 .ep-badge{display:flex;flex-direction:column;align-items:center;justify-content:center;border:3px solid var(--r1);border-radius:9px;padding:4px 8px;font-family:var(--hf);font-weight:700;flex-shrink:0;min-width:48px;text-align:center;line-height:1;gap:1px}
 .ep-badge-p{font-size:10px;color:var(--t1);letter-spacing:1px;text-transform:uppercase}
 .ep-badge-n{font-size:20px;color:var(--t0)}
@@ -342,7 +345,9 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .db-card:hover{border-color:var(--r4)}
 .db-ynp-memo{margin:6px 0 4px;padding:7px 10px;background:rgba(62,166,255,0.06);border-left:2px solid rgba(62,166,255,0.35);border-radius:0 4px 4px 0}
 .db-ynp-memo-label{font-size:10px;color:#3ea6ff99;margin-bottom:3px;font-weight:600;letter-spacing:0.5px}
-.db-ynp-memo-text{font-size:12px;color:var(--t0);white-space:pre-wrap;word-break:break-word;margin:0;font-family:inherit;line-height:1.6;opacity:0.85}
+.db-ynp-memo-text{font-size:12px;color:var(--t0);white-space:pre-wrap;word-break:break-word;margin:0;font-family:inherit;line-height:1.6;opacity:0.85;max-height:260px;overflow-y:auto;display:block}
+.db-ynp-memo-text::-webkit-scrollbar{width:3px}
+.db-ynp-memo-text::-webkit-scrollbar-thumb{background:var(--r2);border-radius:2px}
 /* TN (タイムラインノート) section in DB card */
 .db-tn-section{margin:6px 0 4px;padding:7px 10px;background:rgba(255,165,0,0.05);border-left:2px solid rgba(232,160,48,0.45);border-radius:0 4px 4px 0}
 .db-tn-label{font-size:10px;color:#e8a03099;margin-bottom:3px;font-weight:600;letter-spacing:0.5px}
@@ -452,7 +457,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v1.6.0</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v1.7.0</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -1769,7 +1774,8 @@ async function registerCurrentVideo(){
 
 let _dbCache=[];
 let _dbSort='date';
-let _expandedCards=new Set(); // 展開中カードのid集合
+let _expandedCards=new Set(); // チャット・音声展開中のid集合
+let _expandedTN=new Set();    // ノート展開中のid集合
 
 // ── 最終同期ラベル ────────────────────────────────────────────────────────────
 function updateLastSyncLabel(isoStr){
@@ -1840,6 +1846,12 @@ function toggleCardExpand(e,id){
   e.stopPropagation();
   if(_expandedCards.has(id))_expandedCards.delete(id);
   else _expandedCards.add(id);
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
+}
+function toggleTNExpand(e,id){
+  e.stopPropagation();
+  if(_expandedTN.has(id))_expandedTN.delete(id);
+  else _expandedTN.add(id);
   renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
 }
 
@@ -2048,14 +2060,17 @@ function renderDB(records,q,acct){
       +(_memoLines?'<span class="cnt-chip note">ノート <b>'+_memoLines+'</b>行</span>':'')
       +'</div>';
 
-    // hits list — 検索時は常に表示、検索なしは展開済みカードのみ
+    // 展開状態（チャット・音声 / ノートは独立）
     const isExpanded=_expandedCards.has(rec.id);
+    const isTNExpanded=_expandedTN.has(rec.id);
+
+    // ノートセクション（ノート展開時 or 検索ヒット時のみ表示）
     const _tnHit=q&&_tn.toLowerCase().includes(ql);
-    const tnHtml=(isExpanded||_tnHit)&&_tn
+    const tnHtml=(isTNExpanded||_tnHit)&&_tn
       ?'<div class="db-tn-section"><div class="db-tn-label">📌 タイムラインノート</div><pre class="db-tn-text">'+esc(_tn)+'</pre></div>'
       :'';
     const _memoHit=q&&_memo.toLowerCase().includes(ql);
-    const memoHtml=(isExpanded||_memoHit)&&_memo
+    const memoHtml=(isTNExpanded||_memoHit)&&_memo
       ?'<div class="db-ynp-memo"><div class="db-ynp-memo-label">📝 YT NOTES</div><pre class="db-ynp-memo-text">'+esc(_memo)+'</pre></div>'
       :'';
     const showHits=q||al||isExpanded;
@@ -2091,9 +2106,14 @@ function renderDB(records,q,acct){
         :'<span style="font-size:9px;color:var(--t2);border:1px solid var(--r3);border-radius:3px;padding:1px 5px;margin-left:6px;flex-shrink:0">未同期</span>')
       :'';
 
-    // 展開ヒント（検索なし時のみ）
+    // 展開ボタン2種（検索なし時のみ）
+    const hasNotes=!!(_tn||_memo);
+    const hasData=!!(chatData.length||trData.length);
     const expandHint=(!q&&!al)
-      ?'<div class="db-expand-hint" onclick="toggleCardExpand(event,'+rec.id+')">'+(isExpanded?'▲ 閉じる':'▼ データを表示')+'</div>'
+      ?'<div class="db-expand-btns">'
+        +(hasData?'<button class="db-expand-btn'+(isExpanded?' active':'')+'" onclick="toggleCardExpand(event,'+rec.id+')">'+(isExpanded?'▲ チャット・音声':'▼ チャット・音声')+'</button>':'')
+        +(hasNotes?'<button class="db-expand-btn'+(isTNExpanded?' active':'')+'" onclick="toggleTNExpand(event,'+rec.id+')">'+(isTNExpanded?'▲ ノート':'▼ ノート')+'</button>':'')
+        +'</div>'
       :'';
 
     const metaUrl=rec.videoUrl?' | <a href="'+esc(rec.videoUrl)+'" target="_blank" style="color:var(--r1);text-decoration:none" onclick="event.stopPropagation()">'+esc(rec.videoUrl.slice(0,40))+'</a>':'';
