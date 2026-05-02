@@ -311,6 +311,8 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .cnt-chip.tr{background:rgba(58,158,96,0.10);color:#5aae80}
 .cnt-chip.note{background:rgba(62,166,255,0.10);color:#3ea6ff}
 .cnt-chip.tn{background:rgba(255,165,0,0.12);color:#e8a030}
+.cnt-chip.tn.hit{background:rgba(255,165,0,0.28);color:#ffb830;border:1px solid rgba(255,165,0,0.5)}
+.cnt-chip.note.hit{background:rgba(62,166,255,0.22);color:#5bbfff;border:1px solid rgba(62,166,255,0.45)}
 .db-actions{display:flex;gap:6px;margin-top:8px;border-top:1px solid var(--r3);padding-top:8px;flex-wrap:wrap}
 .db-del{
   background:none;border:1px solid rgba(185,24,40,0.2);border-radius:var(--rad);
@@ -352,6 +354,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .db-tn-section{margin:6px 0 4px;padding:7px 10px;background:rgba(255,165,0,0.05);border-left:2px solid rgba(232,160,48,0.45);border-radius:0 4px 4px 0}
 .db-tn-label{font-size:10px;color:#e8a03099;margin-bottom:3px;font-weight:600;letter-spacing:0.5px}
 .db-tn-text{font-size:12px;color:var(--t0);white-space:pre-wrap;word-break:break-word;margin:0;font-family:inherit;line-height:1.6;opacity:0.88;max-height:260px;overflow-y:auto;display:block}
+.db-tn-snippet{font-size:12px;color:var(--t1);white-space:pre-wrap;word-break:break-word;line-height:1.6;padding:3px 0;opacity:0.9}
 .db-tn-text::-webkit-scrollbar{width:3px}
 .db-tn-text::-webkit-scrollbar-track{background:transparent}
 .db-tn-text::-webkit-scrollbar-thumb{background:var(--r2);border-radius:2px}
@@ -2109,6 +2112,27 @@ function setNoteSearch(q){
   renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
 }
 
+// ノートのヒット周辺抜粋（重いハイライト全文展開の代わりに使用）
+function _noteSnippet(text,kw,ctxBefore,ctxAfter){
+  ctxBefore=ctxBefore||50; ctxAfter=ctxAfter||100;
+  if(!text||!kw)return'';
+  const lower=text.toLowerCase(), kwl=kw.toLowerCase();
+  const idx=lower.indexOf(kwl);
+  if(idx<0)return'';
+  const s=Math.max(0,idx-ctxBefore);
+  const e=Math.min(text.length,idx+kw.length+ctxAfter);
+  return (s>0?'…':'')+text.slice(s,e)+(e<text.length?'…':'');
+}
+
+// 高速ヒットカウント（regexより軽い）
+function _countHits(text,kw){
+  if(!text||!kw)return 0;
+  const lower=text.toLowerCase(), kwl=kw.toLowerCase();
+  let n=0,pos=0;
+  while((pos=lower.indexOf(kwl,pos))!==-1){n++;pos+=kwl.length;}
+  return n;
+}
+
 function parseEpBadge(ep,color){
   if(!ep)return'';
   const m=ep.match(/^([A-Za-z]*)(\d+.*)$/);
@@ -2255,27 +2279,42 @@ function renderDB(records,q,acct){
       chatMatchCnt=chatData.length;
       trMatchCnt=trData.length;
     }
+    // ノート検索ヒット数（高速indexOf方式）
+    const tnHitCnt=_noteQ?_countHits(_tn,_noteQ):0;
+    const memoHitCnt=_noteQ?_countHits(_memo,_noteQ):0;
     const acctLabel=al?'@'+acct+' ':'チャット ';
     const countsHtml='<div class="db-counts">'
       +'<span class="cnt-chip chat">'+esc(acctLabel)+'<b>'+chatMatchCnt+'</b>件</span>'
       +(al?'':'<span class="cnt-chip tr">音声 <b>'+trMatchCnt+'</b>件</span>')
-      +(_tnLines?'<span class="cnt-chip tn">TN <b>'+_tnLines+'</b>行</span>':'')
-      +(_memoLines?'<span class="cnt-chip note">ノート <b>'+_memoLines+'</b>行</span>':'')
+      +(_tnLines?'<span class="cnt-chip tn'+(tnHitCnt?' hit':'')+'">'
+        +'TN <b>'+_tnLines+'</b>行'+(tnHitCnt?' · <b>'+tnHitCnt+'</b>ヒット':'')
+        +'</span>':'')
+      +(_memoLines?'<span class="cnt-chip note'+(memoHitCnt?' hit':'')+'">'
+        +'ノート <b>'+_memoLines+'</b>行'+(memoHitCnt?' · <b>'+memoHitCnt+'</b>ヒット':'')
+        +'</span>':'')
       +'</div>';
 
     // 展開状態（チャット・音声 / ノートは独立）
     const isExpanded=_expandedCards.has(rec.id);
     const isTNExpanded=_expandedTN.has(rec.id);
 
-    // ノートセクション（ノート展開時 or ノート検索ヒット時のみ表示）
-    const _tnHit=_noteQ&&_tn.toLowerCase().includes(qnl);
-    const tnHtml=(isTNExpanded||_tnHit)&&_tn
-      ?'<div class="db-tn-section"><div class="db-tn-label">📌 タイムラインノート</div><pre class="db-tn-text">'+(_noteQ?hlStr(_tn,_noteQ):esc(_tn))+'</pre></div>'
-      :'';
-    const _memoHit=_noteQ&&_memo.toLowerCase().includes(qnl);
-    const memoHtml=(isTNExpanded||_memoHit)&&_memo
-      ?'<div class="db-ynp-memo"><div class="db-ynp-memo-label">📝 YT NOTES</div><pre class="db-ynp-memo-text">'+(_noteQ?hlStr(_memo,_noteQ):esc(_memo))+'</pre></div>'
-      :'';
+    // ノートセクション（展開時=全文 / 検索ヒット時=スニペットのみ）
+    const _tnHit=tnHitCnt>0;
+    let tnHtml='';
+    if(_tn){
+      if(isTNExpanded)
+        tnHtml='<div class="db-tn-section"><div class="db-tn-label">📌 タイムラインノート</div><pre class="db-tn-text">'+(_noteQ?hlStr(_tn,_noteQ):esc(_tn))+'</pre></div>';
+      else if(_tnHit)
+        tnHtml='<div class="db-tn-section"><div class="db-tn-label">📌 タイムラインノート</div><div class="db-tn-snippet">'+hlStr(_noteSnippet(_tn,_noteQ),_noteQ)+'</div></div>';
+    }
+    const _memoHit=memoHitCnt>0;
+    let memoHtml='';
+    if(_memo){
+      if(isTNExpanded)
+        memoHtml='<div class="db-ynp-memo"><div class="db-ynp-memo-label">📝 YT NOTES</div><pre class="db-ynp-memo-text">'+(_noteQ?hlStr(_memo,_noteQ):esc(_memo))+'</pre></div>';
+      else if(_memoHit)
+        memoHtml='<div class="db-ynp-memo"><div class="db-ynp-memo-label">📝 YT NOTES</div><div class="db-tn-snippet">'+hlStr(_noteSnippet(_memo,_noteQ),_noteQ)+'</div></div>';
+    }
     const showHits=q||al||isExpanded;
     let hitsHtml='';
     if(showHits){
