@@ -71,9 +71,9 @@ header{
 .right{
   background:var(--bg0);overflow-y:auto;padding:16px;
 }
-.right::-webkit-scrollbar{width:6px}
+.right::-webkit-scrollbar{width:10px}
 .right::-webkit-scrollbar-track{background:var(--bg0)}
-.right::-webkit-scrollbar-thumb{background:var(--r2);border-radius:3px}
+.right::-webkit-scrollbar-thumb{background:var(--r2);border-radius:5px}
 
 /* MESSAGES */
 #msgs{display:flex;flex-direction:column;gap:6px}
@@ -274,8 +274,8 @@ input[type=range]{
 
 /* DATABASE VIEW */
 #view-db{display:none;padding:0 16px 16px;height:calc(100vh - 50px);overflow-y:auto}
-#view-db::-webkit-scrollbar{width:6px}
-#view-db::-webkit-scrollbar-thumb{background:var(--r2);border-radius:3px}
+#view-db::-webkit-scrollbar{width:10px}
+#view-db::-webkit-scrollbar-thumb{background:var(--r2);border-radius:5px}
 /* 検索バー・タグバーをスクロール時も上部に固定 */
 .db-sticky-head{position:sticky;top:0;z-index:100;background:var(--bg0);padding:12px 0 4px;margin-bottom:6px;border-bottom:1px solid var(--r3)}
 .db-bar{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
@@ -432,8 +432,8 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 #tag-pop{position:fixed;z-index:600;background:var(--bg2);border:1px solid var(--r3);border-radius:6px;padding:10px;display:none;box-shadow:0 4px 20px rgba(0,0,0,0.5);min-width:160px;max-height:300px;overflow-y:auto}
 /* ── ranking view ──────────────────────────────────────────────────────────── */
 #view-rank{display:none;padding:16px;height:calc(100vh - 50px);overflow-y:auto}
-#view-rank::-webkit-scrollbar{width:6px}
-#view-rank::-webkit-scrollbar-thumb{background:var(--r2);border-radius:3px}
+#view-rank::-webkit-scrollbar{width:10px}
+#view-rank::-webkit-scrollbar-thumb{background:var(--r2);border-radius:5px}
 .rank-bar{display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
 .rank-q{background:var(--bg1);border:1px solid var(--r3);border-radius:var(--rad);color:var(--t0);padding:6px 10px;font-size:13px;outline:none;width:220px}
 .rank-q:focus{border-color:var(--r1)}
