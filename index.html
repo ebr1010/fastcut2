@@ -493,7 +493,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v1.9.5</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v1.9.6</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -787,6 +787,12 @@ function _renderMsg(text){
   return text.replace(STAMP_RE,m=>'['+m.replace(/^:_?/,'').replace(/:$/,'')+']');
 }
 // HTML表示用: yt3.ggpht.com URLがあれば<img>、なければchipバッジ
+// ※ hlStr は renderDB ローカルなので使わず、ここでハイライトをインライン実装
+function _hlEsc(s,kw){
+  const e=esc(s);
+  if(!kw||!s)return e;
+  return e.replace(new RegExp(esc(kw).replace(/[.*+?^\${}()|[\]\\]/g,'\\$&'),'gi'),m=>'<mark>'+m+'</mark>');
+}
 function _renderMsgHtml(text,kw){
   if(!text)return'';
   // yt3 URL をスタンプに対応付け（:_name: URL or URL :_name: のどちらも）
@@ -801,7 +807,7 @@ function _renderMsgHtml(text,kw){
   const parts=[];let last=0;
   const re=/:[^\s:]+:/g;let m;
   while((m=re.exec(t))!==null){
-    if(m.index>last){const plain=t.slice(last,m.index);parts.push(kw?hlStr(plain,kw):esc(plain));}
+    if(m.index>last){const plain=t.slice(last,m.index);parts.push(_hlEsc(plain,kw));}
     const name=m[0].replace(/^:_?/,'').replace(/:$/,'');
     const url=imgMap[m[0]];
     parts.push(url
@@ -809,7 +815,7 @@ function _renderMsgHtml(text,kw){
       :'<span class="stamp-chip">'+esc(name)+'</span>');
     last=m.index+m[0].length;
   }
-  if(last<t.length){const plain=t.slice(last).trim();if(plain)parts.push(kw?hlStr(plain,kw):esc(plain));}
+  if(last<t.length){const plain=t.slice(last).trim();if(plain)parts.push(_hlEsc(plain,kw));}
   for(const url of extras)parts.push('<img class="stamp-img" src="'+esc(url)+'" alt="[stamp]" loading="lazy">');
   return parts.join('');
 }
