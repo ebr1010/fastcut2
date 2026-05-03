@@ -297,9 +297,11 @@ input[type=range]{
 .ep-badge-n{font-size:20px;color:var(--t0)}
 .db-title{font-size:13px;color:var(--t0);flex:1;line-height:1.4;word-break:break-all}
 .db-meta{font-size:10px;color:var(--t2);margin-bottom:6px}
-.db-hits{display:flex;flex-direction:column;gap:3px;margin-top:6px;max-height:260px;overflow-y:auto;overflow-x:hidden}
-.db-hits::-webkit-scrollbar{width:3px}
-.db-hits::-webkit-scrollbar-thumb{background:var(--r2);border-radius:2px}
+.db-hits{display:flex;flex-direction:column;gap:3px;margin-top:6px;max-height:260px;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:var(--r2) transparent}
+.db-hits::-webkit-scrollbar{width:6px}
+.db-hits::-webkit-scrollbar-track{background:transparent}
+.db-hits::-webkit-scrollbar-thumb{background:var(--r2);border-radius:3px}
+.db-hits::-webkit-scrollbar-thumb:hover{background:var(--r1)}
 .db-hit{font-size:11px;color:var(--t1);display:flex;gap:6px;align-items:flex-start}
 .db-hit a{color:var(--r1);text-decoration:none;flex-shrink:0;font-family:var(--mf);font-size:10px}
 .db-hit a:hover{text-decoration:underline}
@@ -493,7 +495,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v1.9.9</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.0.0</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
