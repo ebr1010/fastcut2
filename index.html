@@ -493,7 +493,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v1.9.7</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v1.9.8</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -2121,16 +2121,16 @@ async function loadAndRenderDB(){
       try{
         const remote=await ghGet();
 
-        // ① タグ定義をリモートからマージ（tombstone尊重）
+        // ① タグ定義をリモートからマージ（tombstone尊重・リモート順序優先）
         for(const n of(remote.deletedTagNames||[]))_deletedTagNames.add(n);
         for(const n of(remote.deletedSubNames||[]))_deletedSubNames.add(n);
-        _mainTags=_mainTags.filter(t=>!_deletedTagNames.has(t.name));
-        _subTagDefs=_subTagDefs.filter(t=>!_deletedSubNames.has(t.name));
-        const _m=new Map(_mainTags.map(t=>[t.name,t]));
-        for(const t of(remote.mainTags||[]))if(!_m.has(t.name)&&!_deletedTagNames.has(t.name))_m.set(t.name,t);
-        _mainTags=[..._m.values()];
-        const _sn=new Set(_subTagDefs.map(t=>t.name));
-        for(const t of(remote.subTagDefs||[]))if(!_sn.has(t.name)&&!_deletedSubNames.has(t.name)){_subTagDefs.push(t);_sn.add(t.name);}
+        _mainTags=_mergeTagOrder(_mainTags,remote.mainTags,_deletedTagNames);
+        _subTagDefs=_mergeTagOrder(_subTagDefs,remote.subTagDefs,_deletedSubNames);
+        // スタンプ定義マージ（リモート順序優先）
+        if(remote.stampDefs?.length||_stampDefs.length){
+          _stampDefs=_mergeStampOrder(_stampDefs,remote.stampDefs);
+          saveStampDefs();
+        }
         saveTagDefs();
 
         // ② deletedRatsをマージ（リモートで削除されたレコードをローカルからも除去）
@@ -3001,9 +3001,28 @@ async function _ghWriteGitData(path,jsonStr,msg){
 }
 
 // ── 動画データ同期 ──────────────────────────────────────────────────────────
+// ── タグ・スタンプ順序マージヘルパー（リモート順序を基準にする）──────────────
+// remoteの並び順を正とし、ローカルのみの項目は末尾に追加。
+// 同名エントリはローカル優先（色変更などローカル編集を保持）。
+function _mergeTagOrder(local,remote,deletedSet){
+  const lMap=new Map(local.map(t=>[t.name,t]));
+  const rFiltered=(remote||[]).filter(t=>!deletedSet.has(t.name));
+  const merged=rFiltered.map(t=>lMap.get(t.name)||t);
+  const rNames=new Set(rFiltered.map(t=>t.name));
+  for(const t of local)if(!rNames.has(t.name)&&!deletedSet.has(t.name))merged.push(t);
+  return merged;
+}
+function _mergeStampOrder(local,remote){
+  const lMap=new Map(local.map(s=>[s.name,s]));
+  const merged=(remote||[]).map(s=>lMap.get(s.name)||s);
+  const rNames=new Set((remote||[]).map(s=>s.name));
+  for(const s of local)if(!rNames.has(s.name))merged.push(s);
+  return merged;
+}
+
 async function ghGet(){
   const remote=await _ghFetchFile(_ghCfg.path);
-  if(!remote.content)return{data:[],sha:null,mainTags:[],subTagDefs:[]};
+  if(!remote.content)return{data:[],sha:null,mainTags:[],subTagDefs:[],stampDefs:[]};
   // 圧縮フォーマット {z:1,d:"<b64-gzip>"} を展開
   let raw=remote.content;
   if(raw&&raw.z===1&&raw.d){
@@ -3015,14 +3034,15 @@ async function ghGet(){
   if(!Array.isArray(data))throw new Error('データが配列ではありません');
   const mainTags=(!Array.isArray(raw)&&raw.mainTags)||(!Array.isArray(raw)&&raw.t)||[];
   const subTagDefs=(!Array.isArray(raw)&&raw.subTagDefs)||[];
+  const stampDefs=(!Array.isArray(raw)&&raw.stampDefs)||[];
   const deletedTagNames=(!Array.isArray(raw)&&raw.deletedTagNames)||[];
   const deletedSubNames=(!Array.isArray(raw)&&raw.deletedSubNames)||[];
   const deletedRats=(!Array.isArray(raw)&&raw.deletedRats)||[];
-  return{data,sha:remote.sha,mainTags,subTagDefs,deletedTagNames,deletedSubNames,deletedRats};
+  return{data,sha:remote.sha,mainTags,subTagDefs,stampDefs,deletedTagNames,deletedSubNames,deletedRats};
 }
 
 async function ghPut(videos,sha){
-  const payload={v:videos,mainTags:_mainTags,subTagDefs:_subTagDefs,
+  const payload={v:videos,mainTags:_mainTags,subTagDefs:_subTagDefs,stampDefs:_stampDefs,
     deletedTagNames:[..._deletedTagNames],deletedSubNames:[..._deletedSubNames],
     deletedRats:[..._deletedRats]};
   await _ghWriteFile(_ghCfg.path,payload,sha,'FASTCUT sync '+new Date().toISOString().slice(0,16));
@@ -3157,20 +3177,18 @@ async function ghSync(silent){
     const remote=await ghGet();
     if(st)st.textContent='[1] GitHub取得: '+remote.data.length+'件';
 
-    // タグ定義マージ（tombstone に含まれるタグは復活させない）
+    // タグ定義マージ（tombstone に含まれるタグは復活させない・リモート順序優先）
     for(const rat of(remote.deletedRats||[]))_deletedRats.add(rat);
     saveDeletedRats();
     for(const n of(remote.deletedTagNames||[]))_deletedTagNames.add(n);
     for(const n of(remote.deletedSubNames||[]))_deletedSubNames.add(n);
-    // tombstoneに含まれるタグをローカルからも除去
-    _mainTags=_mainTags.filter(t=>!_deletedTagNames.has(t.name));
-    _subTagDefs=_subTagDefs.filter(t=>!_deletedSubNames.has(t.name));
-    // remoteにしかない新規タグを追加（tombstoneにないもののみ）
-    const m=new Map(_mainTags.map(t=>[t.name,t]));
-    for(const t of(remote.mainTags||[]))if(!m.has(t.name)&&!_deletedTagNames.has(t.name))m.set(t.name,t);
-    _mainTags=[...m.values()];
-    const sNames=new Set(_subTagDefs.map(t=>t.name));
-    for(const t of(remote.subTagDefs||[]))if(!sNames.has(t.name)&&!_deletedSubNames.has(t.name)){_subTagDefs.push(t);sNames.add(t.name);}
+    _mainTags=_mergeTagOrder(_mainTags,remote.mainTags,_deletedTagNames);
+    _subTagDefs=_mergeTagOrder(_subTagDefs,remote.subTagDefs,_deletedSubNames);
+    // スタンプ定義マージ（リモート順序優先）
+    if(remote.stampDefs?.length||_stampDefs.length){
+      _stampDefs=_mergeStampOrder(_stampDefs,remote.stampDefs);
+      saveStampDefs();
+    }
     saveTagDefs();renderTagBar();renderRankTagSel();
 
     const existing=new Set(_dbCache.map(r=>r.registeredAt));
