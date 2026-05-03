@@ -493,7 +493,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v1.9.6</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v1.9.7</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -665,6 +665,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     <button id="gh-push-btn" class="db-bar-btn" style="display:none" title="ローカルの変更をGitHubに保存">⬆ 保存</button>
     <button id="gh-pull-btn" class="db-bar-btn" style="display:none" title="GitHubから最新データを取得してローカルを更新">⬇ 更新</button>
     <span id="last-sync-label" style="font-size:10px;color:var(--t2);white-space:nowrap"></span>
+    <button class="db-bar-btn" id="stamp-mgr-btn" title="スタンプ画像を登録">🎭 スタンプ</button>
     <button class="db-bar-btn" onclick="openTgModal()">🏷 タグ管理</button>
     <button id="db-selmode-btn" class="db-bar-btn" onclick="toggleSelectMode()">☑ 選択</button>
     <button id="db-kw-csv-btn" class="db-bar-btn" disabled>↓ KW マーカー CSV</button>
@@ -809,7 +810,7 @@ function _renderMsgHtml(text,kw){
   while((m=re.exec(t))!==null){
     if(m.index>last){const plain=t.slice(last,m.index);parts.push(_hlEsc(plain,kw));}
     const name=m[0].replace(/^:_?/,'').replace(/:$/,'');
-    const url=imgMap[m[0]];
+    const url=imgMap[m[0]]||_getStampUrl(name);
     parts.push(url
       ?'<img class="stamp-img" src="'+esc(url)+'" alt="'+esc(name)+'" title="'+esc(name)+'" loading="lazy">'
       :'<span class="stamp-chip">'+esc(name)+'</span>');
@@ -2665,6 +2666,68 @@ async function runFromLoaded(){
   }
 }
 
+// ─── §20c STAMP MANAGER ───────────────────────────────────────────────────────
+let _stampDefs=[];          // [{name:'ぱるむ', url:'https://...' or 'data:image/...'}]
+let _pendingStampDataUrl=null;
+
+async function loadStampDefs(){
+  const v=await dbGetSetting('stamp_defs');
+  if(Array.isArray(v))_stampDefs=v;
+}
+function saveStampDefs(){dbPutSetting('stamp_defs',_stampDefs);}
+function _getStampUrl(name){
+  const d=_stampDefs.find(d=>d.name===name);
+  return d?d.url:null;
+}
+
+function openStampModal(){
+  renderStampList();
+  document.getElementById('stamp-modal').classList.add('open');
+}
+function closeStampModal(){document.getElementById('stamp-modal').classList.remove('open');}
+
+function renderStampList(){
+  const el=document.getElementById('stamp-list');
+  if(!_stampDefs.length){
+    el.innerHTML='<div style="color:var(--t2);font-size:12px;padding:8px 0">スタンプが登録されていません</div>';
+    return;
+  }
+  el.innerHTML=_stampDefs.map((d,i)=>
+    '<div class="tg-row" style="gap:10px">'
+    +'<img src="'+esc(d.url)+'" style="height:28px;width:auto;border-radius:3px;flex-shrink:0" onerror="this.style.display=\'none\'">'
+    +'<span class="tg-name" style="font-family:monospace;font-size:12px">:_'+esc(d.name)+':</span>'
+    +'<button class="tg-del" onclick="deleteStampDef('+i+')">削除</button>'
+    +'</div>'
+  ).join('');
+}
+
+function deleteStampDef(idx){
+  _stampDefs.splice(idx,1);
+  saveStampDefs();
+  renderStampList();
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
+}
+
+async function addStampDef(){
+  const nameEl=document.getElementById('stamp-name-in');
+  const urlEl=document.getElementById('stamp-url-in');
+  const name=nameEl.value.trim();
+  if(!name){toast('スタンプ名を入力してください','wrn');return;}
+  const url=_pendingStampDataUrl||urlEl.value.trim();
+  if(!url){toast('画像URLまたはファイルを選択してください','wrn');return;}
+  const existing=_stampDefs.findIndex(d=>d.name===name);
+  if(existing>=0)_stampDefs[existing].url=url;
+  else _stampDefs.push({name,url});
+  saveStampDefs();
+  _pendingStampDataUrl=null;
+  nameEl.value='';urlEl.value='';
+  const prev=document.getElementById('stamp-file-preview');
+  if(prev)prev.innerHTML='';
+  renderStampList();
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
+  toast('スタンプ登録: '+name,'ok');
+}
+
 // ─── §20b AI EXPORT ──────────────────────────────────────────────────────────
 function _estimateAIBytes(records){
   return records.reduce((n,r)=>{
@@ -3882,6 +3945,22 @@ document.addEventListener('DOMContentLoaded',()=>{
   safe('db-backup-btn',()=>{
     document.getElementById('db-backup-btn').addEventListener('click',exportBackup);
   });
+  safe('stamp-mgr-btn',()=>{
+    document.getElementById('stamp-mgr-btn').addEventListener('click',openStampModal);
+  });
+  safe('stamp-file-in',()=>{
+    document.getElementById('stamp-file-in').addEventListener('change',function(){
+      const f=this.files[0];
+      if(!f)return;
+      const reader=new FileReader();
+      reader.onload=e=>{
+        _pendingStampDataUrl=e.target.result;
+        const prev=document.getElementById('stamp-file-preview');
+        if(prev)prev.innerHTML='<img src="'+_pendingStampDataUrl+'" style="height:32px;border-radius:3px;margin-top:4px">';
+      };
+      reader.readAsDataURL(f);
+    });
+  });
   safe('db-ai-export-btn',()=>{
     document.getElementById('db-ai-export-btn').addEventListener('click',openAiModal);
   });
@@ -3961,6 +4040,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     // ① 削除トゥームストーン・同期済みIDをロード
     await loadDeletedRats();
     await loadSyncedIds();
+    await loadStampDefs();
 
     // ② IDB（settings store）からタグ定義をロード + 旧データマイグレーション
     await loadTagDefsFromIDB();
@@ -4037,6 +4117,38 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 <div id="tag-pop"></div>
 <div id="gh-progress-bar"></div>
+
+<div class="tg-modal" id="stamp-modal" onclick="closeStampModal()">
+  <div class="tg-inner" onclick="event.stopPropagation()" style="max-width:480px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <h3 style="flex:1">🎭 スタンプ管理</h3>
+      <button class="db-bar-btn" onclick="closeStampModal()">✕</button>
+    </div>
+    <div class="tg-sect">
+      <div class="tg-sect-h">登録済みスタンプ</div>
+      <div id="stamp-list"></div>
+    </div>
+    <div class="tg-sect" style="margin-top:14px">
+      <div class="tg-sect-h">新規登録 / 上書き</div>
+      <div class="tg-row" style="flex-wrap:wrap;gap:8px">
+        <input class="tg-in" id="stamp-name-in" placeholder="スタンプ名（例: ぱるむ）" style="flex:1;min-width:120px" maxlength="40" onkeydown="if(event.key==='Enter')addStampDef()">
+        <input class="tg-in" id="stamp-url-in" placeholder="画像URL（https://...）" style="flex:2;min-width:180px" onkeydown="if(event.key==='Enter')addStampDef()">
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <label class="db-bar-btn" style="cursor:pointer">
+          📁 ファイル選択
+          <input type="file" id="stamp-file-in" accept="image/*" style="display:none">
+        </label>
+        <div id="stamp-file-preview"></div>
+        <button class="db-bar-btn" onclick="addStampDef()" style="margin-left:auto">➕ 登録</button>
+      </div>
+      <div style="font-size:11px;color:var(--t2);margin-top:8px;line-height:1.5">
+        スタンプ名はYCSチャットの <code style="background:rgba(185,24,40,0.15);padding:1px 4px;border-radius:3px">:名前:</code> や <code style="background:rgba(185,24,40,0.15);padding:1px 4px;border-radius:3px">:_名前:</code> の名前部分を入力してください。<br>
+        URLかファイルどちらか一方を指定してください。ファイルはデータURIとして保存されます。
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="gh-modal" id="ai-modal" onclick="closeAiModal()">
   <div class="gh-inner" onclick="event.stopPropagation()" style="max-width:420px">
