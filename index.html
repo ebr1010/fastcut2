@@ -493,7 +493,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v1.9.8</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v1.9.9</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -3177,16 +3177,19 @@ async function ghSync(silent){
     const remote=await ghGet();
     if(st)st.textContent='[1] GitHub取得: '+remote.data.length+'件';
 
-    // タグ定義マージ（tombstone に含まれるタグは復活させない・リモート順序優先）
+    // タグ定義マージ（push側: ローカル順序を保持しつつリモートの新規項目を末尾追加）
     for(const rat of(remote.deletedRats||[]))_deletedRats.add(rat);
     saveDeletedRats();
     for(const n of(remote.deletedTagNames||[]))_deletedTagNames.add(n);
     for(const n of(remote.deletedSubNames||[]))_deletedSubNames.add(n);
-    _mainTags=_mergeTagOrder(_mainTags,remote.mainTags,_deletedTagNames);
-    _subTagDefs=_mergeTagOrder(_subTagDefs,remote.subTagDefs,_deletedSubNames);
-    // スタンプ定義マージ（リモート順序優先）
+    _mainTags=_mainTags.filter(t=>!_deletedTagNames.has(t.name));
+    {const lm=new Set(_mainTags.map(t=>t.name));for(const t of(remote.mainTags||[]))if(!lm.has(t.name)&&!_deletedTagNames.has(t.name)){_mainTags.push(t);lm.add(t.name);}}
+    _subTagDefs=_subTagDefs.filter(t=>!_deletedSubNames.has(t.name));
+    {const ls=new Set(_subTagDefs.map(t=>t.name));for(const t of(remote.subTagDefs||[]))if(!ls.has(t.name)&&!_deletedSubNames.has(t.name)){_subTagDefs.push(t);ls.add(t.name);}}
+    // スタンプ定義マージ（push側: ローカル順序保持・リモート新規を末尾追加）
     if(remote.stampDefs?.length||_stampDefs.length){
-      _stampDefs=_mergeStampOrder(_stampDefs,remote.stampDefs);
+      const lsn=new Set(_stampDefs.map(s=>s.name));
+      for(const s of(remote.stampDefs||[]))if(!lsn.has(s.name)){_stampDefs.push(s);lsn.add(s.name);}
       saveStampDefs();
     }
     saveTagDefs();renderTagBar();renderRankTagSel();
