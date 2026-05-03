@@ -491,7 +491,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v1.9.1</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v1.9.4</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -772,6 +772,16 @@ function ytLink(vid,sec){
 
 function esc(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── スタンプ処理 ─────────────────────────────────────────────────────────────
+// YouTube メンバーシップスタンプ / カスタム絵文字: :_ぱるむ: :stamp: など
+const STAMP_RE=/:[_\wぁ-鿿゠-ヿ]+:/g;
+// 検索用: スタンプを除去（スタンプ部分がキーワードに誤マッチしないようにする）
+function _stripStamps(text){return text.replace(STAMP_RE,'').replace(/\s+/g,' ').trim();}
+// 表示用: :_ぱるむ: → [ぱるむ]
+function _renderMsg(text){
+  return text.replace(STAMP_RE,m=>'['+m.replace(/^:_?/,'').replace(/:$/,'')+']');
 }
 
 function dl(content,name,mime){
@@ -1423,10 +1433,26 @@ async function run(){
     }
 
     showOv('タイムスタンプを変換中...');await tick();
-    const{out:chatConv,pre}=convertTimestamps(chatResult.records,startISO);
+    let{out:chatConv,pre}=convertTimestamps(chatResult.records,startISO);
     if(!chatConv.length){
       addMsg(`全${chatResult.records.length}件が配信開始前の時刻です。配信開始時刻を確認してください。`,'error');
       hideOv();return;
+    }
+    // ── プレミア公開の自動補正 ──────────────────────────────────────────────
+    // 配信開始が T00:00:00（日付のみ）でかつ最初のチャットが1時間以上後なら
+    // チャットの最初の日時 - 30秒 を配信開始として再計算する
+    if(/T00:00:00$/.test(startISO)){
+      const minSec=Math.min(...chatConv.map(c=>c.sec));
+      if(minSec>3600){
+        const sorted=[...chatResult.records].sort((a,b)=>a.ts.toMillis()-b.ts.toMillis());
+        const firstTs=sorted[0]?.ts;
+        if(firstTs?.isValid){
+          const corrected=firstTs.minus({seconds:30}).toISO({suppressMilliseconds:true,includeOffset:false});
+          ({out:chatConv,pre}=convertTimestamps(chatResult.records,corrected));
+          document.getElementById('fi-start').value=corrected;
+          addMsg(`プレミア公開を検出: 配信開始時刻を ${corrected} に自動補正しました。`,'info');
+        }
+      }
     }
     S.chatConv=chatConv;
 
@@ -1464,7 +1490,7 @@ async function run(){
     showOv('グラフを描画中...');await tick();
     renderResults(chatConv,S.trRecs,wins,peaks,pre,chatConv.length+pre,S.videoId);
 
-    histSave('fc_start_hist',startISO);
+    histSave('fc_start_hist',document.getElementById('fi-start').value.trim());
     if(urlVal)histSave('fc_url_hist',urlVal);
     if(epVal)histSave('fc_ep_hist',epVal);
     histFill('start-hist','fc_start_hist');
@@ -1481,10 +1507,30 @@ async function run(){
 
 // ─── §16 DROP ZONES ───────────────────────────────────────────────────────────
 function tryAutoFillUrl(raw){
+  // URL 自動入力
   const urlEl=document.getElementById('fi-url');
-  if(urlEl.value.trim())return;
-  const m=raw.match(/Video URL:\s*(https?:\/\/\S+)/);
-  if(m)urlEl.value=m[1].trim();
+  if(!urlEl.value.trim()){
+    const m=raw.match(/Video URL:\s*(https?:\/\/\S+)/);
+    if(m)urlEl.value=m[1].trim();
+  }
+  // 配信開始時刻の自動推定（未入力 or T00:00:00 のとき）
+  const startEl=document.getElementById('fi-start');
+  const cur=startEl.value.trim();
+  if(!cur||/T00:00:00$/.test(cur)){
+    // チャットファイルから全 date: を抽出して最初のものを使う
+    const dates=[];
+    for(const m of raw.matchAll(/\ndate:\s*(\S+)/g))dates.push(m[1]);
+    if(dates.length){
+      dates.sort();
+      const first=dates[0];
+      const hastz=/[Z]$/.test(first)||/[+-]\d{2}:?\d{2}$/.test(first);
+      const dt=luxon.DateTime.fromISO(hastz?first:first+'+09:00');
+      if(dt.isValid){
+        // 最初のチャット - 30秒 を配信開始の推定値とする
+        startEl.value=dt.minus({seconds:30}).toISO({suppressMilliseconds:true,includeOffset:false});
+      }
+    }
+  }
 }
 
 function setupDZ(zoneId,inputId,fnId,key){
@@ -2189,7 +2235,7 @@ function renderDB(records,q,acct){
   let filtered=q
     ?records.filter(rec=>{
         const epStr=String(rec.episodeNum||'');
-        return (rec.chatData||[]).some(c=>c.message.toLowerCase().includes(ql))||
+        return (rec.chatData||[]).some(c=>_stripStamps(c.message).toLowerCase().includes(ql))||
           (rec.trData||[]).some(t=>t.text.toLowerCase().includes(ql))||
           (rec.title||'').toLowerCase().includes(ql)||
           epStr.toLowerCase().includes(ql)||
@@ -2274,7 +2320,7 @@ function renderDB(records,q,acct){
       chatMatchCnt=chatData.filter(c=>matchUser(c.username)).length;
       trMatchCnt=trData.length; // tr data not filtered by account
     }else if(q){
-      chatMatchCnt=chatData.filter(c=>c.message.toLowerCase().includes(ql)).length;
+      chatMatchCnt=chatData.filter(c=>_stripStamps(c.message).toLowerCase().includes(ql)).length;
       trMatchCnt=trData.filter(t=>t.text.toLowerCase().includes(ql)).length;
     }else{
       chatMatchCnt=chatData.length;
@@ -2322,12 +2368,12 @@ function renderDB(records,q,acct){
       if(al){
         const userHits=chatData
           .filter(c=>matchUser(c.username))
-          .map(c=>({sec:c.sec,txt:'@'+c.username+' '+c.message,vid:rec.videoId}))
+          .map(c=>({sec:c.sec,txt:'@'+c.username+' '+_renderMsg(c.message),vid:rec.videoId}))
           .sort((a,b)=>a.sec-b.sec);
         if(userHits.length)hitsHtml='<div class="db-hits">'+userHits.map(h=>makeHitRow(h,'')).join('')+'</div>';
       }else if(q){
-        const chatHits=chatData.filter(c=>c.message.toLowerCase().includes(ql))
-          .map(c=>({sec:c.sec,txt:'@'+c.username+' '+c.message,vid:rec.videoId}));
+        const chatHits=chatData.filter(c=>_stripStamps(c.message).toLowerCase().includes(ql))
+          .map(c=>({sec:c.sec,txt:'@'+c.username+' '+_renderMsg(c.message),vid:rec.videoId}));
         const trHits=trData.filter(t=>t.text.toLowerCase().includes(ql))
           .map(t=>({sec:t.sec,txt:t.text,vid:rec.videoId}));
         const allHits=[...chatHits,...trHits].sort((a,b)=>a.sec-b.sec);
@@ -2335,7 +2381,7 @@ function renderDB(records,q,acct){
       }else{
         const allRows=[
           ...trData.map(t=>({sec:t.sec,txt:t.text,vid:rec.videoId})),
-          ...chatData.map(c=>({sec:c.sec,txt:'@'+c.username+' '+c.message,vid:rec.videoId})),
+          ...chatData.map(c=>({sec:c.sec,txt:'@'+c.username+' '+_renderMsg(c.message),vid:rec.videoId})),
         ].sort((a,b)=>a.sec-b.sec);
         if(allRows.length)hitsHtml='<div class="db-hits">'+allRows.map(h=>makeHitRow(h,'')).join('')+'</div>';
       }
@@ -3156,10 +3202,10 @@ function buildKwMarkerCSV(q){
   let idx=1;
 
   for(const rec of _dbCache){
-    const chatHits=(rec.chatData||[]).filter(c=>c.message.toLowerCase().includes(ql));
+    const chatHits=(rec.chatData||[]).filter(c=>_stripStamps(c.message).toLowerCase().includes(ql));
     const trHits=(rec.trData||[]).filter(t=>t.text.toLowerCase().includes(ql));
     const allHits=[
-      ...chatHits.map(c=>({sec:c.sec,txt:`@${c.username} ${c.message}`})),
+      ...chatHits.map(c=>({sec:c.sec,txt:`@${c.username} ${_renderMsg(c.message)}`})),
       ...trHits.map(t=>({sec:t.sec,txt:t.text})),
     ].sort((a,b)=>a.sec-b.sec);
 
