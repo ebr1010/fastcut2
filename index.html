@@ -304,6 +304,8 @@ input[type=range]{
 .db-hit a{color:var(--r1);text-decoration:none;flex-shrink:0;font-family:var(--mf);font-size:10px}
 .db-hit a:hover{text-decoration:underline}
 .db-hit-txt{flex:1;word-break:break-all;line-height:1.4}
+.stamp-img{height:20px;width:auto;vertical-align:middle;display:inline-block;border-radius:2px}
+.stamp-chip{display:inline-block;background:rgba(185,24,40,0.13);color:var(--r1);border:1px solid rgba(185,24,40,0.28);border-radius:3px;padding:0 4px;font-size:10px;line-height:1.6;font-weight:600;vertical-align:middle}
 mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0 1px}
 .db-counts{display:flex;gap:8px;margin:4px 0 6px}
 .cnt-chip{font-size:11px;border-radius:2px;padding:2px 7px}
@@ -491,7 +493,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v1.9.4</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v1.9.5</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -776,12 +778,40 @@ function esc(s){
 
 // ─── スタンプ処理 ─────────────────────────────────────────────────────────────
 // YouTube メンバーシップスタンプ / カスタム絵文字: :_ぱるむ: :stamp: など
-const STAMP_RE=/:[_\wぁ-鿿゠-ヿ]+:/g;
+// :[空白・コロン以外の任意文字]: にマッチ（英数・日本語・記号すべて対応）
+const STAMP_RE=/:[^\s:]+:/g;
 // 検索用: スタンプを除去（スタンプ部分がキーワードに誤マッチしないようにする）
 function _stripStamps(text){return text.replace(STAMP_RE,'').replace(/\s+/g,' ').trim();}
-// 表示用: :_ぱるむ: → [ぱるむ]
+// テキスト表示用: :_ぱるむ: → [ぱるむ]（エクスポート・テキスト用）
 function _renderMsg(text){
   return text.replace(STAMP_RE,m=>'['+m.replace(/^:_?/,'').replace(/:$/,'')+']');
+}
+// HTML表示用: yt3.ggpht.com URLがあれば<img>、なければchipバッジ
+function _renderMsgHtml(text,kw){
+  if(!text)return'';
+  // yt3 URL をスタンプに対応付け（:_name: URL or URL :_name: のどちらも）
+  const imgMap={};
+  let t=text
+    .replace(/(:[\S]+?:)\s*(https?:\/\/yt3\.ggpht\.com\/\S+)/g,(_,stamp,url)=>{imgMap[stamp]=url;return stamp;})
+    .replace(/(https?:\/\/yt3\.ggpht\.com\/\S+)\s*(:[\S]+?:)/g,(_,url,stamp)=>{imgMap[stamp]=url;return stamp;});
+  // 対応しない単体yt3 URLを<img>化
+  const extras=[];
+  t=t.replace(/https?:\/\/yt3\.ggpht\.com\/\S+/g,url=>{extras.push(url);return'';}).trim();
+  // スタンプを置換しながらHTML構築
+  const parts=[];let last=0;
+  const re=/:[^\s:]+:/g;let m;
+  while((m=re.exec(t))!==null){
+    if(m.index>last){const plain=t.slice(last,m.index);parts.push(kw?hlStr(plain,kw):esc(plain));}
+    const name=m[0].replace(/^:_?/,'').replace(/:$/,'');
+    const url=imgMap[m[0]];
+    parts.push(url
+      ?'<img class="stamp-img" src="'+esc(url)+'" alt="'+esc(name)+'" title="'+esc(name)+'" loading="lazy">'
+      :'<span class="stamp-chip">'+esc(name)+'</span>');
+    last=m.index+m[0].length;
+  }
+  if(last<t.length){const plain=t.slice(last).trim();if(plain)parts.push(kw?hlStr(plain,kw):esc(plain));}
+  for(const url of extras)parts.push('<img class="stamp-img" src="'+esc(url)+'" alt="[stamp]" loading="lazy">');
+  return parts.join('');
 }
 
 function dl(content,name,mime){
@@ -2276,7 +2306,11 @@ function renderDB(records,q,acct){
   function makeHitRow(h,kw){
     const t=fmtSec(h.sec);
     const link=h.vid?'<a href="https://www.youtube.com/watch?v='+esc(h.vid)+'&t='+Math.floor(h.sec)+'" target="_blank">'+esc(t)+'</a>':esc(t);
-    return'<div class="db-hit"><div class="tc">'+link+'</div><div class="db-hit-txt">'+hlStr(h.txt,kw)+'</div></div>';
+    // rawMsg があればスタンプHTML描画、なければ通常テキスト
+    const content=h.rawMsg!==undefined
+      ?(h.uname?'@'+esc(h.uname)+' ':'')+_renderMsgHtml(h.rawMsg,kw)
+      :hlStr(h.txt,kw);
+    return'<div class="db-hit"><div class="tc">'+link+'</div><div class="db-hit-txt">'+content+'</div></div>';
   }
 
   grid.innerHTML=filtered.map(rec=>{
@@ -2368,12 +2402,12 @@ function renderDB(records,q,acct){
       if(al){
         const userHits=chatData
           .filter(c=>matchUser(c.username))
-          .map(c=>({sec:c.sec,txt:'@'+c.username+' '+_renderMsg(c.message),vid:rec.videoId}))
+          .map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:rec.videoId}))
           .sort((a,b)=>a.sec-b.sec);
         if(userHits.length)hitsHtml='<div class="db-hits">'+userHits.map(h=>makeHitRow(h,'')).join('')+'</div>';
       }else if(q){
         const chatHits=chatData.filter(c=>_stripStamps(c.message).toLowerCase().includes(ql))
-          .map(c=>({sec:c.sec,txt:'@'+c.username+' '+_renderMsg(c.message),vid:rec.videoId}));
+          .map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:rec.videoId}));
         const trHits=trData.filter(t=>t.text.toLowerCase().includes(ql))
           .map(t=>({sec:t.sec,txt:t.text,vid:rec.videoId}));
         const allHits=[...chatHits,...trHits].sort((a,b)=>a.sec-b.sec);
@@ -2381,7 +2415,7 @@ function renderDB(records,q,acct){
       }else{
         const allRows=[
           ...trData.map(t=>({sec:t.sec,txt:t.text,vid:rec.videoId})),
-          ...chatData.map(c=>({sec:c.sec,txt:'@'+c.username+' '+_renderMsg(c.message),vid:rec.videoId})),
+          ...chatData.map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:rec.videoId})),
         ].sort((a,b)=>a.sec-b.sec);
         if(allRows.length)hitsHtml='<div class="db-hits">'+allRows.map(h=>makeHitRow(h,'')).join('')+'</div>';
       }
