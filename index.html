@@ -555,7 +555,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.5.8</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.5.9</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -2306,24 +2306,76 @@ function _norm(s){
   v=v.replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60));
   // 小文字かな → 大文字かな
   v=v.replace(/[ぁぃぅぇぉゃゅょっ]/g,c=>({'ぁ':'あ','ぃ':'い','ぅ':'う','ぇ':'え','ぉ':'お','ゃ':'や','ゅ':'ゆ','ょ':'よ','っ':'つ'})[c]||c);
-  // 長音符除去
-  v=v.replace(/ー/g,'');
+  // 長音符・波線除去（ー〜～）
+  v=v.replace(/[ー〜～]/g,'');
   // スペース除去（「ぱ るむ」→「ぱるむ」）
   v=v.replace(/[\s　]/g,'');
   // 同じ文字の連続を1文字に（ぱああるむ→ぱあるむ, wwww→w）
   v=v.replace(/(.)\1+/g,'$1');
   return v;
 }
-// あいまい正規表現: 各文字間に0〜5個の母音を許容（ぱるむ→ぱあるむ にも一致）
-function _fuzzyRe(term){
-  const n=_norm(term);if(!n)return null;
+
+// ── 編集距離（Levenshtein）: 2行DPで省メモリ ──────────────────────────────────
+function _lev(a,b){
+  const m=a.length,n=b.length;
+  if(!m)return n; if(!n)return m;
+  let prev=Array.from({length:n+1},(_,j)=>j),curr=new Array(n+1);
+  for(let i=1;i<=m;i++){
+    curr[0]=i;
+    for(let j=1;j<=n;j++)
+      curr[j]=a[i-1]===b[j-1]?prev[j-1]:1+Math.min(prev[j],curr[j-1],prev[j-1]);
+    [prev,curr]=[curr,prev];
+  }
+  return prev[n];
+}
+
+// ── ウィンドウ付き編集距離マッチ ───────────────────────────────────────────────
+// normQ を normT 内のどこかで許容距離以内に見つかれば true
+// 高速化: 共通文字が (m-maxDist) 個未満なら即 false
+function _editHit(normQ,normT,maxDist){
+  const m=normQ.length,n=normT.length;
+  if(!m)return true;
+  if(!n)return m<=maxDist;
+  // 共通文字プレフィルタ
+  const qSet=new Set(normQ);
+  let common=0,need=Math.max(1,m-maxDist);
+  for(const c of normT){if(qSet.has(c)&&++common>=need)break;}
+  if(common<need)return false;
+  // テキストがクエリより短い場合は全体比較
+  if(n<m)return _lev(normQ,normT)<=maxDist+(m-n);
+  // スライドウィンドウ（サイズ m）
+  for(let i=0;i<=n-m;i++){
+    if(_lev(normQ,normT.slice(i,i+m))<=maxDist)return true;
+  }
+  return false;
+}
+
+// ── あいまい正規表現: 各文字間に0〜5個の母音を許容 ────────────────────────────
+// 用途: 伸ばし音（ぱああるむ）・感嘆（はああ）など
+function _fuzzyRe(normTerm){
+  if(!normTerm)return null;
   const er=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   const vo='(?:[あいうえお]{0,5})?';
-  return new RegExp(n.split('').map(er).join(vo),'i');
+  return new RegExp(normTerm.split('').map(er).join(vo),'i');
 }
+
+// ── メインマッチ関数 ───────────────────────────────────────────────────────────
+// 段階1: 正規表現（母音挿入・かな正規化で表記ゆれ吸収）
+// 段階2: ウィンドウ付き編集距離（漢字の書き間違い・1〜2文字違いの表記ゆれ）
+// 漢字←→かな変換は辞書なしでは不可能なため、かな検索にはかなで入力を推奨
 function _fuzzyHit(terms,text){
   const nt=_norm(text);
-  return terms.some(t=>{const re=_fuzzyRe(t);return re&&re.test(nt);});
+  return terms.some(t=>{
+    const nq=_norm(t);
+    if(!nq)return false;
+    // 段階1: 正規表現マッチ
+    const re=_fuzzyRe(nq);
+    if(re&&re.test(nt))return true;
+    // 段階2: 編集距離マッチ
+    // 許容距離: 2文字→1, 3〜5文字→1, 6〜8文字→2, 9文字以上→3
+    const maxDist=nq.length>=2?Math.max(1,Math.floor(nq.length/3)):0;
+    return maxDist>0&&_editHit(nq,nt,maxDist);
+  });
 }
 function _plainHit(terms,text){
   const tl=text.toLowerCase();
