@@ -71,9 +71,9 @@ header{
 .right{
   background:var(--bg0);overflow-y:auto;padding:16px;
 }
-.right::-webkit-scrollbar{width:10px}
+.right::-webkit-scrollbar{width:6px}
 .right::-webkit-scrollbar-track{background:var(--bg0)}
-.right::-webkit-scrollbar-thumb{background:var(--r2);border-radius:5px}
+.right::-webkit-scrollbar-thumb{background:var(--r2);border-radius:3px}
 
 /* MESSAGES */
 #msgs{display:flex;flex-direction:column;gap:6px}
@@ -274,8 +274,8 @@ input[type=range]{
 
 /* DATABASE VIEW */
 #view-db{display:none;padding:0 16px 16px;height:calc(100vh - 50px);overflow-y:auto}
-#view-db::-webkit-scrollbar{width:10px}
-#view-db::-webkit-scrollbar-thumb{background:var(--r2);border-radius:5px}
+#view-db::-webkit-scrollbar{width:6px}
+#view-db::-webkit-scrollbar-thumb{background:var(--r2);border-radius:3px}
 /* 検索バー・タグバーをスクロール時も上部に固定 */
 .db-sticky-head{position:sticky;top:0;z-index:100;background:var(--bg0);padding:12px 0 4px;margin-bottom:6px;border-bottom:1px solid var(--r3)}
 .db-bar{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
@@ -288,27 +288,19 @@ input[type=range]{
 #db-cnt{font-size:12px;color:var(--t1);flex-shrink:0}
 .db-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
 .db-card-h{display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;cursor:pointer;user-select:none}
-.db-expand-btns{display:flex;gap:6px;margin-top:6px;padding-top:4px;border-top:1px solid var(--r3)}
-.db-expand-btn{flex:1;background:none;border:1px solid var(--r3);border-radius:var(--rad);color:var(--t2);font-size:10px;padding:3px 0;cursor:pointer;transition:all .12s;font-family:inherit}
-.db-expand-btn:hover{border-color:var(--r4);color:var(--t1)}
-.db-expand-btn.active{background:rgba(255,255,255,0.04);border-color:var(--r4);color:var(--t0)}
+.db-expand-hint{font-size:9px;color:var(--t2);margin-top:2px;text-align:right;padding-top:2px}
 .ep-badge{display:flex;flex-direction:column;align-items:center;justify-content:center;border:3px solid var(--r1);border-radius:9px;padding:4px 8px;font-family:var(--hf);font-weight:700;flex-shrink:0;min-width:48px;text-align:center;line-height:1;gap:1px}
 .ep-badge-p{font-size:10px;color:var(--t1);letter-spacing:1px;text-transform:uppercase}
 .ep-badge-n{font-size:20px;color:var(--t0)}
 .db-title{font-size:13px;color:var(--t0);flex:1;line-height:1.4;word-break:break-all}
 .db-meta{font-size:10px;color:var(--t2);margin-bottom:6px}
-.db-hits{display:flex;flex-direction:column;gap:3px;margin-top:6px;max-height:260px;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:var(--r2) transparent}
-.db-hits::-webkit-scrollbar{width:6px}
-.db-hits::-webkit-scrollbar-track{background:transparent}
-.db-hits::-webkit-scrollbar-thumb{background:var(--r2);border-radius:3px}
-.db-hits::-webkit-scrollbar-thumb:hover{background:var(--r1)}
-.db-hits-more{font-size:10px;color:var(--t2);padding:3px 6px;text-align:center;border-top:1px solid var(--r3);margin-top:2px}
+.db-hits{display:flex;flex-direction:column;gap:3px;margin-top:6px;max-height:260px;overflow-y:auto;overflow-x:hidden}
+.db-hits::-webkit-scrollbar{width:3px}
+.db-hits::-webkit-scrollbar-thumb{background:var(--r2);border-radius:2px}
 .db-hit{font-size:11px;color:var(--t1);display:flex;gap:6px;align-items:flex-start}
 .db-hit a{color:var(--r1);text-decoration:none;flex-shrink:0;font-family:var(--mf);font-size:10px}
 .db-hit a:hover{text-decoration:underline}
 .db-hit-txt{flex:1;word-break:break-all;line-height:1.4}
-.stamp-img{height:20px;width:auto;vertical-align:middle;display:inline-block;border-radius:2px}
-.stamp-chip{display:inline-block;background:rgba(185,24,40,0.13);color:var(--r1);border:1px solid rgba(185,24,40,0.28);border-radius:3px;padding:0 4px;font-size:10px;line-height:1.6;font-weight:600;vertical-align:middle}
 mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0 1px}
 .db-counts{display:flex;gap:8px;margin:4px 0 6px}
 .cnt-chip{font-size:11px;border-radius:2px;padding:2px 7px}
@@ -316,8 +308,6 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .cnt-chip.tr{background:rgba(58,158,96,0.10);color:#5aae80}
 .cnt-chip.note{background:rgba(62,166,255,0.10);color:#3ea6ff}
 .cnt-chip.tn{background:rgba(255,165,0,0.12);color:#e8a030}
-.cnt-chip.tn.hit{background:rgba(255,165,0,0.28);color:#ffb830;border:1px solid rgba(255,165,0,0.5)}
-.cnt-chip.note.hit{background:rgba(62,166,255,0.22);color:#5bbfff;border:1px solid rgba(62,166,255,0.45)}
 .db-actions{display:flex;gap:6px;margin-top:8px;border-top:1px solid var(--r3);padding-top:8px;flex-wrap:wrap}
 .db-del{
   background:none;border:1px solid rgba(185,24,40,0.2);border-radius:var(--rad);
@@ -329,34 +319,6 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .db-bar-btn{background:var(--bg2);border:1px solid var(--r3);border-radius:var(--rad);color:var(--t1);padding:6px 11px;font-size:12px;cursor:pointer;transition:all 0.15s;white-space:nowrap}
 .db-bar-btn:hover{border-color:var(--r4);color:var(--t0)}
 .db-bar-btn:disabled{opacity:0.35;cursor:default;pointer-events:none}
-.db-fuzzy-lbl{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--t1);cursor:pointer;white-space:nowrap;padding:6px 4px;border:1px solid var(--r3);border-radius:var(--rad);background:var(--bg2)}
-.db-fuzzy-lbl:hover{border-color:var(--r4)}
-.db-fuzzy-lbl input{accent-color:var(--r1);cursor:pointer;margin:0}
-.sm-group{display:flex;border:1px solid var(--r3);border-radius:var(--rad);overflow:hidden;flex-shrink:0}
-.sm-btn{background:none;border:none;color:var(--t1);padding:4px 10px;font-size:11px;cursor:pointer;font-family:var(--bf);white-space:nowrap;border-right:1px solid var(--r3);transition:all .15s}
-.sm-btn:last-child{border-right:none}
-.sm-btn:hover{background:var(--r3);color:var(--t0)}
-.sm-btn.active{background:var(--r2);color:var(--t0)}
-/* 抽出モーダル */
-.ext-modal{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center}
-.ext-modal.open{display:flex}
-.ext-inner{background:var(--bg2);border:1px solid var(--r3);border-radius:8px;padding:20px;width:560px;max-width:94vw;max-height:86vh;overflow-y:auto}
-.ext-cat{display:flex;align-items:center;gap:10px;width:100%;padding:9px 14px;margin-bottom:5px;background:var(--bg1);border:1px solid var(--r3);border-radius:5px;color:var(--t0);font-size:13px;cursor:pointer;text-align:left;transition:all .15s;font-family:var(--bf)}
-.ext-cat:hover{border-color:var(--r1);background:rgba(185,24,40,0.08)}
-.ext-res{margin-top:14px}
-.ext-ri{padding:8px 10px;margin-bottom:5px;background:var(--bg1);border-left:3px solid var(--r1);border-radius:0 4px 4px 0;line-height:1.5}
-.ext-ri-hdr{display:flex;gap:8px;align-items:baseline;margin-bottom:3px;flex-wrap:wrap}
-.ext-ts{color:var(--r1);font-family:var(--mf);font-size:11px;font-weight:700;cursor:pointer;text-decoration:none;flex-shrink:0}
-.ext-ts:hover{text-decoration:underline}
-.ext-ep{font-size:10px;color:var(--t2)}
-.ext-txt{font-size:11px;color:var(--t1);word-break:break-all}
-/* おすすめカード */
-.rec-wrap{margin-top:14px}
-.rec-card{padding:10px 14px;margin-bottom:8px;background:var(--bg1);border:1px solid var(--r3);border-radius:6px}
-.rec-card-hdr{display:flex;gap:8px;align-items:baseline;margin-bottom:4px;flex-wrap:wrap}
-.rec-card-ep{font-size:11px;color:var(--r1);font-weight:700}
-.rec-card-title{font-size:12px;color:var(--t0);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rec-card-body{font-size:11px;color:var(--t1);display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap}
 /* GitHub 同期中ローディング */
 @keyframes gh-sweep{0%{background-position:200% 0}100%{background-position:-200% 0}}
 @keyframes gh-spin{to{transform:rotate(360deg)}}
@@ -380,14 +342,11 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .db-card:hover{border-color:var(--r4)}
 .db-ynp-memo{margin:6px 0 4px;padding:7px 10px;background:rgba(62,166,255,0.06);border-left:2px solid rgba(62,166,255,0.35);border-radius:0 4px 4px 0}
 .db-ynp-memo-label{font-size:10px;color:#3ea6ff99;margin-bottom:3px;font-weight:600;letter-spacing:0.5px}
-.db-ynp-memo-text{font-size:12px;color:var(--t0);white-space:pre-wrap;word-break:break-word;margin:0;font-family:inherit;line-height:1.6;opacity:0.85;max-height:260px;overflow-y:auto;display:block}
-.db-ynp-memo-text::-webkit-scrollbar{width:3px}
-.db-ynp-memo-text::-webkit-scrollbar-thumb{background:var(--r2);border-radius:2px}
+.db-ynp-memo-text{font-size:12px;color:var(--t0);white-space:pre-wrap;word-break:break-word;margin:0;font-family:inherit;line-height:1.6;opacity:0.85}
 /* TN (タイムラインノート) section in DB card */
 .db-tn-section{margin:6px 0 4px;padding:7px 10px;background:rgba(255,165,0,0.05);border-left:2px solid rgba(232,160,48,0.45);border-radius:0 4px 4px 0}
 .db-tn-label{font-size:10px;color:#e8a03099;margin-bottom:3px;font-weight:600;letter-spacing:0.5px}
 .db-tn-text{font-size:12px;color:var(--t0);white-space:pre-wrap;word-break:break-word;margin:0;font-family:inherit;line-height:1.6;opacity:0.88;max-height:260px;overflow-y:auto;display:block}
-.db-tn-snippet{font-size:12px;color:var(--t1);white-space:pre-wrap;word-break:break-word;line-height:1.6;padding:3px 0;opacity:0.9}
 .db-tn-text::-webkit-scrollbar{width:3px}
 .db-tn-text::-webkit-scrollbar-track{background:transparent}
 .db-tn-text::-webkit-scrollbar-thumb{background:var(--r2);border-radius:2px}
@@ -410,40 +369,9 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .stag-add{background:none;border:1px dashed rgba(255,255,255,0.1);border-radius:4px;color:var(--t2);padding:2px 8px;font-size:10px;cursor:pointer;line-height:1.5}
 .stag-add:hover{border-color:rgba(255,255,255,0.3);color:var(--t1)}
 /* ── tag filter bar ────────────────────────────────────────────────────────── */
-.db-tag-bar{display:flex;flex-direction:column;gap:5px;margin-bottom:4px}
+.db-tag-bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center}
 .tf-chip{padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--r3);background:none;color:var(--t1);transition:all 0.15s;white-space:nowrap}
 .tf-chip:hover{border-color:var(--r4);color:var(--t0)}
-/* ── multi-select ─────────────────────────────────────────────────────────── */
-.db-sel-cb{display:none;width:15px;height:15px;flex-shrink:0;cursor:pointer;accent-color:var(--r1);margin-right:4px}
-#view-db.select-mode .db-sel-cb{display:block}
-.db-card.sel{outline:1.5px solid var(--r1);background:rgba(232,80,60,0.05)}
-#db-select-bar{display:none;align-items:center;flex-wrap:wrap;gap:6px;
-  padding:7px 10px;margin-top:6px;
-  background:rgba(232,80,60,0.07);border:1px solid rgba(232,80,60,0.3);border-radius:4px}
-#db-select-bar.active{display:flex}
-.sel-cnt{font-size:12px;font-weight:700;color:var(--t0);white-space:nowrap}
-.sel-sep{width:1px;height:16px;background:rgba(255,255,255,0.1);flex-shrink:0}
-.sel-lbl{font-size:10px;color:var(--t2);white-space:nowrap}
-.sel-pick{background:var(--bg2);border:1px solid var(--r3);border-radius:var(--rad);
-  color:var(--t0);padding:3px 6px;font-size:11px;outline:none;font-family:inherit;cursor:pointer;max-width:120px}
-.sel-btn{background:none;border:1px solid var(--r3);border-radius:var(--rad);
-  color:var(--t1);padding:3px 9px;font-size:11px;cursor:pointer;transition:all .12s;white-space:nowrap;font-family:inherit}
-.sel-btn:hover{border-color:var(--r4);color:var(--t0)}
-.sel-btn.danger:hover{border-color:var(--r1);color:var(--r1)}
-.sel-btn.exit{margin-left:auto;color:var(--t2)}
-/* ── filter active banner ─────────────────────────────────────────────────── */
-#db-filter-banner{display:none;align-items:center;gap:8px;padding:5px 10px;margin-top:6px;
-  background:rgba(180,60,40,0.06);border:1px solid rgba(200,80,60,0.18);
-  border-radius:4px;font-size:11px;color:var(--t2)}
-#db-filter-banner.active{display:flex}
-.fban-dot{width:5px;height:5px;border-radius:50%;background:var(--r1);flex-shrink:0;
-  animation:fban-pulse 2.4s ease-in-out infinite}
-@keyframes fban-pulse{0%,100%{opacity:0.9}50%{opacity:0.3}}
-.fban-txt{flex:1;letter-spacing:0.3px}
-.fban-txt b{color:var(--t1);font-weight:600}
-.fban-clear{font-size:10px;color:var(--t2);cursor:pointer;border:1px solid var(--r3);
-  border-radius:3px;padding:1px 6px;transition:all .12s;white-space:nowrap;background:none;font-family:inherit}
-.fban-clear:hover{border-color:var(--r4);color:var(--t0)}
 /* ── tag manager modal ─────────────────────────────────────────────────────── */
 .tg-modal{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center}
 .tg-modal.open{display:flex}
@@ -465,8 +393,8 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 #tag-pop{position:fixed;z-index:600;background:var(--bg2);border:1px solid var(--r3);border-radius:6px;padding:10px;display:none;box-shadow:0 4px 20px rgba(0,0,0,0.5);min-width:160px;max-height:300px;overflow-y:auto}
 /* ── ranking view ──────────────────────────────────────────────────────────── */
 #view-rank{display:none;padding:16px;height:calc(100vh - 50px);overflow-y:auto}
-#view-rank::-webkit-scrollbar{width:10px}
-#view-rank::-webkit-scrollbar-thumb{background:var(--r2);border-radius:5px}
+#view-rank::-webkit-scrollbar{width:6px}
+#view-rank::-webkit-scrollbar-thumb{background:var(--r2);border-radius:3px}
 .rank-bar{display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
 .rank-q{background:var(--bg1);border:1px solid var(--r3);border-radius:var(--rad);color:var(--t0);padding:6px 10px;font-size:13px;outline:none;width:220px}
 .rank-q:focus{border-color:var(--r1)}
@@ -524,7 +452,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.5.14</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v1.6.0</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -666,20 +594,8 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
   <div class="db-sticky-head" id="db-sticky-head">
   <div class="db-bar">
     <div class="db-search-group">
-      <input type="text" class="db-search" id="db-q" placeholder="チャット・音声検索... (Enter)">
+      <input type="text" class="db-search" id="db-q" placeholder="キーワード検索... (Enter)">
       <button class="db-bar-btn" id="db-search-btn">🔍 検索</button>
-    </div>
-    <label class="db-fuzzy-lbl" title="表記ゆれ・カタカナ・伸ばし棒なども一致させる（ぱるむ → パルム・ぱああるむ も検索）">
-      <input type="checkbox" id="db-fuzzy"> あいまい
-    </label>
-    <div class="sm-group">
-      <button class="sm-btn active" id="sm-all"  onclick="setSearchMode('all')">全て</button>
-      <button class="sm-btn"        id="sm-tr"   onclick="setSearchMode('tr')">🎤 音声</button>
-      <button class="sm-btn"        id="sm-chat" onclick="setSearchMode('chat')">💬 チャット</button>
-    </div>
-    <div class="db-search-group">
-      <input type="text" class="db-search" id="db-qn" placeholder="📌 ノート検索... (Enter)">
-      <button class="db-bar-btn" id="db-qn-btn">🔍</button>
     </div>
     <div class="db-search-group">
       <input type="text" class="db-search" id="db-acct" placeholder="@アカウント名で絞り込み...">
@@ -696,29 +612,18 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
       <option value="title">タイトル A→Z</option>
       <option value="title-desc">タイトル Z→A</option>
     </select>
-    <button class="db-bar-btn" id="db-extract-btn" title="カテゴリ別シーン抽出（面白い箇所・叫ぶ箇所など）">📂 抽出</button>
-    <button class="db-bar-btn" id="db-recommend-btn" title="おすすめ切り抜きをランダムに表示">🎲 おすすめ</button>
     <button id="db-backup-btn" class="db-bar-btn">↓ バックアップ</button>
-    <button id="db-ai-export-btn" class="db-bar-btn" title="AI学習用JSON出力">🤖 AI出力</button>
     <label for="db-import-file" class="db-bar-btn" style="cursor:pointer">↑ 読み込み</label>
     <input type="file" id="db-import-file" accept=".json" style="display:none">
     <button id="gh-settings-btn" class="db-bar-btn">⚙ 同期設定</button>
     <button id="gh-push-btn" class="db-bar-btn" style="display:none" title="ローカルの変更をGitHubに保存">⬆ 保存</button>
     <button id="gh-pull-btn" class="db-bar-btn" style="display:none" title="GitHubから最新データを取得してローカルを更新">⬇ 更新</button>
     <span id="last-sync-label" style="font-size:10px;color:var(--t2);white-space:nowrap"></span>
-    <button class="db-bar-btn" id="stamp-mgr-btn" title="スタンプ画像を登録">🎭 スタンプ</button>
     <button class="db-bar-btn" onclick="openTgModal()">🏷 タグ管理</button>
-    <button id="db-selmode-btn" class="db-bar-btn" onclick="toggleSelectMode()">☑ 選択</button>
     <button id="db-kw-csv-btn" class="db-bar-btn" disabled>↓ KW マーカー CSV</button>
     <button id="db-clear-btn" class="db-bar-btn" style="color:var(--r1);border-color:var(--r3)" title="ローカルのDBデータを全件消去します">⚠ 全消去</button>
   </div>
   <div class="db-tag-bar" id="db-tag-bar"></div>
-  <div id="db-filter-banner">
-    <span class="fban-dot"></span>
-    <span class="fban-txt" id="fban-txt"></span>
-    <button class="fban-clear" onclick="clearAllFilters()">✕ フィルタを解除</button>
-  </div>
-  <div id="db-select-bar"></div>
   </div><!-- /db-sticky-head -->
   <div class="db-grid" id="db-grid"></div>
 </div>
@@ -814,92 +719,8 @@ function ytLink(vid,sec){
   return vid?`https://www.youtube.com/watch?v=${vid}&t=${Math.floor(sec)}`:null;
 }
 
-// DBのタイムスタンプクリック → bridge.js 経由で既存タブを再利用してシーク
-// （タブがなければ新規タブを開く・タブレットでも2回目以降同一タブで動く）
-const _tnIOS=(()=>{const ua=navigator.userAgent;return/iPad|iPhone/i.test(ua)||(/Mac/i.test(ua)&&navigator.maxTouchPoints>1);})();
-
-function _tsAnchor(videoId,sec,label){
-  if(!videoId)return esc(label);
-  const t=Math.floor(sec);
-  if(_tnIOS){
-    return'<a href="youtube://www.youtube.com/watch?v='+videoId+'&t='+t+'" style="cursor:pointer">'+esc(label)+'</a>';
-  }
-  return'<a href="javascript:void(0)" onclick="ytSeek(\''+videoId+'\','+t+')" style="cursor:pointer">'+esc(label)+'</a>';
-}
-
-function ytSeek(videoId,sec){
-  const t=Math.floor(sec);
-  const url='https://www.youtube.com/watch?v='+videoId+'&t='+t;
-  // 拡張(bridge.js)があれば e.preventDefault() で処理済みを通知 → background.js がタブ管理
-  const evt=new CustomEvent('ynp-seek-request',{cancelable:true,detail:{videoId,sec}});
-  if(!window.dispatchEvent(evt))return;
-  // 拡張なしフォールバック
-  if(/Android/i.test(navigator.userAgent)){
-    // intent:// → YouTubeアプリを起動。Chromeタブ（FASTCUT）は遷移しない
-    window.location.href='intent://watch?v='+videoId+'&t='+t
-      +'#Intent;package=com.google.android.youtube;scheme=https;'
-      +'S.browser_fallback_url='+encodeURIComponent(url)+';end';
-  }else{
-    // PC: 新タブ（iOS は _tsAnchor が youtube:// で処理済みなので通常ここに来ない）
-    window.open(url,'_blank');
-  }
-}
-
-// rec.videoId が null のレコードでも videoUrl から動画IDを取り出す
-function _getVidId(rec){
-  if(rec.videoId)return rec.videoId;
-  try{
-    const u=new URL(rec.videoUrl||'');
-    return u.searchParams.get('v')||null;
-  }catch{return null;}
-}
-
 function esc(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-// ─── スタンプ処理 ─────────────────────────────────────────────────────────────
-// YouTube メンバーシップスタンプ / カスタム絵文字: :_ぱるむ: :stamp: など
-// :[空白・コロン以外の任意文字]: にマッチ（英数・日本語・記号すべて対応）
-const STAMP_RE=/:[^\s:]+:/g;
-// 検索用: スタンプを除去（スタンプ部分がキーワードに誤マッチしないようにする）
-function _stripStamps(text){return text.replace(STAMP_RE,'').replace(/\s+/g,' ').trim();}
-// テキスト表示用: :_ぱるむ: → [ぱるむ]（エクスポート・テキスト用）
-function _renderMsg(text){
-  return text.replace(STAMP_RE,m=>'['+m.replace(/^:_?/,'').replace(/:$/,'')+']');
-}
-// HTML表示用: yt3.ggpht.com URLがあれば<img>、なければchipバッジ
-// ※ hlStr は renderDB ローカルなので使わず、ここでハイライトをインライン実装
-function _hlEsc(s,kw){
-  const e=esc(s);
-  if(!kw||!s)return e;
-  return e.replace(new RegExp(esc(kw).replace(/[.*+?^\${}()|[\]\\]/g,'\\$&'),'gi'),m=>'<mark>'+m+'</mark>');
-}
-function _renderMsgHtml(text,kw){
-  if(!text)return'';
-  // yt3 URL をスタンプに対応付け（:_name: URL or URL :_name: のどちらも）
-  const imgMap={};
-  let t=text
-    .replace(/(:[\S]+?:)\s*(https?:\/\/yt3\.ggpht\.com\/\S+)/g,(_,stamp,url)=>{imgMap[stamp]=url;return stamp;})
-    .replace(/(https?:\/\/yt3\.ggpht\.com\/\S+)\s*(:[\S]+?:)/g,(_,url,stamp)=>{imgMap[stamp]=url;return stamp;});
-  // 対応しない単体yt3 URLを<img>化
-  const extras=[];
-  t=t.replace(/https?:\/\/yt3\.ggpht\.com\/\S+/g,url=>{extras.push(url);return'';}).trim();
-  // スタンプを置換しながらHTML構築
-  const parts=[];let last=0;
-  const re=/:[^\s:]+:/g;let m;
-  while((m=re.exec(t))!==null){
-    if(m.index>last){const plain=t.slice(last,m.index);parts.push(_hlEsc(plain,kw));}
-    const name=m[0].replace(/^:_?/,'').replace(/:$/,'');
-    const url=imgMap[m[0]]||_getStampUrl(name);
-    parts.push(url
-      ?'<img class="stamp-img" src="'+esc(url)+'" alt="'+esc(name)+'" title="'+esc(name)+'" loading="lazy">'
-      :'<span class="stamp-chip">'+esc(name)+'</span>');
-    last=m.index+m[0].length;
-  }
-  if(last<t.length){const plain=t.slice(last).trim();if(plain)parts.push(_hlEsc(plain,kw));}
-  for(const url of extras)parts.push('<img class="stamp-img" src="'+esc(url)+'" alt="[stamp]" loading="lazy">');
-  return parts.join('');
 }
 
 function dl(content,name,mime){
@@ -1497,7 +1318,8 @@ async function run(){
 
   if(!S.chatRaw && !S.trRaw){addMsg('チャットまたは文字起こしファイルを選択してください。','error');return;}
   if(!S.chatRaw && S.trRaw){
-    // 音声のみモード（通常動画・ショート・プレミア音声のみ）— 開始時刻は任意
+    // トランスクリプトのみモード
+    if(!startISO){addMsg('配信開始時刻を入力してください。','error');document.getElementById('fi-start').classList.add('err');return;}
     try{
       showOv('文字起こしを処理中...');await tick();
       S.trRecs=[];
@@ -1506,14 +1328,15 @@ async function run(){
       if(!S.videoTitle&&tr.header.title)S.videoTitle=tr.header.title;
       S.chatConv=[];
       hideOv();
-      if(startISO)histSave('fc_start_hist',startISO);
+      histSave('fc_start_hist',startISO);
       if(urlVal)histSave('fc_url_hist',urlVal);
       if(epVal)histSave('fc_ep_hist',epVal);
+      // 登録ボタンを表示するために result-area を出す
       document.getElementById('empty').style.display='none';
       document.getElementById('result-area').style.display='block';
       document.getElementById('stats-bar').innerHTML='<span style="color:var(--t1)">音声データのみ — チャット: 0件 / 音声: '+S.trRecs.length+'件</span>';
-      document.getElementById('hl-list').innerHTML='<div style="color:var(--t2);font-size:12px;padding:8px 0">音声データのみモードです（通常動画・ショート・プレミア対応）。<br>「＋ データ登録」でDBに登録できます。</div>';
-      addMsg('音声データ読み込み完了（'+S.trRecs.length+'件）。「＋ データ登録」を押してDBに登録できます。','info');
+      document.getElementById('hl-list').innerHTML='<div style="color:var(--t2);font-size:12px;padding:8px 0">音声データのみモードです。チャットのハイライトはありません。<br>「＋ データ登録」でDBに登録できます。</div>';
+      addMsg('文字起こしのみ読み込みました（'+S.trRecs.length+'件）。「＋ データ登録」を押してDBに登録できます。','info');
     }catch(e){hideOv();addMsg('文字起こし解析失敗: '+e.message,'error');}
     return;
   }
@@ -1551,26 +1374,10 @@ async function run(){
     }
 
     showOv('タイムスタンプを変換中...');await tick();
-    let{out:chatConv,pre}=convertTimestamps(chatResult.records,startISO);
+    const{out:chatConv,pre}=convertTimestamps(chatResult.records,startISO);
     if(!chatConv.length){
       addMsg(`全${chatResult.records.length}件が配信開始前の時刻です。配信開始時刻を確認してください。`,'error');
       hideOv();return;
-    }
-    // ── プレミア公開の自動補正 ──────────────────────────────────────────────
-    // 配信開始が T00:00:00（日付のみ）でかつ最初のチャットが1時間以上後なら
-    // チャットの最初の日時 - 30秒 を配信開始として再計算する
-    if(/T00:00:00$/.test(startISO)){
-      const minSec=Math.min(...chatConv.map(c=>c.sec));
-      if(minSec>3600){
-        const sorted=[...chatResult.records].sort((a,b)=>a.ts.toMillis()-b.ts.toMillis());
-        const firstTs=sorted[0]?.ts;
-        if(firstTs?.isValid){
-          const corrected=firstTs.minus({seconds:30}).toISO({suppressMilliseconds:true,includeOffset:false});
-          ({out:chatConv,pre}=convertTimestamps(chatResult.records,corrected));
-          document.getElementById('fi-start').value=corrected;
-          addMsg(`プレミア公開を検出: 配信開始時刻を ${corrected} に自動補正しました。`,'info');
-        }
-      }
     }
     S.chatConv=chatConv;
 
@@ -1608,7 +1415,7 @@ async function run(){
     showOv('グラフを描画中...');await tick();
     renderResults(chatConv,S.trRecs,wins,peaks,pre,chatConv.length+pre,S.videoId);
 
-    histSave('fc_start_hist',document.getElementById('fi-start').value.trim());
+    histSave('fc_start_hist',startISO);
     if(urlVal)histSave('fc_url_hist',urlVal);
     if(epVal)histSave('fc_ep_hist',epVal);
     histFill('start-hist','fc_start_hist');
@@ -1625,30 +1432,10 @@ async function run(){
 
 // ─── §16 DROP ZONES ───────────────────────────────────────────────────────────
 function tryAutoFillUrl(raw){
-  // URL 自動入力
   const urlEl=document.getElementById('fi-url');
-  if(!urlEl.value.trim()){
-    const m=raw.match(/Video URL:\s*(https?:\/\/\S+)/);
-    if(m)urlEl.value=m[1].trim();
-  }
-  // 配信開始時刻の自動推定（未入力 or T00:00:00 のとき）
-  const startEl=document.getElementById('fi-start');
-  const cur=startEl.value.trim();
-  if(!cur||/T00:00:00$/.test(cur)){
-    // チャットファイルから全 date: を抽出して最初のものを使う
-    const dates=[];
-    for(const m of raw.matchAll(/\ndate:\s*(\S+)/g))dates.push(m[1]);
-    if(dates.length){
-      dates.sort();
-      const first=dates[0];
-      const hastz=/[Z]$/.test(first)||/[+-]\d{2}:?\d{2}$/.test(first);
-      const dt=luxon.DateTime.fromISO(hastz?first:first+'+09:00');
-      if(dt.isValid){
-        // 最初のチャット - 30秒 を配信開始の推定値とする
-        startEl.value=dt.minus({seconds:30}).toISO({suppressMilliseconds:true,includeOffset:false});
-      }
-    }
-  }
+  if(urlEl.value.trim())return;
+  const m=raw.match(/Video URL:\s*(https?:\/\/\S+)/);
+  if(m)urlEl.value=m[1].trim();
 }
 
 function setupDZ(zoneId,inputId,fnId,key){
@@ -1982,10 +1769,7 @@ async function registerCurrentVideo(){
 
 let _dbCache=[];
 let _dbSort='date';
-let _expandedCards=new Set(); // チャット・音声展開中のid集合
-let _expandedTN=new Set();    // ノート展開中のid集合
-let _selectMode=false;        // 複数選択モード
-let _selectedIds=new Set();   // 選択中のid集合
+let _expandedCards=new Set(); // 展開中カードのid集合
 
 // ── 最終同期ラベル ────────────────────────────────────────────────────────────
 function updateLastSyncLabel(isoStr){
@@ -2052,127 +1836,10 @@ async function migrateOldTagsToMainTag(){
   }catch(e){console.warn('migration error:',e);}
 }
 
-// ── 複数選択モード ────────────────────────────────────────────────────────────
-function toggleSelectMode(){
-  _selectMode=!_selectMode;
-  _selectedIds.clear();
-  const vdb=document.getElementById('view-db');
-  const btn=document.getElementById('db-selmode-btn');
-  if(_selectMode){
-    vdb?.classList.add('select-mode');
-    if(btn){btn.style.background='var(--r2)';btn.style.borderColor='var(--r1)';btn.style.color='var(--t0)';}
-  }else{
-    vdb?.classList.remove('select-mode');
-    if(btn){btn.style.background='';btn.style.borderColor='';btn.style.color='';}
-  }
-  updateSelectBar();
-  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
-}
-
-function toggleSelect(e,id){
-  e.stopPropagation();
-  if(_selectedIds.has(id)){_selectedIds.delete(id);document.getElementById('dbcard-'+id)?.classList.remove('sel');}
-  else{_selectedIds.add(id);document.getElementById('dbcard-'+id)?.classList.add('sel');}
-  const cb=document.querySelector('#dbcard-'+id+' .db-sel-cb');
-  if(cb)cb.checked=_selectedIds.has(id);
-  updateSelectBar();
-}
-
-function selectAllVisible(){
-  document.querySelectorAll('.db-card').forEach(card=>{
-    const id=parseInt(card.id.replace('dbcard-',''));
-    if(!isNaN(id)){_selectedIds.add(id);card.classList.add('sel');const cb=card.querySelector('.db-sel-cb');if(cb)cb.checked=true;}
-  });
-  updateSelectBar();
-}
-
-function deselectAll(){
-  _selectedIds.clear();
-  document.querySelectorAll('.db-card.sel').forEach(c=>{c.classList.remove('sel');const cb=c.querySelector('.db-sel-cb');if(cb)cb.checked=false;});
-  updateSelectBar();
-}
-
-function updateSelectBar(){
-  const bar=document.getElementById('db-select-bar');
-  if(!bar)return;
-  if(!_selectMode){bar.innerHTML='';bar.classList.remove('active');return;}
-  bar.classList.add('active');
-  const cnt=_selectedIds.size;
-  const mainOpts=_mainTags.map(t=>'<option value="'+esc(t.name)+'">'+esc(t.name)+'</option>').join('');
-  const subOpts=_subTagDefs.map(t=>'<option value="'+esc(t.name)+'">'+esc(t.name)+'</option>').join('');
-  bar.innerHTML=''
-    +'<span class="sel-cnt">'+cnt+'件選択中</span>'
-    +'<button class="sel-btn" onclick="selectAllVisible()">全て選択</button>'
-    +'<button class="sel-btn" onclick="deselectAll()">全解除</button>'
-    +(mainOpts?'<span class="sel-sep"></span><span class="sel-lbl">メインタグ:</span>'
-      +'<select class="sel-pick" id="sel-main-pick"><option value="">— 選択 —</option>'+mainOpts+'</select>'
-      +'<button class="sel-btn" onclick="bulkSetMainTag()">設定</button>'
-      +'<button class="sel-btn danger" onclick="bulkClearMainTag()">外す</button>':'')
-    +(subOpts?'<span class="sel-sep"></span><span class="sel-lbl">サブタグ:</span>'
-      +'<select class="sel-pick" id="sel-sub-pick"><option value="">— 選択 —</option>'+subOpts+'</select>'
-      +'<button class="sel-btn" onclick="bulkAddSubTag()">追加</button>'
-      +'<button class="sel-btn danger" onclick="bulkRemoveSubTag()">外す</button>':'')
-    +'<button class="sel-btn exit" onclick="toggleSelectMode()">✕ 終了</button>';
-}
-
-async function bulkSetMainTag(){
-  const name=document.getElementById('sel-main-pick')?.value;
-  if(!name||!_selectedIds.size)return;
-  const patches=[..._selectedIds].map(id=>({id,changes:{mainTag:name}}));
-  await dbPatchMany(patches);
-  for(const id of _selectedIds){const i=_dbCache.findIndex(r=>r.id===id);if(i>=0)_dbCache[i]={..._dbCache[i],mainTag:name};}
-  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
-  ghSync(true);toast(_selectedIds.size+'件にメインタグ「'+name+'」を設定','ok');
-}
-
-async function bulkClearMainTag(){
-  if(!_selectedIds.size)return;
-  const patches=[..._selectedIds].map(id=>({id,changes:{mainTag:null}}));
-  await dbPatchMany(patches);
-  for(const id of _selectedIds){const i=_dbCache.findIndex(r=>r.id===id);if(i>=0)_dbCache[i]={..._dbCache[i],mainTag:null};}
-  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
-  ghSync(true);toast(_selectedIds.size+'件のメインタグを外しました','ok');
-}
-
-async function bulkAddSubTag(){
-  const name=document.getElementById('sel-sub-pick')?.value;
-  if(!name||!_selectedIds.size)return;
-  const patches=[..._selectedIds].map(id=>{
-    const rec=_dbCache.find(r=>r.id===id);
-    const sub=[...(rec?.subTags||[])];
-    if(!sub.includes(name))sub.push(name);
-    return{id,changes:{subTags:sub}};
-  });
-  await dbPatchMany(patches);
-  for(const{id,changes}of patches){const i=_dbCache.findIndex(r=>r.id===id);if(i>=0)_dbCache[i]={..._dbCache[i],...changes};}
-  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
-  ghSync(true);toast(_selectedIds.size+'件にサブタグ「'+name+'」を追加','ok');
-}
-
-async function bulkRemoveSubTag(){
-  const name=document.getElementById('sel-sub-pick')?.value;
-  if(!name||!_selectedIds.size)return;
-  const patches=[..._selectedIds].map(id=>{
-    const rec=_dbCache.find(r=>r.id===id);
-    const sub=(rec?.subTags||[]).filter(s=>s!==name);
-    return{id,changes:{subTags:sub}};
-  });
-  await dbPatchMany(patches);
-  for(const{id,changes}of patches){const i=_dbCache.findIndex(r=>r.id===id);if(i>=0)_dbCache[i]={..._dbCache[i],...changes};}
-  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
-  ghSync(true);toast(_selectedIds.size+'件からサブタグ「'+name+'」を外しました','ok');
-}
-
 function toggleCardExpand(e,id){
   e.stopPropagation();
   if(_expandedCards.has(id))_expandedCards.delete(id);
   else _expandedCards.add(id);
-  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
-}
-function toggleTNExpand(e,id){
-  e.stopPropagation();
-  if(_expandedTN.has(id))_expandedTN.delete(id);
-  else _expandedTN.add(id);
   renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
 }
 
@@ -2192,51 +1859,37 @@ function sortedCache(){
 }
 
 async function loadAndRenderDB(){
-  // bridge.js に最新メモデータの再取得を要求（TimeNoteで編集した内容を反映）
-  window.dispatchEvent(new CustomEvent('ynp-bridge-request'));
-  // bridge.js の chrome.storage 読み込みを待つ（通常 10ms 以下）
-  await new Promise(r=>setTimeout(r,80));
   try{
     _dbCache=await dbAll();
     if(ghEnabled()){
       try{
         const remote=await ghGet();
 
-        // ① タグ定義をリモートからマージ（tombstone尊重・リモート順序優先）
+        // ① タグ定義をリモートからマージ（tombstone尊重）
         for(const n of(remote.deletedTagNames||[]))_deletedTagNames.add(n);
         for(const n of(remote.deletedSubNames||[]))_deletedSubNames.add(n);
-        _mainTags=_mergeTagOrder(_mainTags,remote.mainTags,_deletedTagNames);
-        _subTagDefs=_mergeTagOrder(_subTagDefs,remote.subTagDefs,_deletedSubNames);
-        // スタンプ定義マージ（リモート順序優先）
-        if(remote.stampDefs?.length||_stampDefs.length){
-          _stampDefs=_mergeStampOrder(_stampDefs,remote.stampDefs);
-          saveStampDefs();
-        }
+        _mainTags=_mainTags.filter(t=>!_deletedTagNames.has(t.name));
+        _subTagDefs=_subTagDefs.filter(t=>!_deletedSubNames.has(t.name));
+        const _m=new Map(_mainTags.map(t=>[t.name,t]));
+        for(const t of(remote.mainTags||[]))if(!_m.has(t.name)&&!_deletedTagNames.has(t.name))_m.set(t.name,t);
+        _mainTags=[..._m.values()];
+        const _sn=new Set(_subTagDefs.map(t=>t.name));
+        for(const t of(remote.subTagDefs||[]))if(!_sn.has(t.name)&&!_deletedSubNames.has(t.name)){_subTagDefs.push(t);_sn.add(t.name);}
         saveTagDefs();
 
-        // ② deletedRatsをマージ（リモートで削除されたレコードをローカルからも除去）
-        for(const rat of(remote.deletedRats||[]))_deletedRats.add(rat);
-        const toDeleteLocally2=_dbCache.filter(r=>r.registeredAt&&_deletedRats.has(r.registeredAt));
-        for(const r of toDeleteLocally2)await dbDel(r.id);
-        if(toDeleteLocally2.length){saveDeletedRats();_dbCache=await dbAll();}
-
-        // ③ 新規レコードを追加
+        // ② 新規レコードを追加
         const localByRat=new Map(_dbCache.map(r=>[r.registeredAt,r]));
         const newRecs=remote.data.filter(r=>r.registeredAt&&!localByRat.has(r.registeredAt)&&!_deletedRats.has(r.registeredAt));
         if(newRecs.length)await dbAddMany(newRecs);
 
-        // ④ 既存レコードをリモートから更新（タグ・ノート・基本情報）
+        // ③ 既存レコードの mainTag / subTags をリモートから更新
         for(const r of remote.data){
           if(!r.registeredAt||_deletedRats.has(r.registeredAt))continue;
           const local=localByRat.get(r.registeredAt);
-          if(!local)continue; // 新規は③で追加済み
+          if(!local)continue; // 新規は②で追加済み
           const patch={};
           if(r.mainTag!==undefined&&r.mainTag!==local.mainTag)patch.mainTag=r.mainTag;
           if(r.subTags!==undefined&&JSON.stringify(r.subTags||[])!==JSON.stringify(local.subTags||[]))patch.subTags=r.subTags;
-          if(r.tnotes!==undefined&&r.tnotes!==(local.tnotes||''))patch.tnotes=r.tnotes||'';
-          if(r.title&&r.title!==local.title)patch.title=r.title;
-          if(r.videoUrl&&r.videoUrl!==local.videoUrl)patch.videoUrl=r.videoUrl;
-          if(r.streamStart&&r.streamStart!==local.streamStart)patch.streamStart=r.streamStart;
           if(Object.keys(patch).length)await dbUpdate(local.id,patch);
         }
 
@@ -2270,236 +1923,7 @@ function getAcctSearch(){
 }
 
 function searchDB(q){
-  const terms=_qTerms(q);
-  const fuzzy=_isFuzzy();
-  _dbMatchFn=terms.length
-    ?(text)=>(fuzzy?_fuzzyHit(terms,text):_plainHit(terms,text))
-    :null;
   renderDB(applyTagFilter(sortedCache()),q.trim(),getAcctSearch());
-}
-
-// ─── §FUZZY SEARCH ─────────────────────────────────────────────────────────────
-// テキスト正規化（カタカナ↔ひらがな・小文字かな・長音・重複・空白除去）
-function _norm(s){
-  if(!s)return'';
-  let v=String(s).toLowerCase();
-  // 全角英数 → 半角
-  v=v.replace(/[！-～]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
-  // カタカナ → ひらがな
-  v=v.replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60));
-  // 小文字かな → 大文字かな
-  v=v.replace(/[ぁぃぅぇぉゃゅょっ]/g,c=>({'ぁ':'あ','ぃ':'い','ぅ':'う','ぇ':'え','ぉ':'お','ゃ':'や','ゅ':'ゆ','ょ':'よ','っ':'つ'})[c]||c);
-  // 長音符除去
-  v=v.replace(/ー/g,'');
-  // スペース除去（「ぱ るむ」→「ぱるむ」）
-  v=v.replace(/[\s　]/g,'');
-  // 同じ文字の連続を1文字に（ぱああるむ→ぱあるむ, wwww→w）
-  v=v.replace(/(.)\1+/g,'$1');
-  return v;
-}
-// あいまい正規表現: 各文字間に0〜5個の母音を許容（ぱるむ→ぱあるむ にも一致）
-function _fuzzyRe(term){
-  const n=_norm(term);if(!n)return null;
-  const er=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-  const vo='(?:[あいうえお]{0,5})?';
-  return new RegExp(n.split('').map(er).join(vo),'i');
-}
-function _fuzzyHit(terms,text){
-  const nt=_norm(text);
-  return terms.some(t=>{const re=_fuzzyRe(t);return re&&re.test(nt);});
-}
-function _plainHit(terms,text){
-  const tl=text.toLowerCase();
-  return terms.some(t=>tl.includes(t.toLowerCase()));
-}
-function _isFuzzy(){const el=document.getElementById('db-fuzzy');return el&&el.checked;}
-function _qTerms(q){return(q||'').trim().split(/\s+/).filter(Boolean);}
-// renderDB が参照するグローバルマッチ関数（searchDB で更新）
-let _searchMode='all'; // 'all'|'tr'|'chat'
-function setSearchMode(m){
-  _searchMode=m;
-  ['all','tr','chat'].forEach(id=>{
-    const b=document.getElementById('sm-'+id);
-    if(b)b.classList.toggle('active',id===m);
-  });
-  searchDB(document.getElementById('db-q')?.value||'');
-}
-let _dbMatchFn=null;
-function _dbMatch(text){
-  return _dbMatchFn?_dbMatchFn(text):false;
-}
-
-// ─── §SCENE EXTRACTION ─────────────────────────────────────────────────────────
-const _CATS=[
-  {id:'funny',   icon:'😂', label:'面白かった箇所',
-   ck:['笑','ｗ','草','🤣','ワロタ','わろた','笑える','ウケる','うける','吹いた','ふいた','草生えた'],
-   tk:['笑','ははは','ふふ','わはは']},
-  {id:'scream',  icon:'😱', label:'叫んでいる箇所',
-   ck:['!!!!','！！！！','きゃー','うわー','ビビった','驚いた','えーーー'],
-   tk:['きゃー','うわー','ひゃー','えーーー','わあ','あーーー']},
-  {id:'cringe',  icon:'😬', label:'ドン引きされた箇所',
-   ck:['ひく','ひいた','ドン引き','引いた','大丈夫','えっ','は？','はあ','ちょっと待'],
-   tk:[]},
-  {id:'silly',   icon:'🤡', label:'ふざけている箇所',
-   ck:['草','アホ','あほ','バカ','何やってんの','ふざけ','やばw','えw'],
-   tk:['ふざけ','じゃない','みたいな','ちがう','違う']},
-  {id:'sad',     icon:'😢', label:'悲しい箇所',
-   ck:['😢','😭','泣','かわいそう','つらい','辛い','悲しい','切ない','涙','泣ける'],
-   tk:['泣','悲しい','つらい','辛い','切ない','なんか','もう']},
-  {id:'family',  icon:'🏠', label:'家庭環境の話',
-   ck:['親','家族','実家','お母さん','お父さん','お兄ちゃん','お姉ちゃん'],
-   tk:['親','父','母','家族','実家','お母さん','お父さん','兄弟','姉','妹','幼少期','子供の頃','小学校','中学','家庭']},
-  {id:'serious', icon:'💬', label:'真面目な話',
-   ck:['確かに','なるほど','深い','勉強になった','ほんとそれ','同意'],
-   tk:['実は','正直','本当のこと','ちゃんと','大事','大切','ずっと','悩んで','告白','告知','真剣']},
-];
-
-// 1レコードからキーワードヒットのピーク窓を抽出（chat or tr）
-function _peakClips(rec,kwList,useChat,topN){
-  const WIN=45; // 秒
-  const src=useChat?(rec.chatData||[]):(rec.trData||[]);
-  const hits=src.filter(x=>{
-    const t=(useChat?x.message:x.text)||'';
-    return kwList.some(k=>t.toLowerCase().includes(k.toLowerCase()));
-  });
-  if(!hits.length)return[];
-  // 窓ごとのスコア（ヒット数）
-  const windows=new Map();
-  hits.forEach(h=>{
-    const w=Math.floor(h.sec/WIN);
-    windows.set(w,(windows.get(w)||[]).concat(h));
-  });
-  return [...windows.entries()]
-    .sort((a,b)=>b[1].length-a[1].length)
-    .slice(0,topN)
-    .map(([w,hs])=>({
-      sec:hs[0].sec,
-      score:hs.length,
-      snippet:((useChat?hs[0].message:hs[0].text)||'').slice(0,80),
-    }));
-}
-
-function openExtModal(){
-  const records=applyTagFilter(sortedCache());
-  if(!records.length){toast('対象データがありません','wrn');return;}
-  const catEl=document.getElementById('ext-cat-list');
-  catEl.innerHTML=_CATS.map(cat=>
-    '<button class="ext-cat" onclick="runExtract(\''+cat.id+'\')">'+cat.icon+' '+esc(cat.label)+'</button>'
-  ).join('');
-  document.getElementById('ext-results').innerHTML='';
-  document.getElementById('ext-modal').classList.add('open');
-}
-function closeExtModal(){document.getElementById('ext-modal').classList.remove('open');}
-
-function runExtract(catId){
-  const cat=_CATS.find(c=>c.id===catId);
-  if(!cat)return;
-  const records=applyTagFilter(sortedCache());
-  // チャットKWとトランスクリプトKW両方を検索対象（ただし trData のみ）
-  const allKw=[...new Set([...cat.tk,...cat.ck])].filter(k=>k);
-  if(!allKw.length)return;
-
-  let totalFound=0;
-  let html='<div style="font-size:11px;color:var(--t2);margin:10px 0 8px">'+cat.icon+' <b>'+cat.label+'</b> — 音声データから抽出</div>';
-
-  for(const rec of records){
-    const vid=_getVidId(rec);
-    const trHits=(rec.trData||[]).filter(t=>
-      allKw.some(k=>t.text.toLowerCase().includes(k.toLowerCase()))
-    ).sort((a,b)=>a.sec-b.sec);
-    if(!trHits.length)continue;
-    totalFound+=trHits.length;
-    const titleShort=(rec.title||'(タイトル不明)').replace(/^\(\d+\)\s*/,'').slice(0,35);
-    html+='<div style="margin:10px 0 3px;padding:3px 8px;background:var(--r3);border-radius:3px;font-size:11px;color:var(--t1);font-weight:600">'
-      +'#'+esc(rec.episodeNum||'?')+' '+esc(titleShort)+'</div>';
-    html+='<div class="db-hits">'+trHits.map(t=>{
-      const matchedKw=allKw.find(k=>t.text.toLowerCase().includes(k.toLowerCase()))||'';
-      return makeHitRow({sec:t.sec,txt:t.text,vid},matchedKw);
-    }).join('')+'</div>';
-  }
-
-  const resEl=document.getElementById('ext-results');
-  if(!totalFound){
-    resEl.innerHTML='<div style="color:var(--t2);font-size:12px;margin-top:12px">該当する音声データが見つかりませんでした。</div>';
-    return;
-  }
-  resEl.innerHTML=html;
-}
-
-// ─── §RECOMMEND ───────────────────────────────────────────────────────────────
-function showRecommend(){
-  const records=applyTagFilter(sortedCache());
-  if(!records.length){toast('対象データがありません','wrn');return;}
-  // チャット密度のピーク窓を各レコードから抽出、全体からランダムに5〜8件選ぶ
-  const pool=[];
-  const WIN=30;
-  for(const rec of records){
-    const vid=_getVidId(rec);
-    const chat=rec.chatData||[];
-    if(!chat.length)continue;
-    const wMap=new Map();
-    chat.forEach(c=>{const w=Math.floor(c.sec/WIN);wMap.set(w,(wMap.get(w)||[]).concat(c));});
-    const best=[...wMap.values()].sort((a,b)=>b.length-a.length).slice(0,3);
-    best.forEach(msgs=>{
-      const snip=(msgs[0].message||'').slice(0,60);
-      pool.push({rec,vid,sec:msgs[0].sec,cnt:msgs.length,snip});
-    });
-  }
-  if(!pool.length){toast('チャットデータのある動画がありません','wrn');return;}
-  // ランダムシャッフル
-  for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
-  const picks=pool.slice(0,7);
-  const titleOf=rec=>(rec.title||'(タイトル不明)').replace(/^\(\d+\)\s*/,'').slice(0,28);
-  // 既存の ext-modal を使いまわして表示
-  document.getElementById('ext-cat-list').innerHTML=
-    '<div style="font-size:12px;color:var(--t2);margin-bottom:10px">🎲 再クリックで別のおすすめを表示</div>'
-    +'<button class="ext-cat" onclick="showRecommend()" style="justify-content:center;font-weight:700">🎲 シャッフル</button>';
-  document.getElementById('ext-results').innerHTML='<div class="rec-wrap">'+picks.map(p=>{
-    const ts=fmtSec(p.sec);
-    const _raw=_tsAnchor(p.vid,p.sec,ts);
-    const tsHtml=p.vid?_raw.replace('<a ','<a class="ext-ts" '):'<span class="ext-ts" style="cursor:default">'+esc(ts)+'</span>';
-    return'<div class="rec-card">'
-      +'<div class="rec-card-hdr">'
-      +'<span class="rec-card-ep">#'+esc(p.rec.episodeNum||'?')+'</span>'
-      +'<span class="rec-card-title">'+esc(titleOf(p.rec))+'</span>'
-      +'</div>'
-      +'<div class="rec-card-body">'+tsHtml
-      +'<span style="color:var(--t2)">盛り上がり '+p.cnt+'コメ/'+WIN+'秒</span>'
-      +'<span class="ext-txt">'+esc(p.snip)+(p.snip.length>=60?'…':'')+'</span>'
-      +'</div>'
-      +'</div>';
-  }).join('')+'</div>';
-  document.getElementById('ext-modal').classList.add('open');
-}
-
-function setNoteSearch(q){
-  _noteQ=q.trim();
-  const nTerms=_qTerms(_noteQ);
-  _noteFuzzyMatchFn=(nTerms.length&&_isFuzzy())
-    ?(text)=>_fuzzyHit(nTerms,text)
-    :null;
-  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
-}
-
-// ノートのヒット周辺抜粋（重いハイライト全文展開の代わりに使用）
-function _noteSnippet(text,kw,ctxBefore,ctxAfter){
-  ctxBefore=ctxBefore||50; ctxAfter=ctxAfter||100;
-  if(!text||!kw)return'';
-  const lower=text.toLowerCase(), kwl=kw.toLowerCase();
-  const idx=lower.indexOf(kwl);
-  if(idx<0)return'';
-  const s=Math.max(0,idx-ctxBefore);
-  const e=Math.min(text.length,idx+kw.length+ctxAfter);
-  return (s>0?'…':'')+text.slice(s,e)+(e<text.length?'…':'');
-}
-
-// 高速ヒットカウント（regexより軽い）
-function _countHits(text,kw){
-  if(!text||!kw)return 0;
-  const lower=text.toLowerCase(), kwl=kw.toLowerCase();
-  let n=0,pos=0;
-  while((pos=lower.indexOf(kwl,pos))!==-1){n++;pos+=kwl.length;}
-  return n;
 }
 
 function parseEpBadge(ep,color){
@@ -2518,62 +1942,29 @@ function renderDB(records,q,acct){
   acct=acct||'';
   const grid=document.getElementById('db-grid');
   const ql=q.toLowerCase();
-  const qnl=_noteQ.toLowerCase();
   const exactAcct=acct.startsWith('@');            // @つき = 完全一致
   const al=acct.toLowerCase().replace(/^@/,'');   // 検索文字列（@ 除去済み）
   const matchUser=u=>!al?true:exactAcct?(u||'').toLowerCase()===(al):(u||'').toLowerCase().includes(al);
-
-  // ── フィルターバナー更新 ──────────────────────────────────────────────────
-  {
-    const banner=document.getElementById('db-filter-banner');
-    const txtEl=document.getElementById('fban-txt');
-    const total=_dbCache.length;
-    const shown=records.length; // note/tag filter 後の件数（さらにq/acctで絞られる前）
-    const anyActive=_tagFilter!==null||_subTagFilter!==null||_noteFilter!==null||_noteQ||q||acct;
-    if(banner&&txtEl){
-      if(anyActive){
-        const labels=[];
-        if(_tagFilter&&_tagFilter!=='__none__')labels.push('タグ: '+_tagFilter);
-        else if(_tagFilter==='__none__')labels.push('タグ: 未設定');
-        if(_subTagFilter&&_subTagFilter!=='__none__')labels.push('サブ: '+_subTagFilter);
-        if(_noteFilter==='has')labels.push('ノートあり');
-        else if(_noteFilter==='none')labels.push('ノートなし');
-        if(q)labels.push('チャット検索: "'+q+'"');
-        if(_noteQ)labels.push('ノート検索: "'+_noteQ+'"');
-        if(acct)labels.push('アカウント: '+acct);
-        txtEl.innerHTML='<b>'+shown+'</b> / '+total+' 件  —  '+labels.join(' · ');
-        banner.classList.add('active');
-      }else{
-        banner.classList.remove('active');
-      }
-    }
-  }
 
   // update KW CSV button state
   const kwCsvBtn=document.getElementById('db-kw-csv-btn');
   if(kwCsvBtn)kwCsvBtn.disabled=!(q||al);
 
-  // チャット・音声キーワードフィルタ（ノートは含まない・独立した検索）
-  const _cardChk=_dbMatchFn?_dbMatch:t=>t.toLowerCase().includes(ql);
+  // keyword filter（サブタグも検索対象）
   let filtered=q
     ?records.filter(rec=>{
         const epStr=String(rec.episodeNum||'');
-        const inChat=_searchMode!=='tr'&&(rec.chatData||[]).some(c=>_cardChk(_stripStamps(c.message)));
-        const inTr=_searchMode!=='chat'&&(rec.trData||[]).some(t=>_cardChk(t.text));
-        const inMeta=(rec.title||'').toLowerCase().includes(ql)||epStr.toLowerCase().includes(ql)||(rec.subTags||[]).some(s=>s.toLowerCase().includes(ql));
-        return inChat||inTr||inMeta;
+        const vidStr=rec.videoId||'';
+        const noteMemo=_ynpMemos?(_ynpMemos.byEp[epStr]||_ynpMemos.byVid[vidStr]||''):'';
+        return (rec.chatData||[]).some(c=>c.message.toLowerCase().includes(ql))||
+          (rec.trData||[]).some(t=>t.text.toLowerCase().includes(ql))||
+          (rec.title||'').toLowerCase().includes(ql)||
+          epStr.toLowerCase().includes(ql)||
+          (rec.subTags||[]).some(s=>s.toLowerCase().includes(ql))||
+          (rec.tnotes||'').toLowerCase().includes(ql)||
+          noteMemo.toLowerCase().includes(ql);
       })
     :records;
-  // ノートキーワードフィルタ（チャット・音声検索とは独立して適用）
-  if(_noteQ){
-    const _noteChk=_noteFuzzyMatchFn?_noteFuzzyMatchFn:t=>t.toLowerCase().includes(qnl);
-    filtered=filtered.filter(rec=>{
-      const epStr=String(rec.episodeNum||'');
-      const vidStr=rec.videoId||'';
-      const noteMemo=_ynpMemos?(_ynpMemos.byEp[epStr]||_ynpMemos.byVid[vidStr]||''):'';
-      return _noteChk(rec.tnotes||'')||_noteChk(noteMemo);
-    });
-  }
 
   // account filter (applied on top of keyword filter)
   if(al){
@@ -2598,12 +1989,8 @@ function renderDB(records,q,acct){
 
   function makeHitRow(h,kw){
     const t=fmtSec(h.sec);
-    const link=_tsAnchor(h.vid,h.sec,t);
-    // rawMsg があればスタンプHTML描画、なければ通常テキスト
-    const content=h.rawMsg!==undefined
-      ?(h.uname?'@'+esc(h.uname)+' ':'')+_renderMsgHtml(h.rawMsg,kw)
-      :hlStr(h.txt,kw);
-    return'<div class="db-hit"><div class="tc">'+link+'</div><div class="db-hit-txt">'+content+'</div></div>';
+    const link=h.vid?'<a href="https://www.youtube.com/watch?v='+esc(h.vid)+'&t='+Math.floor(h.sec)+'" target="_blank">'+esc(t)+'</a>':esc(t);
+    return'<div class="db-hit"><div class="tc">'+link+'</div><div class="db-hit-txt">'+hlStr(h.txt,kw)+'</div></div>';
   }
 
   grid.innerHTML=filtered.map(rec=>{
@@ -2647,81 +2034,52 @@ function renderDB(records,q,acct){
       chatMatchCnt=chatData.filter(c=>matchUser(c.username)).length;
       trMatchCnt=trData.length; // tr data not filtered by account
     }else if(q){
-      chatMatchCnt=chatData.filter(c=>_dbMatchFn?_dbMatch(_stripStamps(c.message)):_stripStamps(c.message).toLowerCase().includes(ql)).length;
-      trMatchCnt=trData.filter(t=>_dbMatchFn?_dbMatch(t.text):t.text.toLowerCase().includes(ql)).length;
+      chatMatchCnt=chatData.filter(c=>c.message.toLowerCase().includes(ql)).length;
+      trMatchCnt=trData.filter(t=>t.text.toLowerCase().includes(ql)).length;
     }else{
       chatMatchCnt=chatData.length;
       trMatchCnt=trData.length;
     }
-    // ノート検索ヒット数（高速indexOf方式）
-    const tnHitCnt=_noteQ?_countHits(_tn,_noteQ):0;
-    const memoHitCnt=_noteQ?_countHits(_memo,_noteQ):0;
     const acctLabel=al?'@'+acct+' ':'チャット ';
     const countsHtml='<div class="db-counts">'
-      +(_searchMode!=='tr'?'<span class="cnt-chip chat">'+esc(acctLabel)+'<b>'+chatMatchCnt+'</b>件</span>':'')
-      +((!al&&_searchMode!=='chat')?'<span class="cnt-chip tr">音声 <b>'+trMatchCnt+'</b>件</span>':'')
-      +(_tnLines?'<span class="cnt-chip tn'+(tnHitCnt?' hit':'')+'">'
-        +'TN <b>'+_tnLines+'</b>行'+(tnHitCnt?' · <b>'+tnHitCnt+'</b>ヒット':'')
-        +'</span>':'')
-      +(_memoLines?'<span class="cnt-chip note'+(memoHitCnt?' hit':'')+'">'
-        +'ノート <b>'+_memoLines+'</b>行'+(memoHitCnt?' · <b>'+memoHitCnt+'</b>ヒット':'')
-        +'</span>':'')
+      +'<span class="cnt-chip chat">'+esc(acctLabel)+'<b>'+chatMatchCnt+'</b>件</span>'
+      +(al?'':'<span class="cnt-chip tr">音声 <b>'+trMatchCnt+'</b>件</span>')
+      +(_tnLines?'<span class="cnt-chip tn">TN <b>'+_tnLines+'</b>行</span>':'')
+      +(_memoLines?'<span class="cnt-chip note">ノート <b>'+_memoLines+'</b>行</span>':'')
       +'</div>';
 
-    // 展開状態（チャット・音声 / ノートは独立）
+    // hits list — 検索時は常に表示、検索なしは展開済みカードのみ
     const isExpanded=_expandedCards.has(rec.id);
-    const isTNExpanded=_expandedTN.has(rec.id);
-
-    // ノートセクション（展開時=全文 / 検索ヒット時=スニペットのみ）
-    const _tnHit=tnHitCnt>0;
-    let tnHtml='';
-    if(_tn){
-      if(isTNExpanded)
-        tnHtml='<div class="db-tn-section"><div class="db-tn-label">📌 タイムラインノート</div><pre class="db-tn-text">'+(_noteQ?hlStr(_tn,_noteQ):esc(_tn))+'</pre></div>';
-      else if(_tnHit)
-        tnHtml='<div class="db-tn-section"><div class="db-tn-label">📌 タイムラインノート</div><div class="db-tn-snippet">'+hlStr(_noteSnippet(_tn,_noteQ),_noteQ)+'</div></div>';
-    }
-    const _memoHit=memoHitCnt>0;
-    let memoHtml='';
-    if(_memo){
-      if(isTNExpanded)
-        memoHtml='<div class="db-ynp-memo"><div class="db-ynp-memo-label">📝 YT NOTES</div><pre class="db-ynp-memo-text">'+(_noteQ?hlStr(_memo,_noteQ):esc(_memo))+'</pre></div>';
-      else if(_memoHit)
-        memoHtml='<div class="db-ynp-memo"><div class="db-ynp-memo-label">📝 YT NOTES</div><div class="db-tn-snippet">'+hlStr(_noteSnippet(_memo,_noteQ),_noteQ)+'</div></div>';
-    }
+    const _tnHit=q&&_tn.toLowerCase().includes(ql);
+    const tnHtml=(isExpanded||_tnHit)&&_tn
+      ?'<div class="db-tn-section"><div class="db-tn-label">📌 タイムラインノート</div><pre class="db-tn-text">'+esc(_tn)+'</pre></div>'
+      :'';
+    const _memoHit=q&&_memo.toLowerCase().includes(ql);
+    const memoHtml=(isExpanded||_memoHit)&&_memo
+      ?'<div class="db-ynp-memo"><div class="db-ynp-memo-label">📝 YT NOTES</div><pre class="db-ynp-memo-text">'+esc(_memo)+'</pre></div>'
+      :'';
     const showHits=q||al||isExpanded;
     let hitsHtml='';
     if(showHits){
       if(al){
-        const _vid=_getVidId(rec);
         const userHits=chatData
           .filter(c=>matchUser(c.username))
-          .map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid}))
+          .map(c=>({sec:c.sec,txt:'@'+c.username+' '+c.message,vid:rec.videoId}))
           .sort((a,b)=>a.sec-b.sec);
-        const _uhCap=5,_uhOver=userHits.length-_uhCap;
-        if(userHits.length)hitsHtml='<div class="db-hits">'+userHits.slice(0,_uhCap).map(h=>makeHitRow(h,'')).join('')+(_uhOver>0?'<div class="db-hits-more">… 他 '+_uhOver+' 件</div>':'')+'</div>';
+        if(userHits.length)hitsHtml='<div class="db-hits">'+userHits.map(h=>makeHitRow(h,'')).join('')+'</div>';
       }else if(q){
-        const _vid=_getVidId(rec);
-        const _chkQ=_dbMatchFn?_dbMatch:t=>t.toLowerCase().includes(ql);
-        const chatHits=_searchMode!=='tr'
-          ?chatData.filter(c=>_chkQ(_stripStamps(c.message)))
-            .map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid}))
-          :[];
-        const trHits=_searchMode!=='chat'
-          ?trData.filter(t=>_chkQ(t.text))
-            .map(t=>({sec:t.sec,txt:t.text,vid:_vid}))
-          :[];
+        const chatHits=chatData.filter(c=>c.message.toLowerCase().includes(ql))
+          .map(c=>({sec:c.sec,txt:'@'+c.username+' '+c.message,vid:rec.videoId}));
+        const trHits=trData.filter(t=>t.text.toLowerCase().includes(ql))
+          .map(t=>({sec:t.sec,txt:t.text,vid:rec.videoId}));
         const allHits=[...chatHits,...trHits].sort((a,b)=>a.sec-b.sec);
-        const _ahCap=5,_ahOver=allHits.length-_ahCap;
-        if(allHits.length)hitsHtml='<div class="db-hits">'+allHits.slice(0,_ahCap).map(h=>makeHitRow(h,q)).join('')+(_ahOver>0?'<div class="db-hits-more">… 他 '+_ahOver+' 件</div>':'')+'</div>';
+        if(allHits.length)hitsHtml='<div class="db-hits">'+allHits.map(h=>makeHitRow(h,q)).join('')+'</div>';
       }else{
-        const _vid=_getVidId(rec);
         const allRows=[
-          ...(_searchMode!=='chat'?trData.map(t=>({sec:t.sec,txt:t.text,vid:_vid})):[]),
-          ...(_searchMode!=='tr'?chatData.map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid})):[]),
+          ...trData.map(t=>({sec:t.sec,txt:t.text,vid:rec.videoId})),
+          ...chatData.map(c=>({sec:c.sec,txt:'@'+c.username+' '+c.message,vid:rec.videoId})),
         ].sort((a,b)=>a.sec-b.sec);
-        const _arCap=50,_arOver=allRows.length-_arCap;
-        if(allRows.length)hitsHtml='<div class="db-hits">'+allRows.slice(0,_arCap).map(h=>makeHitRow(h,'')).join('')+(_arOver>0?'<div class="db-hits-more">… 他 '+_arOver+' 件（解析タブで全件確認）</div>':'')+'</div>';
+        if(allRows.length)hitsHtml='<div class="db-hits">'+allRows.map(h=>makeHitRow(h,'')).join('')+'</div>';
       }
     }
 
@@ -2733,24 +2091,14 @@ function renderDB(records,q,acct){
         :'<span style="font-size:9px;color:var(--t2);border:1px solid var(--r3);border-radius:3px;padding:1px 5px;margin-left:6px;flex-shrink:0">未同期</span>')
       :'';
 
-    // 展開ボタン2種（検索なし時のみ）
-    const hasNotes=!!(_tn||_memo);
-    const hasData=!!(chatData.length||trData.length);
+    // 展開ヒント（検索なし時のみ）
     const expandHint=(!q&&!al)
-      ?'<div class="db-expand-btns">'
-        +(hasData?'<button class="db-expand-btn'+(isExpanded?' active':'')+'" onclick="toggleCardExpand(event,'+rec.id+')">'+(isExpanded?'▲ チャット・音声':'▼ チャット・音声')+'</button>':'')
-        +(hasNotes?'<button class="db-expand-btn'+(isTNExpanded?' active':'')+'" onclick="toggleTNExpand(event,'+rec.id+')">'+(isTNExpanded?'▲ ノート':'▼ ノート')+'</button>':'')
-        +'</div>'
+      ?'<div class="db-expand-hint" onclick="toggleCardExpand(event,'+rec.id+')">'+(isExpanded?'▲ 閉じる':'▼ データを表示')+'</div>'
       :'';
 
     const metaUrl=rec.videoUrl?' | <a href="'+esc(rec.videoUrl)+'" target="_blank" style="color:var(--r1);text-decoration:none" onclick="event.stopPropagation()">'+esc(rec.videoUrl.slice(0,40))+'</a>':'';
-    const isSel=_selectedIds.has(rec.id);
-    const selCb='<input type="checkbox" class="db-sel-cb"'+(isSel?' checked':'')+' onclick="toggleSelect(event,'+rec.id+')">';
-    const cardClick=_selectMode
-      ?'toggleSelect(event,'+rec.id+')'
-      :'(!event.defaultPrevented)&&toggleCardExpand(event,'+rec.id+')';
-    return'<div class="db-card'+(isSel?' sel':'')+'" id="dbcard-'+rec.id+'" ondblclick="'+(_selectMode?'':'loadRecordToAnalysis('+rec.id+')')+'" title="'+(isSel?'選択中 — クリックで解除':'ダブルクリックで解析画面に読み込む')+'">'
-      +'<div class="db-card-h" onclick="'+cardClick+'">'+selCb+ep+'<div class="db-title">'+hlStr(title,q)+'</div>'+syncBadge+'</div>'
+    return'<div class="db-card" id="dbcard-'+rec.id+'" ondblclick="loadRecordToAnalysis('+rec.id+')" title="ダブルクリックで解析画面に読み込む">'
+      +'<div class="db-card-h" onclick="(!event.defaultPrevented)&&toggleCardExpand(event,'+rec.id+')">'+ep+'<div class="db-title">'+hlStr(title,q)+'</div>'+syncBadge+'</div>'
       +'<div class="db-meta">'+esc(date)+metaUrl+'</div>'
       +mainTagHtml
       +subTagHtml
@@ -2963,131 +2311,6 @@ async function runFromLoaded(){
   }
 }
 
-// ─── §20c STAMP MANAGER ───────────────────────────────────────────────────────
-let _stampDefs=[];          // [{name:'ぱるむ', url:'https://...' or 'data:image/...'}]
-let _pendingStampDataUrl=null;
-
-async function loadStampDefs(){
-  const v=await dbGetSetting('stamp_defs');
-  if(Array.isArray(v))_stampDefs=v;
-}
-function saveStampDefs(){dbPutSetting('stamp_defs',_stampDefs);}
-function _getStampUrl(name){
-  const d=_stampDefs.find(d=>d.name===name);
-  return d?d.url:null;
-}
-
-function openStampModal(){
-  renderStampList();
-  document.getElementById('stamp-modal').classList.add('open');
-}
-function closeStampModal(){document.getElementById('stamp-modal').classList.remove('open');}
-
-function renderStampList(){
-  const el=document.getElementById('stamp-list');
-  if(!_stampDefs.length){
-    el.innerHTML='<div style="color:var(--t2);font-size:12px;padding:8px 0">スタンプが登録されていません</div>';
-    return;
-  }
-  el.innerHTML=_stampDefs.map((d,i)=>
-    '<div class="tg-row" style="gap:10px">'
-    +'<img src="'+esc(d.url)+'" style="height:28px;width:auto;border-radius:3px;flex-shrink:0" onerror="this.style.display=\'none\'">'
-    +'<span class="tg-name" style="font-family:monospace;font-size:12px">:_'+esc(d.name)+':</span>'
-    +'<button class="tg-del" onclick="deleteStampDef('+i+')">削除</button>'
-    +'</div>'
-  ).join('');
-}
-
-function deleteStampDef(idx){
-  _stampDefs.splice(idx,1);
-  saveStampDefs();
-  renderStampList();
-  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
-}
-
-async function addStampDef(){
-  const nameEl=document.getElementById('stamp-name-in');
-  const urlEl=document.getElementById('stamp-url-in');
-  const name=nameEl.value.trim();
-  if(!name){toast('スタンプ名を入力してください','wrn');return;}
-  const url=_pendingStampDataUrl||urlEl.value.trim();
-  if(!url){toast('画像URLまたはファイルを選択してください','wrn');return;}
-  const existing=_stampDefs.findIndex(d=>d.name===name);
-  if(existing>=0)_stampDefs[existing].url=url;
-  else _stampDefs.push({name,url});
-  saveStampDefs();
-  _pendingStampDataUrl=null;
-  nameEl.value='';urlEl.value='';
-  const prev=document.getElementById('stamp-file-preview');
-  if(prev)prev.innerHTML='';
-  renderStampList();
-  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
-  toast('スタンプ登録: '+name,'ok');
-}
-
-// ─── §20b AI EXPORT ──────────────────────────────────────────────────────────
-function _estimateAIBytes(records){
-  return records.reduce((n,r)=>{
-    const a=(r.trData||[]).reduce((s,t)=>s+(t.text||'').length,0);
-    const c=(r.chatData||[]).reduce((s,c)=>s+(c.message||'').length+(c.username||'').length,0);
-    return n+a+c;
-  },0)*2.2;
-}
-function _fmtBytes(b){
-  return b<1024?b+'B':b<1048576?(b/1024).toFixed(1)+'KB':(b/1048576).toFixed(1)+'MB';
-}
-function openAiModal(){
-  const records=applyTagFilter(sortedCache());
-  if(!records.length){toast('対象データがありません','wrn');return;}
-  const bytes=_estimateAIBytes(records);
-  const info=document.getElementById('ai-modal-info');
-  const warn=document.getElementById('ai-size-warn');
-  info.innerHTML='<div style="font-size:13px;padding:8px 0;color:var(--t0)">対象: <b>'+records.length+'</b>件 | 推定サイズ: <b>'+_fmtBytes(bytes)+'</b></div>';
-  if(bytes>512*1024){
-    warn.style.display='';
-    warn.textContent='⚠ 推定サイズが大きいです。10件ずつなどで分割することを推奨します。';
-  }else{
-    warn.style.display='none';
-  }
-  document.getElementById('ai-modal').classList.add('open');
-}
-function closeAiModal(){document.getElementById('ai-modal').classList.remove('open');}
-async function doAiExport(){
-  const records=applyTagFilter(sortedCache());
-  const chunkSize=parseInt(document.getElementById('ai-chunk-sel').value)||0;
-  closeAiModal();
-  const filterInfo={};
-  if(_tagFilter!==null)filterInfo.mainTag=_tagFilter;
-  if(_subTagFilter!==null)filterInfo.subTag=_subTagFilter;
-  const tagSlug=(_tagFilter&&_tagFilter!=='__none__')?_tagFilter.replace(/[^\w぀-鿿]/g,'_'):'all';
-  const dateSlug=new Date().toISOString().slice(0,10);
-  const chunks=chunkSize>0
-    ?Array.from({length:Math.ceil(records.length/chunkSize)},(_,i)=>records.slice(i*chunkSize,(i+1)*chunkSize))
-    :[records];
-  const buildPayload=(recs,part,total)=>({
-    exported_at:new Date().toISOString(),
-    filter:filterInfo,
-    ...(total>1?{part,totalParts:total}:{}),
-    totalEpisodes:recs.length,
-    totalAudioSegments:recs.reduce((n,r)=>n+(r.trData||[]).length,0),
-    totalChatMessages:recs.reduce((n,r)=>n+(r.chatData||[]).length,0),
-    episodes:recs.map(rec=>({
-      ep:rec.episodeNum||'',title:rec.title||'',
-      streamStart:rec.streamStart||'',videoUrl:rec.videoUrl||'',
-      mainTag:rec.mainTag||null,subTags:rec.subTags||[],
-      ...((rec.trData||[]).length?{audio:rec.trData.map(t=>({sec:t.sec,text:t.text}))}:{}),
-      ...((rec.chatData||[]).length?{chat:rec.chatData.map(c=>({sec:c.sec,user:c.username,text:c.message}))}:{}),
-    })),
-  });
-  for(let i=0;i<chunks.length;i++){
-    const suffix=chunks.length>1?'_part'+String(i+1).padStart(2,'0'):'';
-    const fname='fastcut_AI_'+tagSlug+'_'+dateSlug+suffix+'.json';
-    await new Promise(r=>setTimeout(r,i===0?0:300));
-    dl(JSON.stringify(buildPayload(chunks[i],i+1,chunks.length),null,2),fname,'application/json');
-  }
-  toast('AI用データ出力完了: '+records.length+'件 / '+chunks.length+'ファイル','ok',5000);
-}
-
 // ─── §20a BACKUP & COMBINED TEXT ─────────────────────────────────────────────
 function exportBackup(){
   if(!_dbCache.length&&!_mainTags.length){toast('登録データがありません','wrn');return;}
@@ -3298,28 +2521,9 @@ async function _ghWriteGitData(path,jsonStr,msg){
 }
 
 // ── 動画データ同期 ──────────────────────────────────────────────────────────
-// ── タグ・スタンプ順序マージヘルパー（リモート順序を基準にする）──────────────
-// remoteの並び順を正とし、ローカルのみの項目は末尾に追加。
-// 同名エントリはローカル優先（色変更などローカル編集を保持）。
-function _mergeTagOrder(local,remote,deletedSet){
-  const lMap=new Map(local.map(t=>[t.name,t]));
-  const rFiltered=(remote||[]).filter(t=>!deletedSet.has(t.name));
-  const merged=rFiltered.map(t=>lMap.get(t.name)||t);
-  const rNames=new Set(rFiltered.map(t=>t.name));
-  for(const t of local)if(!rNames.has(t.name)&&!deletedSet.has(t.name))merged.push(t);
-  return merged;
-}
-function _mergeStampOrder(local,remote){
-  const lMap=new Map(local.map(s=>[s.name,s]));
-  const merged=(remote||[]).map(s=>lMap.get(s.name)||s);
-  const rNames=new Set((remote||[]).map(s=>s.name));
-  for(const s of local)if(!rNames.has(s.name))merged.push(s);
-  return merged;
-}
-
 async function ghGet(){
   const remote=await _ghFetchFile(_ghCfg.path);
-  if(!remote.content)return{data:[],sha:null,mainTags:[],subTagDefs:[],stampDefs:[]};
+  if(!remote.content)return{data:[],sha:null,mainTags:[],subTagDefs:[]};
   // 圧縮フォーマット {z:1,d:"<b64-gzip>"} を展開
   let raw=remote.content;
   if(raw&&raw.z===1&&raw.d){
@@ -3331,17 +2535,14 @@ async function ghGet(){
   if(!Array.isArray(data))throw new Error('データが配列ではありません');
   const mainTags=(!Array.isArray(raw)&&raw.mainTags)||(!Array.isArray(raw)&&raw.t)||[];
   const subTagDefs=(!Array.isArray(raw)&&raw.subTagDefs)||[];
-  const stampDefs=(!Array.isArray(raw)&&raw.stampDefs)||[];
   const deletedTagNames=(!Array.isArray(raw)&&raw.deletedTagNames)||[];
   const deletedSubNames=(!Array.isArray(raw)&&raw.deletedSubNames)||[];
-  const deletedRats=(!Array.isArray(raw)&&raw.deletedRats)||[];
-  return{data,sha:remote.sha,mainTags,subTagDefs,stampDefs,deletedTagNames,deletedSubNames,deletedRats};
+  return{data,sha:remote.sha,mainTags,subTagDefs,deletedTagNames,deletedSubNames};
 }
 
 async function ghPut(videos,sha){
-  const payload={v:videos,mainTags:_mainTags,subTagDefs:_subTagDefs,stampDefs:_stampDefs,
-    deletedTagNames:[..._deletedTagNames],deletedSubNames:[..._deletedSubNames],
-    deletedRats:[..._deletedRats]};
+  const payload={v:videos,mainTags:_mainTags,subTagDefs:_subTagDefs,
+    deletedTagNames:[..._deletedTagNames],deletedSubNames:[..._deletedSubNames]};
   await _ghWriteFile(_ghCfg.path,payload,sha,'FASTCUT sync '+new Date().toISOString().slice(0,16));
 }
 
@@ -3359,11 +2560,9 @@ async function ghPull(){
       return;
     }
 
-    // ── リモートのdeletedRatsをローカルにマージ（削除の同期）
-    let local=await dbAll();
-    let localRatsSet=new Set(local.map(r=>r.registeredAt).filter(Boolean));
-    for(const rat of(remote.deletedRats||[]))_deletedRats.add(rat);
-    // stale tombstoneクリーンアップ（IDBに実在するものは除去）
+    // ── stale tombstone クリーンアップ
+    const local=await dbAll();
+    const localRatsSet=new Set(local.map(r=>r.registeredAt).filter(Boolean));
     for(const rat of[..._deletedRats])if(localRatsSet.has(rat))_deletedRats.delete(rat);
     saveDeletedRats();
 
@@ -3378,21 +2577,6 @@ async function ghPull(){
     const sNames=new Set(_subTagDefs.map(t=>t.name));
     for(const t of(remote.subTagDefs||[]))if(!sNames.has(t.name)&&!_deletedSubNames.has(t.name)){_subTagDefs.push(t);sNames.add(t.name);}
     saveTagDefs();renderTagBar();renderRankTagSel();
-
-    // ── リモートに存在しないローカルレコードを削除（他デバイスの削除を反映）
-    const remoteRatsSet=new Set(remote.data.map(r=>r.registeredAt).filter(Boolean));
-    const toDeleteLocally=local.filter(r=>r.registeredAt&&!remoteRatsSet.has(r.registeredAt));
-    let deletedLocalCount=0;
-    for(const r of toDeleteLocally){
-      _deletedRats.add(r.registeredAt);
-      await dbDel(r.id);
-      deletedLocalCount++;
-    }
-    if(deletedLocalCount){
-      saveDeletedRats();
-      local=await dbAll();
-      localRatsSet=new Set(local.map(r=>r.registeredAt).filter(Boolean));
-    }
 
     // ── レコード差分計算
     const localMap=new Map(local.map(r=>[r.registeredAt,r]));
@@ -3409,13 +2593,8 @@ async function ghPull(){
         const remSub=rem.subTags||[];
         const locSub=loc.subTags||[];
         const tagChanged=locMain!==remMain||JSON.stringify(locSub)!==JSON.stringify(remSub);
-        // リモートの値でローカルを上書き（タグ・ノート・基本情報）
-        const changes={mainTag:remMain,subTags:remSub};
-        if(rem.tnotes!==undefined&&rem.tnotes!==(loc.tnotes||''))changes.tnotes=rem.tnotes||'';
-        if(rem.title&&rem.title!==loc.title)changes.title=rem.title;
-        if(rem.videoUrl&&rem.videoUrl!==loc.videoUrl)changes.videoUrl=rem.videoUrl;
-        if(rem.streamStart&&rem.streamStart!==loc.streamStart)changes.streamStart=rem.streamStart;
-        patches.push({id:loc.id,changes});
+        // 常にリモートタグで上書き（比較 edge case 排除）
+        patches.push({id:loc.id,changes:{mainTag:remMain,subTags:remSub}});
         if(tagChanged)tagChanges.push({title:rem.title||rem.episodeNum||rem.registeredAt.slice(0,10),from:locMain,to:remMain});
       }else{
         newRecs.push(rem);
@@ -3423,7 +2602,7 @@ async function ghPull(){
     }
 
     // ── 1トランザクションで一括書き込み
-    if(st)st.textContent='ローカルに反映中... ('+patches.length+'件更新 / '+newRecs.length+'件追加'+(deletedLocalCount?` / ${deletedLocalCount}件削除`:'')+')';
+    if(st)st.textContent='ローカルに反映中... ('+patches.length+'件更新 / '+newRecs.length+'件追加)';
     if(patches.length)await dbPatchMany(patches);
     if(newRecs.length)await dbAddMany(newRecs);
 
@@ -3439,7 +2618,6 @@ async function ghPull(){
     // ── 結果サマリー表示
     const parts=[];
     if(newRecs.length)parts.push('新着+'+newRecs.length+'件');
-    if(deletedLocalCount)parts.push('削除-'+deletedLocalCount+'件');
     if(tagChanges.length){
       parts.push('タグ変更'+tagChanges.length+'件');
       // 最大5件まで詳細表示
@@ -3451,11 +2629,7 @@ async function ghPull(){
     if(!parts.length)parts.push('変更なし（ローカルは最新）');
     const summary=parts.join('\n');
     if(st)st.textContent='⬇ 更新完了 '+_dbCache.length+'件\n'+summary;
-    const briefParts=[];
-    if(newRecs.length)briefParts.push('新着+'+newRecs.length+'件');
-    if(deletedLocalCount)briefParts.push('削除-'+deletedLocalCount+'件');
-    if(tagChanges.length)briefParts.push('タグ変更'+tagChanges.length+'件');
-    toast('⬇ 更新完了 '+_dbCache.length+'件'+(briefParts.length?' / '+briefParts.join(' / '):' / 変更なし'),'ok',6000);
+    toast('⬇ 更新完了 '+_dbCache.length+'件'+(tagChanges.length?' / タグ変更'+tagChanges.length+'件':(newRecs.length?' / 新着+'+newRecs.length+'件':' / 変更なし')),'ok',6000);
   }catch(e){
     if(st)st.textContent='エラー: '+e.message;
     toast('GitHub更新失敗: '+e.message,'err');
@@ -3474,21 +2648,18 @@ async function ghSync(silent){
     const remote=await ghGet();
     if(st)st.textContent='[1] GitHub取得: '+remote.data.length+'件';
 
-    // タグ定義マージ（push側: ローカル順序を保持しつつリモートの新規項目を末尾追加）
-    for(const rat of(remote.deletedRats||[]))_deletedRats.add(rat);
-    saveDeletedRats();
+    // タグ定義マージ（tombstone に含まれるタグは復活させない）
     for(const n of(remote.deletedTagNames||[]))_deletedTagNames.add(n);
     for(const n of(remote.deletedSubNames||[]))_deletedSubNames.add(n);
+    // tombstoneに含まれるタグをローカルからも除去
     _mainTags=_mainTags.filter(t=>!_deletedTagNames.has(t.name));
-    {const lm=new Set(_mainTags.map(t=>t.name));for(const t of(remote.mainTags||[]))if(!lm.has(t.name)&&!_deletedTagNames.has(t.name)){_mainTags.push(t);lm.add(t.name);}}
     _subTagDefs=_subTagDefs.filter(t=>!_deletedSubNames.has(t.name));
-    {const ls=new Set(_subTagDefs.map(t=>t.name));for(const t of(remote.subTagDefs||[]))if(!ls.has(t.name)&&!_deletedSubNames.has(t.name)){_subTagDefs.push(t);ls.add(t.name);}}
-    // スタンプ定義マージ（push側: ローカル順序保持・リモート新規を末尾追加）
-    if(remote.stampDefs?.length||_stampDefs.length){
-      const lsn=new Set(_stampDefs.map(s=>s.name));
-      for(const s of(remote.stampDefs||[]))if(!lsn.has(s.name)){_stampDefs.push(s);lsn.add(s.name);}
-      saveStampDefs();
-    }
+    // remoteにしかない新規タグを追加（tombstoneにないもののみ）
+    const m=new Map(_mainTags.map(t=>[t.name,t]));
+    for(const t of(remote.mainTags||[]))if(!m.has(t.name)&&!_deletedTagNames.has(t.name))m.set(t.name,t);
+    _mainTags=[...m.values()];
+    const sNames=new Set(_subTagDefs.map(t=>t.name));
+    for(const t of(remote.subTagDefs||[]))if(!sNames.has(t.name)&&!_deletedSubNames.has(t.name)){_subTagDefs.push(t);sNames.add(t.name);}
     saveTagDefs();renderTagBar();renderRankTagSel();
 
     const existing=new Set(_dbCache.map(r=>r.registeredAt));
@@ -3623,10 +2794,10 @@ function buildKwMarkerCSV(q){
   let idx=1;
 
   for(const rec of _dbCache){
-    const chatHits=(rec.chatData||[]).filter(c=>_stripStamps(c.message).toLowerCase().includes(ql));
+    const chatHits=(rec.chatData||[]).filter(c=>c.message.toLowerCase().includes(ql));
     const trHits=(rec.trData||[]).filter(t=>t.text.toLowerCase().includes(ql));
     const allHits=[
-      ...chatHits.map(c=>({sec:c.sec,txt:`@${c.username} ${_renderMsg(c.message)}`})),
+      ...chatHits.map(c=>({sec:c.sec,txt:`@${c.username} ${c.message}`})),
       ...trHits.map(t=>({sec:t.sec,txt:t.text})),
     ].sort((a,b)=>a.sec-b.sec);
 
@@ -3648,9 +2819,6 @@ let _mainTags=[];    // [{name,color}]
 let _subTagDefs=[];  // [{name}]
 let _tagFilter=null;    // string|null — 選択中のメインタグ名
 let _subTagFilter=null; // string|null — 選択中のサブタグ名
-let _noteFilter=null;   // null | 'has' | 'none' — ノートフィルタ
-let _noteQ='';          // ノートキーワード検索（チャット・音声検索 q とは独立）
-let _noteFuzzyMatchFn=null; // あいまい検索が有効なときのノートマッチ関数
 
 // ── 永続化 ──────────────────────────────────────────────────────────────────
 async function loadTagDefsFromIDB(){
@@ -3821,7 +2989,6 @@ function deleteSubTagDef(idx){
 
 // ── タグフィルタバー ─────────────────────────────────────────────────────────
 function renderTagBar(){
-  updateSelectBar(); // タグ定義が変わったとき select-bar のドロップダウンも更新
   const bar=document.getElementById('db-tag-bar');
   if(!bar)return;
   let html='';
@@ -3860,15 +3027,6 @@ function renderTagBar(){
     html+='</div>';
   }
 
-  // ─ ノートフィルタ行（常に表示）─
-  const nfAll=_noteFilter===null, nfHas=_noteFilter==='has', nfNone=_noteFilter==='none';
-  html+='<div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">'
-    +'<span style="font-size:9px;color:var(--t2);letter-spacing:1px;text-transform:uppercase;flex-shrink:0;margin-right:2px">NOTE</span>'
-    +'<button class="tf-chip" style="font-size:10px;padding:2px 8px;'+(nfAll?'background:rgba(255,255,255,0.08);border-color:var(--t1);color:var(--t0)':'')+'" onclick="setNoteFilter(null)">すべて</button>'
-    +'<button class="tf-chip" style="font-size:10px;padding:2px 8px;'+(nfHas?'background:rgba(232,160,48,0.18);border-color:#e8a030;color:#e8a030':'border-color:rgba(232,160,48,0.3);color:var(--t2)')+'" onclick="setNoteFilter(\'has\')">📌 ノートあり</button>'
-    +'<button class="tf-chip" style="font-size:10px;padding:2px 8px;'+(nfNone?'background:rgba(255,255,255,0.08);border-color:var(--t2);color:var(--t1)':'color:var(--t2)')+'" onclick="setNoteFilter(\'none\')">ノートなし</button>'
-    +'</div>';
-
   bar.innerHTML=html;
 }
 
@@ -3890,31 +3048,7 @@ function applyTagFilter(recs){
   else if(_tagFilter!==null)r=r.filter(rec=>rec.mainTag===_tagFilter);
   if(_subTagFilter==='__none__')r=r.filter(rec=>!(rec.subTags&&rec.subTags.length));
   else if(_subTagFilter!==null)r=r.filter(rec=>(rec.subTags||[]).includes(_subTagFilter));
-  if(_noteFilter!==null){
-    r=r.filter(rec=>{
-      const hasTN=!!(rec.tnotes&&rec.tnotes.trim());
-      const ep=String(rec.episodeNum||''), vid=rec.videoId||'';
-      const hasMemo=!!(_ynpMemos&&(_ynpMemos.byEp[ep]||_ynpMemos.byVid[vid]));
-      const has=hasTN||hasMemo;
-      return _noteFilter==='has'?has:!has;
-    });
-  }
   return r;
-}
-
-function setNoteFilter(v){
-  _noteFilter=v;
-  renderTagBar();
-  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
-}
-
-function clearAllFilters(){
-  _tagFilter=null; _subTagFilter=null; _noteFilter=null; _noteQ='';
-  document.getElementById('db-q').value='';
-  document.getElementById('db-acct').value='';
-  const qnEl=document.getElementById('db-qn');if(qnEl)qnEl.value='';
-  renderTagBar();
-  renderDB(applyTagFilter(sortedCache()),'','');
 }
 
 // ── タグポップオーバー ────────────────────────────────────────────────────────
@@ -4060,9 +3194,9 @@ function toggleRankDetail(row){
     if(!item)return'<div class="rank-detail-line">'+label+' — データなし</div>';
     const{rec,c}=item;
     const t=fmtSec(c.sec);
-    const _raw2=_tsAnchor(rec.videoId,c.sec,t);
-    const timeHtml=rec.videoId
-      ?_raw2.replace('<a ','<a style="color:var(--r1);font-family:var(--mf);font-size:11px;text-decoration:none;flex-shrink:0;" ')
+    const url=rec.videoId?'https://www.youtube.com/watch?v='+encodeURIComponent(rec.videoId)+'&t='+Math.floor(c.sec):null;
+    const timeHtml=url
+      ?'<a href="'+url+'" target="_blank" style="color:var(--r1);font-family:var(--mf);font-size:11px;text-decoration:none;flex-shrink:0">'+esc(t)+'</a>'
       :'<span style="color:var(--t2);font-family:var(--mf);font-size:11px;flex-shrink:0">'+esc(t)+'</span>';
     const videoTitle=(rec.title||'').replace(/^\(\d+\)\s*/,'').slice(0,22)||'(タイトル不明)';
     const msg=esc(c.message).slice(0,80)+(c.message.length>80?'…':'');
@@ -4240,25 +3374,6 @@ document.addEventListener('DOMContentLoaded',()=>{
     qEl.addEventListener('keydown',function(e){if(e.key==='Enter')searchDB(this.value);});
     document.getElementById('db-search-btn').addEventListener('click',()=>searchDB(qEl.value));
   });
-  safe('db-extract-btn',()=>{
-    document.getElementById('db-extract-btn').addEventListener('click',openExtModal);
-  });
-  safe('db-recommend-btn',()=>{
-    document.getElementById('db-recommend-btn').addEventListener('click',showRecommend);
-  });
-  safe('db-fuzzy',()=>{
-    // あいまいモード切替時は現在のクエリで再検索
-    document.getElementById('db-fuzzy').addEventListener('change',()=>{
-      const q=document.getElementById('db-q').value;
-      if(q.trim())searchDB(q);
-    });
-  });
-
-  safe('db-qn',()=>{
-    const qnEl=document.getElementById('db-qn');
-    qnEl.addEventListener('keydown',function(e){if(e.key==='Enter')setNoteSearch(this.value);});
-    document.getElementById('db-qn-btn').addEventListener('click',()=>setNoteSearch(qnEl.value));
-  });
 
   safe('db-acct',()=>{
     const acctEl=document.getElementById('db-acct');
@@ -4276,25 +3391,6 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   safe('db-backup-btn',()=>{
     document.getElementById('db-backup-btn').addEventListener('click',exportBackup);
-  });
-  safe('stamp-mgr-btn',()=>{
-    document.getElementById('stamp-mgr-btn').addEventListener('click',openStampModal);
-  });
-  safe('stamp-file-in',()=>{
-    document.getElementById('stamp-file-in').addEventListener('change',function(){
-      const f=this.files[0];
-      if(!f)return;
-      const reader=new FileReader();
-      reader.onload=e=>{
-        _pendingStampDataUrl=e.target.result;
-        const prev=document.getElementById('stamp-file-preview');
-        if(prev)prev.innerHTML='<img src="'+_pendingStampDataUrl+'" style="height:32px;border-radius:3px;margin-top:4px">';
-      };
-      reader.readAsDataURL(f);
-    });
-  });
-  safe('db-ai-export-btn',()=>{
-    document.getElementById('db-ai-export-btn').addEventListener('click',openAiModal);
   });
 
   safe('db-kw-csv-btn',()=>{
@@ -4372,7 +3468,6 @@ document.addEventListener('DOMContentLoaded',()=>{
     // ① 削除トゥームストーン・同期済みIDをロード
     await loadDeletedRats();
     await loadSyncedIds();
-    await loadStampDefs();
 
     // ② IDB（settings store）からタグ定義をロード + 旧データマイグレーション
     await loadTagDefsFromIDB();
@@ -4449,70 +3544,5 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 <div id="tag-pop"></div>
 <div id="gh-progress-bar"></div>
-
-<div class="tg-modal" id="stamp-modal" onclick="closeStampModal()">
-  <div class="tg-inner" onclick="event.stopPropagation()" style="max-width:480px">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-      <h3 style="flex:1">🎭 スタンプ管理</h3>
-      <button class="db-bar-btn" onclick="closeStampModal()">✕</button>
-    </div>
-    <div class="tg-sect">
-      <div class="tg-sect-h">登録済みスタンプ</div>
-      <div id="stamp-list"></div>
-    </div>
-    <div class="tg-sect" style="margin-top:14px">
-      <div class="tg-sect-h">新規登録 / 上書き</div>
-      <div class="tg-row" style="flex-wrap:wrap;gap:8px">
-        <input class="tg-in" id="stamp-name-in" placeholder="スタンプ名（例: ぱるむ）" style="flex:1;min-width:120px" maxlength="40" onkeydown="if(event.key==='Enter')addStampDef()">
-        <input class="tg-in" id="stamp-url-in" placeholder="画像URL（https://...）" style="flex:2;min-width:180px" onkeydown="if(event.key==='Enter')addStampDef()">
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">
-        <label class="db-bar-btn" style="cursor:pointer">
-          📁 ファイル選択
-          <input type="file" id="stamp-file-in" accept="image/*" style="display:none">
-        </label>
-        <div id="stamp-file-preview"></div>
-        <button class="db-bar-btn" onclick="addStampDef()" style="margin-left:auto">➕ 登録</button>
-      </div>
-      <div style="font-size:11px;color:var(--t2);margin-top:8px;line-height:1.5">
-        スタンプ名はYCSチャットの <code style="background:rgba(185,24,40,0.15);padding:1px 4px;border-radius:3px">:名前:</code> や <code style="background:rgba(185,24,40,0.15);padding:1px 4px;border-radius:3px">:_名前:</code> の名前部分を入力してください。<br>
-        URLかファイルどちらか一方を指定してください。ファイルはデータURIとして保存されます。
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="gh-modal" id="ai-modal" onclick="closeAiModal()">
-  <div class="gh-inner" onclick="event.stopPropagation()" style="max-width:420px">
-    <h3>🤖 AI学習用データ出力</h3>
-    <div id="ai-modal-info"></div>
-    <div class="gh-row">
-      <label>分割サイズ（エピソード数 / ファイル）</label>
-      <select class="gh-in" id="ai-chunk-sel">
-        <option value="0">分割なし（1ファイル）</option>
-        <option value="5">5件ずつ</option>
-        <option value="10" selected>10件ずつ（推奨）</option>
-        <option value="20">20件ずつ</option>
-        <option value="1">1件ずつ</option>
-      </select>
-    </div>
-    <div id="ai-size-warn" style="display:none;color:var(--warn,#e8a030);font-size:11px;margin-top:6px;background:rgba(232,160,48,0.1);padding:6px 8px;border-radius:4px;border-left:2px solid var(--warn,#e8a030)"></div>
-    <div style="display:flex;gap:8px;margin-top:14px">
-      <button class="db-bar-btn" onclick="doAiExport()">⬇ ダウンロード</button>
-      <button class="db-bar-btn" onclick="closeAiModal()">✕ キャンセル</button>
-    </div>
-  </div>
-</div>
-<div class="ext-modal" id="ext-modal" onclick="closeExtModal()">
-  <div class="ext-inner" onclick="event.stopPropagation()">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
-      <h3 style="flex:1">📂 シーン抽出</h3>
-      <button class="db-bar-btn" onclick="closeExtModal()">✕</button>
-    </div>
-    <div style="font-size:11px;color:var(--t2);margin-bottom:14px">現在のタグフィルタに一致する動画から、カテゴリに該当するシーンを抽出します（キーワードベース）。</div>
-    <div id="ext-cat-list"></div>
-    <div id="ext-results"></div>
-  </div>
-</div>
 </body>
 </html>
