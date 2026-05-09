@@ -302,7 +302,8 @@ input[type=range]{
 .db-hits::-webkit-scrollbar-track{background:transparent}
 .db-hits::-webkit-scrollbar-thumb{background:var(--r2);border-radius:3px}
 .db-hits::-webkit-scrollbar-thumb:hover{background:var(--r1)}
-.db-hits-more{font-size:10px;color:var(--t2);padding:3px 6px;text-align:center;border-top:1px solid var(--r3);margin-top:2px}
+.db-hits-more{font-size:10px;color:var(--r1);padding:4px 6px;text-align:center;border-top:1px solid var(--r3);margin-top:2px;cursor:pointer;transition:background .12s}
+.db-hits-more:hover{background:rgba(185,24,40,0.1)}
 .db-hit{font-size:11px;color:var(--t1);display:flex;gap:6px;align-items:flex-start}
 .db-hit a{color:var(--r1);text-decoration:none;flex-shrink:0;font-family:var(--mf);font-size:10px}
 .db-hit a:hover{text-decoration:underline}
@@ -371,7 +372,9 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .ext-row-txt{font-size:11px;color:var(--t1);word-break:break-word;flex:1;min-width:0}
 .ext-row-txt mark{background:rgba(185,24,40,0.35);color:var(--t0);border-radius:2px;padding:0 1px}
 .ext-row-user{color:var(--t2);font-size:10px;margin-right:3px}
-.ext-more{font-size:10px;color:var(--t2);padding:4px 12px 6px;text-align:center}
+.ext-ep-rows{display:flex;flex-direction:column}
+.ext-more{font-size:10px;color:var(--r1);padding:4px 12px 6px;text-align:center;cursor:pointer;transition:background .12s}
+.ext-more:hover{background:rgba(185,24,40,0.1)}
 /* 空 */
 .ext-empty{color:var(--t2);font-size:12px;text-align:center;padding:24px 0}
 /* おすすめカード */
@@ -555,7 +558,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.5.9</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.0</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -2295,6 +2298,33 @@ function searchDB(q){
   renderDB(applyTagFilter(sortedCache()),q.trim(),getAcctSearch());
 }
 
+// ─── §HIT OVERFLOW (クリック展開) ────────────────────────────────────────────────
+// ヒット件数上限を超えた分をMapに保持し、クリックで追記展開する
+const _hitOv=new Map();
+let _hitOvSeq=0;
+
+// hits: 全アイテム配列, cap: 初期表示件数, makeRow: item→HTML関数
+// wrapClass: 'db-hits' or 'ext-ep-rows'(省略時'db-hits')
+function _hitsBlock(hits,cap,makeRow,wrapClass){
+  if(!hits.length)return'';
+  const cls=wrapClass||'db-hits';
+  const shown=hits.slice(0,cap).map(makeRow).join('');
+  if(hits.length<=cap)return'<div class="'+cls+'">'+shown+'</div>';
+  const id=++_hitOvSeq;
+  _hitOv.set(id,{items:hits.slice(cap),makeRow,cls});
+  return'<div class="'+cls+'">'+shown
+    +'<div class="db-hits-more" onclick="expandHits('+id+',this)">▼ 他 '+(hits.length-cap)+' 件（タップで全表示）</div>'
+    +'</div>';
+}
+
+function expandHits(id,el){
+  const ov=_hitOv.get(id);
+  if(!ov){el.remove();return;}
+  _hitOv.delete(id);
+  el.insertAdjacentHTML('beforebegin',ov.items.map(ov.makeRow).join(''));
+  el.remove();
+}
+
 // ─── §FUZZY SEARCH ─────────────────────────────────────────────────────────────
 // テキスト正規化（カタカナ↔ひらがな・小文字かな・長音・重複・空白除去）
 function _norm(s){
@@ -2498,22 +2528,20 @@ function runExtract(catId){
     const epTotal=trHits.length+chatHits.length;
     totalHits+=epTotal;
     const titleShort=(rec.title||'(タイトル不明)').replace(/^\(\d+\)\s*/,'').slice(0,40);
-    const cap=6;
-
-    // 音声行
-    const trRows=trHits.slice(0,cap).map(t=>{
-      const tsLink=vid?'<a class="ext-row-ts" href="javascript:void(0)" onclick="ytSeek(\''+vid+'\','+Math.floor(t.sec)+')">'+esc(fmtSec(t.sec))+'</a>'
+    const _v=vid; // クロージャキャプチャ用
+    const mkTr=t=>{
+      const tsLink=_v?'<a class="ext-row-ts" href="javascript:void(0)" onclick="ytSeek(\''+_v+'\','+Math.floor(t.sec)+')">'+esc(fmtSec(t.sec))+'</a>'
         :'<span class="ext-row-ts" style="cursor:default">'+esc(fmtSec(t.sec))+'</span>';
       return'<div class="ext-row">'+tsLink+'<span class="ext-row-icon">🎙</span><span class="ext-row-txt">'+_extHlStr(t.text,cat.tk)+'</span></div>';
-    }).join('')+(trHits.length>cap?'<div class="ext-more">… 他 '+(trHits.length-cap)+' 件（音声）</div>':'');
-
-    // チャット行
-    const chatRows=chatHits.slice(0,cap).map(c=>{
-      const tsLink=vid?'<a class="ext-row-ts" href="javascript:void(0)" onclick="ytSeek(\''+vid+'\','+Math.floor(c.sec)+')">'+esc(fmtSec(c.sec))+'</a>'
+    };
+    const mkChat=c=>{
+      const tsLink=_v?'<a class="ext-row-ts" href="javascript:void(0)" onclick="ytSeek(\''+_v+'\','+Math.floor(c.sec)+')">'+esc(fmtSec(c.sec))+'</a>'
         :'<span class="ext-row-ts" style="cursor:default">'+esc(fmtSec(c.sec))+'</span>';
       const user=c.username?'<span class="ext-row-user">@'+esc(c.username)+'</span>':'';
       return'<div class="ext-row">'+tsLink+'<span class="ext-row-icon">💬</span><span class="ext-row-txt">'+user+_extHlStr(c.message,cat.ck)+'</span></div>';
-    }).join('')+(chatHits.length>cap?'<div class="ext-more">… 他 '+(chatHits.length-cap)+' 件（チャット）</div>':'');
+    };
+    const trRows=_hitsBlock(trHits,6,mkTr,'ext-ep-rows');
+    const chatRows=_hitsBlock(chatHits,6,mkChat,'ext-ep-rows');
 
     epBlocks+='<div class="ext-ep-block">'
       +'<div class="ext-ep-hdr">'
@@ -2819,8 +2847,7 @@ function renderDB(records,q,acct){
           .filter(c=>matchUser(c.username))
           .map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid}))
           .sort((a,b)=>a.sec-b.sec);
-        const _uhCap=5,_uhOver=userHits.length-_uhCap;
-        if(userHits.length)hitsHtml='<div class="db-hits">'+userHits.slice(0,_uhCap).map(h=>makeHitRow(h,'')).join('')+(_uhOver>0?'<div class="db-hits-more">… 他 '+_uhOver+' 件</div>':'')+'</div>';
+        if(userHits.length)hitsHtml=_hitsBlock(userHits,5,h=>makeHitRow(h,''));
       }else if(q){
         const _vid=_getVidId(rec);
         const _chkQ=_dbMatchFn?_dbMatch:t=>t.toLowerCase().includes(ql);
@@ -2833,16 +2860,14 @@ function renderDB(records,q,acct){
             .map(t=>({sec:t.sec,txt:t.text,vid:_vid}))
           :[];
         const allHits=[...chatHits,...trHits].sort((a,b)=>a.sec-b.sec);
-        const _ahCap=5,_ahOver=allHits.length-_ahCap;
-        if(allHits.length)hitsHtml='<div class="db-hits">'+allHits.slice(0,_ahCap).map(h=>makeHitRow(h,q)).join('')+(_ahOver>0?'<div class="db-hits-more">… 他 '+_ahOver+' 件</div>':'')+'</div>';
+        if(allHits.length)hitsHtml=_hitsBlock(allHits,5,h=>makeHitRow(h,q));
       }else{
         const _vid=_getVidId(rec);
         const allRows=[
           ...(_searchMode!=='chat'?trData.map(t=>({sec:t.sec,txt:t.text,vid:_vid})):[]),
           ...(_searchMode!=='tr'?chatData.map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid})):[]),
         ].sort((a,b)=>a.sec-b.sec);
-        const _arCap=50,_arOver=allRows.length-_arCap;
-        if(allRows.length)hitsHtml='<div class="db-hits">'+allRows.slice(0,_arCap).map(h=>makeHitRow(h,'')).join('')+(_arOver>0?'<div class="db-hits-more">… 他 '+_arOver+' 件（解析タブで全件確認）</div>':'')+'</div>';
+        if(allRows.length)hitsHtml=_hitsBlock(allRows,50,h=>makeHitRow(h,''));
       }
     }
 
