@@ -302,6 +302,7 @@ input[type=range]{
 .db-hits::-webkit-scrollbar-track{background:transparent}
 .db-hits::-webkit-scrollbar-thumb{background:var(--r2);border-radius:3px}
 .db-hits::-webkit-scrollbar-thumb:hover{background:var(--r1)}
+.db-hits-more{font-size:10px;color:var(--t2);padding:3px 6px;text-align:center;border-top:1px solid var(--r3);margin-top:2px}
 .db-hit{font-size:11px;color:var(--t1);display:flex;gap:6px;align-items:flex-start}
 .db-hit a{color:var(--r1);text-decoration:none;flex-shrink:0;font-family:var(--mf);font-size:10px}
 .db-hit a:hover{text-decoration:underline}
@@ -523,7 +524,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.5.2</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.5.4</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -816,7 +817,8 @@ function ytLink(vid,sec){
 // DBのタイムスタンプクリック → bridge.js 経由で既存タブを再利用してシーク
 // （タブがなければ新規タブを開く・タブレットでも2回目以降同一タブで動く）
 function ytSeek(videoId,sec){
-  window.dispatchEvent(new CustomEvent('ynp-seek-request',{detail:{videoId,sec}}));
+  const url='https://www.youtube.com/watch?v='+encodeURIComponent(videoId)+'&t='+Math.floor(sec);
+  window.open(url,'yt_'+videoId);
 }
 
 // rec.videoId が null のレコードでも videoUrl から動画IDを取り出す
@@ -2673,7 +2675,8 @@ function renderDB(records,q,acct){
           .filter(c=>matchUser(c.username))
           .map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid}))
           .sort((a,b)=>a.sec-b.sec);
-        if(userHits.length)hitsHtml='<div class="db-hits">'+userHits.map(h=>makeHitRow(h,'')).join('')+'</div>';
+        const _uhCap=5,_uhOver=userHits.length-_uhCap;
+        if(userHits.length)hitsHtml='<div class="db-hits">'+userHits.slice(0,_uhCap).map(h=>makeHitRow(h,'')).join('')+(_uhOver>0?'<div class="db-hits-more">… 他 '+_uhOver+' 件</div>':'')+'</div>';
       }else if(q){
         const _vid=_getVidId(rec);
         const _chkQ=_dbMatchFn?_dbMatch:t=>t.toLowerCase().includes(ql);
@@ -2686,14 +2689,16 @@ function renderDB(records,q,acct){
             .map(t=>({sec:t.sec,txt:t.text,vid:_vid}))
           :[];
         const allHits=[...chatHits,...trHits].sort((a,b)=>a.sec-b.sec);
-        if(allHits.length)hitsHtml='<div class="db-hits">'+allHits.map(h=>makeHitRow(h,q)).join('')+'</div>';
+        const _ahCap=5,_ahOver=allHits.length-_ahCap;
+        if(allHits.length)hitsHtml='<div class="db-hits">'+allHits.slice(0,_ahCap).map(h=>makeHitRow(h,q)).join('')+(_ahOver>0?'<div class="db-hits-more">… 他 '+_ahOver+' 件</div>':'')+'</div>';
       }else{
         const _vid=_getVidId(rec);
         const allRows=[
           ...(_searchMode!=='chat'?trData.map(t=>({sec:t.sec,txt:t.text,vid:_vid})):[]),
           ...(_searchMode!=='tr'?chatData.map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid})):[]),
         ].sort((a,b)=>a.sec-b.sec);
-        if(allRows.length)hitsHtml='<div class="db-hits">'+allRows.map(h=>makeHitRow(h,'')).join('')+'</div>';
+        const _arCap=50,_arOver=allRows.length-_arCap;
+        if(allRows.length)hitsHtml='<div class="db-hits">'+allRows.slice(0,_arCap).map(h=>makeHitRow(h,'')).join('')+(_arOver>0?'<div class="db-hits-more">… 他 '+_arOver+' 件（解析タブで全件確認）</div>':'')+'</div>';
       }
     }
 
