@@ -524,7 +524,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.5.11</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.5.12</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -816,29 +816,15 @@ function ytLink(vid,sec){
 
 // DBのタイムスタンプクリック → bridge.js 経由で既存タブを再利用してシーク
 // （タブがなければ新規タブを開く・タブレットでも2回目以降同一タブで動く）
-// iPad/iPhoneかどうかを一度だけ判定（iPadOS13+はMac UAを返すためmaxTouchPointsで補完）
-const _tnIOS=(()=>{const ua=navigator.userAgent;return/iPad|iPhone/i.test(ua)||(/Mac/i.test(ua)&&navigator.maxTouchPoints>1);})();
-
-// タイムスタンプリンクHTMLを生成するヘルパー
-// iOS: <a href="youtube://..."> — ユーザーの直タップ → iOSがYouTubeアプリに渡す、ポップアップなし
-// 非iOS: onclick="ytSeek()" — 拡張タブ管理 or 新タブ
 function _tsAnchor(videoId,sec,label){
   if(!videoId)return esc(label);
-  const t=Math.floor(sec);
-  if(_tnIOS){
-    const href='youtube://www.youtube.com/watch?v='+videoId+'&t='+t;
-    return'<a href="'+esc(href)+'" style="cursor:pointer">'+esc(label)+'</a>';
-  }
-  return'<a href="javascript:void(0)" onclick="ytSeek(\''+videoId+'\','+t+')" style="cursor:pointer">'+esc(label)+'</a>';
+  return'<a href="javascript:void(0)" onclick="ytSeek(\''+videoId+'\','+Math.floor(sec)+')" style="cursor:pointer">'+esc(label)+'</a>';
 }
 
 function ytSeek(videoId,sec){
-  // iOS は _tsAnchor が直リンクを生成するためここには来ない
   const url='https://www.youtube.com/watch?v='+videoId+'&t='+Math.floor(sec);
-  // 拡張(bridge.js)があれば e.preventDefault() で処理済みを通知 → background.js がタブ管理
   const evt=new CustomEvent('ynp-seek-request',{cancelable:true,detail:{videoId,sec}});
-  if(!window.dispatchEvent(evt))return; // 拡張が処理済み
-  // 拡張なし + PC: 新タブで開く
+  if(!window.dispatchEvent(evt))return;
   window.open(url,'_blank');
 }
 
