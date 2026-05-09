@@ -524,7 +524,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.5.13</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.5.14</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -828,10 +828,21 @@ function _tsAnchor(videoId,sec,label){
 }
 
 function ytSeek(videoId,sec){
-  const url='https://www.youtube.com/watch?v='+videoId+'&t='+Math.floor(sec);
+  const t=Math.floor(sec);
+  const url='https://www.youtube.com/watch?v='+videoId+'&t='+t;
+  // 拡張(bridge.js)があれば e.preventDefault() で処理済みを通知 → background.js がタブ管理
   const evt=new CustomEvent('ynp-seek-request',{cancelable:true,detail:{videoId,sec}});
   if(!window.dispatchEvent(evt))return;
-  window.open(url,'_blank');
+  // 拡張なしフォールバック
+  if(/Android/i.test(navigator.userAgent)){
+    // intent:// → YouTubeアプリを起動。Chromeタブ（FASTCUT）は遷移しない
+    window.location.href='intent://watch?v='+videoId+'&t='+t
+      +'#Intent;package=com.google.android.youtube;scheme=https;'
+      +'S.browser_fallback_url='+encodeURIComponent(url)+';end';
+  }else{
+    // PC: 新タブ（iOS は _tsAnchor が youtube:// で処理済みなので通常ここに来ない）
+    window.open(url,'_blank');
+  }
 }
 
 // rec.videoId が null のレコードでも videoUrl から動画IDを取り出す
