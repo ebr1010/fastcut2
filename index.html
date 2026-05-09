@@ -523,7 +523,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.5.1</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.5.2</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -2449,6 +2449,10 @@ function showRecommend(){
 
 function setNoteSearch(q){
   _noteQ=q.trim();
+  const nTerms=_qTerms(_noteQ);
+  _noteFuzzyMatchFn=(nTerms.length&&_isFuzzy())
+    ?(text)=>_fuzzyHit(nTerms,text)
+    :null;
   renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
 }
 
@@ -2537,11 +2541,12 @@ function renderDB(records,q,acct){
     :records;
   // ノートキーワードフィルタ（チャット・音声検索とは独立して適用）
   if(_noteQ){
+    const _noteChk=_noteFuzzyMatchFn?_noteFuzzyMatchFn:t=>t.toLowerCase().includes(qnl);
     filtered=filtered.filter(rec=>{
       const epStr=String(rec.episodeNum||'');
       const vidStr=rec.videoId||'';
       const noteMemo=_ynpMemos?(_ynpMemos.byEp[epStr]||_ynpMemos.byVid[vidStr]||''):'';
-      return (rec.tnotes||'').toLowerCase().includes(qnl)||noteMemo.toLowerCase().includes(qnl);
+      return _noteChk(rec.tnotes||'')||_noteChk(noteMemo);
     });
   }
 
@@ -3617,6 +3622,7 @@ let _tagFilter=null;    // string|null — 選択中のメインタグ名
 let _subTagFilter=null; // string|null — 選択中のサブタグ名
 let _noteFilter=null;   // null | 'has' | 'none' — ノートフィルタ
 let _noteQ='';          // ノートキーワード検索（チャット・音声検索 q とは独立）
+let _noteFuzzyMatchFn=null; // あいまい検索が有効なときのノートマッチ関数
 
 // ── 永続化 ──────────────────────────────────────────────────────────────────
 async function loadTagDefsFromIDB(){
