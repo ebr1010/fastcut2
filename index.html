@@ -524,7 +524,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.5.4</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.5.5</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -817,8 +817,11 @@ function ytLink(vid,sec){
 // DBのタイムスタンプクリック → bridge.js 経由で既存タブを再利用してシーク
 // （タブがなければ新規タブを開く・タブレットでも2回目以降同一タブで動く）
 function ytSeek(videoId,sec){
-  const url='https://www.youtube.com/watch?v='+encodeURIComponent(videoId)+'&t='+Math.floor(sec);
-  window.open(url,'yt_'+videoId);
+  const url='https://www.youtube.com/watch?v='+videoId+'&t='+Math.floor(sec);
+  // bridge.js がいれば e.preventDefault() で処理済みを返す（background.js がタブ管理）
+  // いなければ（タブレット等）そのまま新タブで開く
+  const evt=new CustomEvent('ynp-seek-request',{cancelable:true,detail:{videoId,sec}});
+  if(window.dispatchEvent(evt)){window.open(url,'_blank');}
 }
 
 // rec.videoId が null のレコードでも videoUrl から動画IDを取り出す
