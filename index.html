@@ -524,7 +524,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.5.6</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.5.7</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -2381,32 +2381,47 @@ function runExtract(catId){
   const cat=_CATS.find(c=>c.id===catId);
   if(!cat)return;
   const records=applyTagFilter(sortedCache());
-  // チャットKWとトランスクリプトKW両方を検索対象（ただし trData のみ）
-  const allKw=[...new Set([...cat.tk,...cat.ck])].filter(k=>k);
-  if(!allKw.length)return;
 
   let totalFound=0;
-  let html='<div style="font-size:11px;color:var(--t2);margin:10px 0 8px">'+cat.icon+' <b>'+cat.label+'</b> — 音声データから抽出</div>';
+  let html='<div style="font-size:11px;color:var(--t2);margin:10px 0 8px">'+cat.icon+' <b>'+cat.label+'</b></div>';
 
   for(const rec of records){
     const vid=_getVidId(rec);
-    const trHits=(rec.trData||[]).filter(t=>
-      allKw.some(k=>t.text.toLowerCase().includes(k.toLowerCase()))
-    ).sort((a,b)=>a.sec-b.sec);
-    if(!trHits.length)continue;
-    totalFound+=trHits.length;
+    // 音声データ（trData）: tkキーワードで検索
+    const trHits=cat.tk.length?(rec.trData||[]).filter(t=>
+      cat.tk.some(k=>t.text.toLowerCase().includes(k.toLowerCase()))
+    ).sort((a,b)=>a.sec-b.sec):[];
+    // チャットデータ（chatData）: ckキーワードで検索
+    const chatHits=cat.ck.length?(rec.chatData||[]).filter(c=>
+      cat.ck.some(k=>c.message.toLowerCase().includes(k.toLowerCase()))
+    ).sort((a,b)=>a.sec-b.sec):[];
+
+    if(!trHits.length&&!chatHits.length)continue;
+    totalFound+=trHits.length+chatHits.length;
     const titleShort=(rec.title||'(タイトル不明)').replace(/^\(\d+\)\s*/,'').slice(0,35);
     html+='<div style="margin:10px 0 3px;padding:3px 8px;background:var(--r3);border-radius:3px;font-size:11px;color:var(--t1);font-weight:600">'
       +'#'+esc(rec.episodeNum||'?')+' '+esc(titleShort)+'</div>';
-    html+='<div class="db-hits">'+trHits.map(t=>{
-      const matchedKw=allKw.find(k=>t.text.toLowerCase().includes(k.toLowerCase()))||'';
-      return makeHitRow({sec:t.sec,txt:t.text,vid},matchedKw);
-    }).join('')+'</div>';
+    // 音声ヒット
+    if(trHits.length){
+      const cap=Math.min(trHits.length,5);
+      html+='<div class="db-hits">'+trHits.slice(0,cap).map(t=>{
+        const kw=cat.tk.find(k=>t.text.toLowerCase().includes(k.toLowerCase()))||'';
+        return makeHitRow({sec:t.sec,txt:t.text,vid},kw);
+      }).join('')+(trHits.length>cap?'<div class="db-hits-more">… 他 '+(trHits.length-cap)+' 件</div>':'')+'</div>';
+    }
+    // チャットヒット
+    if(chatHits.length){
+      const cap=Math.min(chatHits.length,5);
+      html+='<div class="db-hits">'+chatHits.slice(0,cap).map(c=>{
+        const kw=cat.ck.find(k=>c.message.toLowerCase().includes(k.toLowerCase()))||'';
+        return makeHitRow({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'',vid},kw);
+      }).join('')+(chatHits.length>cap?'<div class="db-hits-more">… 他 '+(chatHits.length-cap)+' 件</div>':'')+'</div>';
+    }
   }
 
   const resEl=document.getElementById('ext-results');
   if(!totalFound){
-    resEl.innerHTML='<div style="color:var(--t2);font-size:12px;margin-top:12px">該当する音声データが見つかりませんでした。</div>';
+    resEl.innerHTML='<div style="color:var(--t2);font-size:12px;margin-top:12px">該当するデータが見つかりませんでした。</div>';
     return;
   }
   resEl.innerHTML=html;
@@ -2501,6 +2516,20 @@ function parseEpBadge(ep,color){
     +'</div>';
 }
 
+// ── ヒット行ヘルパー（グローバル — renderDB・runExtract・rankingDetail 等から共用） ──
+function hlStr(s,kw){
+  if(!kw)return esc(s);
+  return esc(s).replace(new RegExp(esc(kw).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'),m=>'<mark>'+m+'</mark>');
+}
+function makeHitRow(h,kw){
+  const t=fmtSec(h.sec);
+  const link=h.vid?'<a href="javascript:void(0)" onclick="ytSeek(\''+h.vid+'\','+Math.floor(h.sec)+')" style="cursor:pointer">'+esc(t)+'</a>':esc(t);
+  const content=h.rawMsg!==undefined
+    ?(h.uname?'@'+esc(h.uname)+' ':'')+_renderMsgHtml(h.rawMsg,kw)
+    :hlStr(h.txt,kw);
+  return'<div class="db-hit"><div class="tc">'+link+'</div><div class="db-hit-txt">'+content+'</div></div>';
+}
+
 function renderDB(records,q,acct){
   acct=acct||'';
   const grid=document.getElementById('db-grid');
@@ -2578,20 +2607,7 @@ function renderDB(records,q,acct){
     return;
   }
 
-  function hlStr(s,kw){
-    if(!kw)return esc(s);
-    return esc(s).replace(new RegExp(esc(kw).replace(/[.*+?^\${}()|[\]\\]/g,'\\$&'),'gi'),m=>'<mark>'+m+'</mark>');
-  }
-
-  function makeHitRow(h,kw){
-    const t=fmtSec(h.sec);
-    const link=h.vid?'<a href="javascript:void(0)" onclick="ytSeek(\''+h.vid+'\','+Math.floor(h.sec)+')" style="cursor:pointer">'+esc(t)+'</a>':esc(t);
-    // rawMsg があればスタンプHTML描画、なければ通常テキスト
-    const content=h.rawMsg!==undefined
-      ?(h.uname?'@'+esc(h.uname)+' ':'')+_renderMsgHtml(h.rawMsg,kw)
-      :hlStr(h.txt,kw);
-    return'<div class="db-hit"><div class="tc">'+link+'</div><div class="db-hit-txt">'+content+'</div></div>';
-  }
+  // hlStr / makeHitRow はグローバルスコープに移動済み（runExtract等から呼び出せるようにするため）
 
   grid.innerHTML=filtered.map(rec=>{
     const tagColor=rec.mainTag?getMainTagColor(rec.mainTag):null;
