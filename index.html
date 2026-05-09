@@ -524,7 +524,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.5.12</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.5.13</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -816,9 +816,15 @@ function ytLink(vid,sec){
 
 // DBのタイムスタンプクリック → bridge.js 経由で既存タブを再利用してシーク
 // （タブがなければ新規タブを開く・タブレットでも2回目以降同一タブで動く）
+const _tnIOS=(()=>{const ua=navigator.userAgent;return/iPad|iPhone/i.test(ua)||(/Mac/i.test(ua)&&navigator.maxTouchPoints>1);})();
+
 function _tsAnchor(videoId,sec,label){
   if(!videoId)return esc(label);
-  return'<a href="javascript:void(0)" onclick="ytSeek(\''+videoId+'\','+Math.floor(sec)+')" style="cursor:pointer">'+esc(label)+'</a>';
+  const t=Math.floor(sec);
+  if(_tnIOS){
+    return'<a href="youtube://www.youtube.com/watch?v='+videoId+'&t='+t+'" style="cursor:pointer">'+esc(label)+'</a>';
+  }
+  return'<a href="javascript:void(0)" onclick="ytSeek(\''+videoId+'\','+t+')" style="cursor:pointer">'+esc(label)+'</a>';
 }
 
 function ytSeek(videoId,sec){
