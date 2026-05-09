@@ -331,6 +331,11 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .db-fuzzy-lbl{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--t1);cursor:pointer;white-space:nowrap;padding:6px 4px;border:1px solid var(--r3);border-radius:var(--rad);background:var(--bg2)}
 .db-fuzzy-lbl:hover{border-color:var(--r4)}
 .db-fuzzy-lbl input{accent-color:var(--r1);cursor:pointer;margin:0}
+.sm-group{display:flex;border:1px solid var(--r3);border-radius:var(--rad);overflow:hidden;flex-shrink:0}
+.sm-btn{background:none;border:none;color:var(--t1);padding:4px 10px;font-size:11px;cursor:pointer;font-family:var(--bf);white-space:nowrap;border-right:1px solid var(--r3);transition:all .15s}
+.sm-btn:last-child{border-right:none}
+.sm-btn:hover{background:var(--r3);color:var(--t0)}
+.sm-btn.active{background:var(--r2);color:var(--t0)}
 /* 抽出モーダル */
 .ext-modal{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center}
 .ext-modal.open{display:flex}
@@ -518,7 +523,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.0.0</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.5.1</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -666,6 +671,11 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     <label class="db-fuzzy-lbl" title="表記ゆれ・カタカナ・伸ばし棒なども一致させる（ぱるむ → パルム・ぱああるむ も検索）">
       <input type="checkbox" id="db-fuzzy"> あいまい
     </label>
+    <div class="sm-group">
+      <button class="sm-btn active" id="sm-all"  onclick="setSearchMode('all')">全て</button>
+      <button class="sm-btn"        id="sm-tr"   onclick="setSearchMode('tr')">🎤 音声</button>
+      <button class="sm-btn"        id="sm-chat" onclick="setSearchMode('chat')">💬 チャット</button>
+    </div>
     <div class="db-search-group">
       <input type="text" class="db-search" id="db-qn" placeholder="📌 ノート検索... (Enter)">
       <button class="db-bar-btn" id="db-qn-btn">🔍</button>
@@ -2279,6 +2289,15 @@ function _plainHit(terms,text){
 function _isFuzzy(){const el=document.getElementById('db-fuzzy');return el&&el.checked;}
 function _qTerms(q){return(q||'').trim().split(/\s+/).filter(Boolean);}
 // renderDB が参照するグローバルマッチ関数（searchDB で更新）
+let _searchMode='all'; // 'all'|'tr'|'chat'
+function setSearchMode(m){
+  _searchMode=m;
+  ['all','tr','chat'].forEach(id=>{
+    const b=document.getElementById('sm-'+id);
+    if(b)b.classList.toggle('active',id===m);
+  });
+  searchDB(document.getElementById('db-q')?.value||'');
+}
 let _dbMatchFn=null;
 function _dbMatch(text){
   return _dbMatchFn?_dbMatchFn(text):false;
@@ -2350,37 +2369,35 @@ function runExtract(catId){
   const cat=_CATS.find(c=>c.id===catId);
   if(!cat)return;
   const records=applyTagFilter(sortedCache());
-  const allClips=[];
+  // チャットKWとトランスクリプトKW両方を検索対象（ただし trData のみ）
+  const allKw=[...new Set([...cat.tk,...cat.ck])].filter(k=>k);
+  if(!allKw.length)return;
+
+  let totalFound=0;
+  let html='<div style="font-size:11px;color:var(--t2);margin:10px 0 8px">'+cat.icon+' <b>'+cat.label+'</b> — 音声データから抽出</div>';
+
   for(const rec of records){
     const vid=_getVidId(rec);
-    const chatClips=_peakClips(rec,cat.ck,true,2);
-    const trClips=_peakClips(rec,cat.tk,false,2);
-    const clips=[...chatClips,...trClips]
-      .sort((a,b)=>b.score-a.score).slice(0,2);
-    clips.forEach(cl=>allClips.push({rec,vid,cl}));
+    const trHits=(rec.trData||[]).filter(t=>
+      allKw.some(k=>t.text.toLowerCase().includes(k.toLowerCase()))
+    ).sort((a,b)=>a.sec-b.sec);
+    if(!trHits.length)continue;
+    totalFound+=trHits.length;
+    const titleShort=(rec.title||'(タイトル不明)').replace(/^\(\d+\)\s*/,'').slice(0,35);
+    html+='<div style="margin:10px 0 3px;padding:3px 8px;background:var(--r3);border-radius:3px;font-size:11px;color:var(--t1);font-weight:600">'
+      +'#'+esc(rec.episodeNum||'?')+' '+esc(titleShort)+'</div>';
+    html+='<div class="db-hits">'+trHits.map(t=>{
+      const matchedKw=allKw.find(k=>t.text.toLowerCase().includes(k.toLowerCase()))||'';
+      return makeHitRow({sec:t.sec,txt:t.text,vid},matchedKw);
+    }).join('')+'</div>';
   }
-  allClips.sort((a,b)=>b.cl.score-a.cl.score);
-  const top=allClips.slice(0,30);
+
   const resEl=document.getElementById('ext-results');
-  if(!top.length){
-    resEl.innerHTML='<div style="color:var(--t2);font-size:12px;margin-top:12px">該当するシーンが見つかりませんでした。</div>';
+  if(!totalFound){
+    resEl.innerHTML='<div style="color:var(--t2);font-size:12px;margin-top:12px">該当する音声データが見つかりませんでした。</div>';
     return;
   }
-  const title=(rec)=>(rec.title||'(タイトル不明)').replace(/^\(\d+\)\s*/,'').slice(0,30);
-  resEl.innerHTML='<div style="font-size:11px;color:var(--t2);margin:10px 0 8px">'+cat.icon+' <b>'+cat.label+'</b> — '+top.length+'件</div>'
-    +'<div class="ext-res">'+top.map(({rec,vid,cl})=>{
-      const ts=fmtSec(cl.sec);
-      const tsHtml=vid
-        ?'<a class="ext-ts" href="javascript:void(0)" onclick="ytSeek(\''+vid+'\','+Math.floor(cl.sec)+')">'+esc(ts)+'</a>'
-        :'<span class="ext-ts" style="cursor:default">'+esc(ts)+'</span>';
-      return'<div class="ext-ri">'
-        +'<div class="ext-ri-hdr">'+tsHtml
-        +'<span class="ext-ep">#'+esc(rec.episodeNum||'?')+' '+esc(title(rec))+'</span>'
-        +'<span style="font-size:10px;color:var(--t2);margin-left:auto">'+cl.score+'ヒット</span>'
-        +'</div>'
-        +'<div class="ext-txt">'+esc(cl.snippet)+(cl.snippet.length>=80?'…':'')+'</div>'
-        +'</div>';
-    }).join('')+'</div>';
+  resEl.innerHTML=html;
 }
 
 // ─── §RECOMMEND ───────────────────────────────────────────────────────────────
@@ -2508,14 +2525,14 @@ function renderDB(records,q,acct){
   if(kwCsvBtn)kwCsvBtn.disabled=!(q||al);
 
   // チャット・音声キーワードフィルタ（ノートは含まない・独立した検索）
+  const _cardChk=_dbMatchFn?_dbMatch:t=>t.toLowerCase().includes(ql);
   let filtered=q
     ?records.filter(rec=>{
         const epStr=String(rec.episodeNum||'');
-        return (rec.chatData||[]).some(c=>_stripStamps(c.message).toLowerCase().includes(ql))||
-          (rec.trData||[]).some(t=>t.text.toLowerCase().includes(ql))||
-          (rec.title||'').toLowerCase().includes(ql)||
-          epStr.toLowerCase().includes(ql)||
-          (rec.subTags||[]).some(s=>s.toLowerCase().includes(ql));
+        const inChat=_searchMode!=='tr'&&(rec.chatData||[]).some(c=>_cardChk(_stripStamps(c.message)));
+        const inTr=_searchMode!=='chat'&&(rec.trData||[]).some(t=>_cardChk(t.text));
+        const inMeta=(rec.title||'').toLowerCase().includes(ql)||epStr.toLowerCase().includes(ql)||(rec.subTags||[]).some(s=>s.toLowerCase().includes(ql));
+        return inChat||inTr||inMeta;
       })
     :records;
   // ノートキーワードフィルタ（チャット・音声検索とは独立して適用）
@@ -2611,8 +2628,8 @@ function renderDB(records,q,acct){
     const memoHitCnt=_noteQ?_countHits(_memo,_noteQ):0;
     const acctLabel=al?'@'+acct+' ':'チャット ';
     const countsHtml='<div class="db-counts">'
-      +'<span class="cnt-chip chat">'+esc(acctLabel)+'<b>'+chatMatchCnt+'</b>件</span>'
-      +(al?'':'<span class="cnt-chip tr">音声 <b>'+trMatchCnt+'</b>件</span>')
+      +(_searchMode!=='tr'?'<span class="cnt-chip chat">'+esc(acctLabel)+'<b>'+chatMatchCnt+'</b>件</span>':'')
+      +((!al&&_searchMode!=='chat')?'<span class="cnt-chip tr">音声 <b>'+trMatchCnt+'</b>件</span>':'')
       +(_tnLines?'<span class="cnt-chip tn'+(tnHitCnt?' hit':'')+'">'
         +'TN <b>'+_tnLines+'</b>行'+(tnHitCnt?' · <b>'+tnHitCnt+'</b>ヒット':'')
         +'</span>':'')
@@ -2655,17 +2672,21 @@ function renderDB(records,q,acct){
       }else if(q){
         const _vid=_getVidId(rec);
         const _chkQ=_dbMatchFn?_dbMatch:t=>t.toLowerCase().includes(ql);
-        const chatHits=chatData.filter(c=>_chkQ(_stripStamps(c.message)))
-          .map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid}));
-        const trHits=trData.filter(t=>_chkQ(t.text))
-          .map(t=>({sec:t.sec,txt:t.text,vid:_vid}));
+        const chatHits=_searchMode!=='tr'
+          ?chatData.filter(c=>_chkQ(_stripStamps(c.message)))
+            .map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid}))
+          :[];
+        const trHits=_searchMode!=='chat'
+          ?trData.filter(t=>_chkQ(t.text))
+            .map(t=>({sec:t.sec,txt:t.text,vid:_vid}))
+          :[];
         const allHits=[...chatHits,...trHits].sort((a,b)=>a.sec-b.sec);
         if(allHits.length)hitsHtml='<div class="db-hits">'+allHits.map(h=>makeHitRow(h,q)).join('')+'</div>';
       }else{
         const _vid=_getVidId(rec);
         const allRows=[
-          ...trData.map(t=>({sec:t.sec,txt:t.text,vid:_vid})),
-          ...chatData.map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid})),
+          ...(_searchMode!=='chat'?trData.map(t=>({sec:t.sec,txt:t.text,vid:_vid})):[]),
+          ...(_searchMode!=='tr'?chatData.map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid})):[]),
         ].sort((a,b)=>a.sec-b.sec);
         if(allRows.length)hitsHtml='<div class="db-hits">'+allRows.map(h=>makeHitRow(h,'')).join('')+'</div>';
       }
