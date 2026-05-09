@@ -328,6 +328,29 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .db-bar-btn{background:var(--bg2);border:1px solid var(--r3);border-radius:var(--rad);color:var(--t1);padding:6px 11px;font-size:12px;cursor:pointer;transition:all 0.15s;white-space:nowrap}
 .db-bar-btn:hover{border-color:var(--r4);color:var(--t0)}
 .db-bar-btn:disabled{opacity:0.35;cursor:default;pointer-events:none}
+.db-fuzzy-lbl{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--t1);cursor:pointer;white-space:nowrap;padding:6px 4px;border:1px solid var(--r3);border-radius:var(--rad);background:var(--bg2)}
+.db-fuzzy-lbl:hover{border-color:var(--r4)}
+.db-fuzzy-lbl input{accent-color:var(--r1);cursor:pointer;margin:0}
+/* 抽出モーダル */
+.ext-modal{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center}
+.ext-modal.open{display:flex}
+.ext-inner{background:var(--bg2);border:1px solid var(--r3);border-radius:8px;padding:20px;width:560px;max-width:94vw;max-height:86vh;overflow-y:auto}
+.ext-cat{display:flex;align-items:center;gap:10px;width:100%;padding:9px 14px;margin-bottom:5px;background:var(--bg1);border:1px solid var(--r3);border-radius:5px;color:var(--t0);font-size:13px;cursor:pointer;text-align:left;transition:all .15s;font-family:var(--bf)}
+.ext-cat:hover{border-color:var(--r1);background:rgba(185,24,40,0.08)}
+.ext-res{margin-top:14px}
+.ext-ri{padding:8px 10px;margin-bottom:5px;background:var(--bg1);border-left:3px solid var(--r1);border-radius:0 4px 4px 0;line-height:1.5}
+.ext-ri-hdr{display:flex;gap:8px;align-items:baseline;margin-bottom:3px;flex-wrap:wrap}
+.ext-ts{color:var(--r1);font-family:var(--mf);font-size:11px;font-weight:700;cursor:pointer;text-decoration:none;flex-shrink:0}
+.ext-ts:hover{text-decoration:underline}
+.ext-ep{font-size:10px;color:var(--t2)}
+.ext-txt{font-size:11px;color:var(--t1);word-break:break-all}
+/* おすすめカード */
+.rec-wrap{margin-top:14px}
+.rec-card{padding:10px 14px;margin-bottom:8px;background:var(--bg1);border:1px solid var(--r3);border-radius:6px}
+.rec-card-hdr{display:flex;gap:8px;align-items:baseline;margin-bottom:4px;flex-wrap:wrap}
+.rec-card-ep{font-size:11px;color:var(--r1);font-weight:700}
+.rec-card-title{font-size:12px;color:var(--t0);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rec-card-body{font-size:11px;color:var(--t1);display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap}
 /* GitHub 同期中ローディング */
 @keyframes gh-sweep{0%{background-position:200% 0}100%{background-position:-200% 0}}
 @keyframes gh-spin{to{transform:rotate(360deg)}}
@@ -640,6 +663,9 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
       <input type="text" class="db-search" id="db-q" placeholder="チャット・音声検索... (Enter)">
       <button class="db-bar-btn" id="db-search-btn">🔍 検索</button>
     </div>
+    <label class="db-fuzzy-lbl" title="表記ゆれ・カタカナ・伸ばし棒なども一致させる（ぱるむ → パルム・ぱああるむ も検索）">
+      <input type="checkbox" id="db-fuzzy"> あいまい
+    </label>
     <div class="db-search-group">
       <input type="text" class="db-search" id="db-qn" placeholder="📌 ノート検索... (Enter)">
       <button class="db-bar-btn" id="db-qn-btn">🔍</button>
@@ -659,6 +685,8 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
       <option value="title">タイトル A→Z</option>
       <option value="title-desc">タイトル Z→A</option>
     </select>
+    <button class="db-bar-btn" id="db-extract-btn" title="カテゴリ別シーン抽出（面白い箇所・叫ぶ箇所など）">📂 抽出</button>
+    <button class="db-bar-btn" id="db-recommend-btn" title="おすすめ切り抜きをランダムに表示">🎲 おすすめ</button>
     <button id="db-backup-btn" class="db-bar-btn">↓ バックアップ</button>
     <button id="db-ai-export-btn" class="db-bar-btn" title="AI学習用JSON出力">🤖 AI出力</button>
     <label for="db-import-file" class="db-bar-btn" style="cursor:pointer">↑ 読み込み</label>
@@ -773,6 +801,21 @@ function getVid(url){
 
 function ytLink(vid,sec){
   return vid?`https://www.youtube.com/watch?v=${vid}&t=${Math.floor(sec)}`:null;
+}
+
+// DBのタイムスタンプクリック → bridge.js 経由で既存タブを再利用してシーク
+// （タブがなければ新規タブを開く・タブレットでも2回目以降同一タブで動く）
+function ytSeek(videoId,sec){
+  window.dispatchEvent(new CustomEvent('ynp-seek-request',{detail:{videoId,sec}}));
+}
+
+// rec.videoId が null のレコードでも videoUrl から動画IDを取り出す
+function _getVidId(rec){
+  if(rec.videoId)return rec.videoId;
+  try{
+    const u=new URL(rec.videoUrl||'');
+    return u.searchParams.get('v')||null;
+  }catch{return null;}
 }
 
 function esc(s){
@@ -2191,8 +2234,202 @@ function getAcctSearch(){
 }
 
 function searchDB(q){
+  const terms=_qTerms(q);
+  const fuzzy=_isFuzzy();
+  _dbMatchFn=terms.length
+    ?(text)=>(fuzzy?_fuzzyHit(terms,text):_plainHit(terms,text))
+    :null;
   renderDB(applyTagFilter(sortedCache()),q.trim(),getAcctSearch());
 }
+
+// ─── §FUZZY SEARCH ─────────────────────────────────────────────────────────────
+// テキスト正規化（カタカナ↔ひらがな・小文字かな・長音・重複・空白除去）
+function _norm(s){
+  if(!s)return'';
+  let v=String(s).toLowerCase();
+  // 全角英数 → 半角
+  v=v.replace(/[！-～]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+  // カタカナ → ひらがな
+  v=v.replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60));
+  // 小文字かな → 大文字かな
+  v=v.replace(/[ぁぃぅぇぉゃゅょっ]/g,c=>({'ぁ':'あ','ぃ':'い','ぅ':'う','ぇ':'え','ぉ':'お','ゃ':'や','ゅ':'ゆ','ょ':'よ','っ':'つ'})[c]||c);
+  // 長音符除去
+  v=v.replace(/ー/g,'');
+  // スペース除去（「ぱ るむ」→「ぱるむ」）
+  v=v.replace(/[\s　]/g,'');
+  // 同じ文字の連続を1文字に（ぱああるむ→ぱあるむ, wwww→w）
+  v=v.replace(/(.)\1+/g,'$1');
+  return v;
+}
+// あいまい正規表現: 各文字間に0〜5個の母音を許容（ぱるむ→ぱあるむ にも一致）
+function _fuzzyRe(term){
+  const n=_norm(term);if(!n)return null;
+  const er=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const vo='(?:[あいうえお]{0,5})?';
+  return new RegExp(n.split('').map(er).join(vo),'i');
+}
+function _fuzzyHit(terms,text){
+  const nt=_norm(text);
+  return terms.some(t=>{const re=_fuzzyRe(t);return re&&re.test(nt);});
+}
+function _plainHit(terms,text){
+  const tl=text.toLowerCase();
+  return terms.some(t=>tl.includes(t.toLowerCase()));
+}
+function _isFuzzy(){const el=document.getElementById('db-fuzzy');return el&&el.checked;}
+function _qTerms(q){return(q||'').trim().split(/\s+/).filter(Boolean);}
+// renderDB が参照するグローバルマッチ関数（searchDB で更新）
+let _dbMatchFn=null;
+function _dbMatch(text){
+  return _dbMatchFn?_dbMatchFn(text):false;
+}
+
+// ─── §SCENE EXTRACTION ─────────────────────────────────────────────────────────
+const _CATS=[
+  {id:'funny',   icon:'😂', label:'面白かった箇所',
+   ck:['笑','ｗ','草','🤣','ワロタ','わろた','笑える','ウケる','うける','吹いた','ふいた','草生えた'],
+   tk:['笑','ははは','ふふ','わはは']},
+  {id:'scream',  icon:'😱', label:'叫んでいる箇所',
+   ck:['!!!!','！！！！','きゃー','うわー','ビビった','驚いた','えーーー'],
+   tk:['きゃー','うわー','ひゃー','えーーー','わあ','あーーー']},
+  {id:'cringe',  icon:'😬', label:'ドン引きされた箇所',
+   ck:['ひく','ひいた','ドン引き','引いた','大丈夫','えっ','は？','はあ','ちょっと待'],
+   tk:[]},
+  {id:'silly',   icon:'🤡', label:'ふざけている箇所',
+   ck:['草','アホ','あほ','バカ','何やってんの','ふざけ','やばw','えw'],
+   tk:['ふざけ','じゃない','みたいな','ちがう','違う']},
+  {id:'sad',     icon:'😢', label:'悲しい箇所',
+   ck:['😢','😭','泣','かわいそう','つらい','辛い','悲しい','切ない','涙','泣ける'],
+   tk:['泣','悲しい','つらい','辛い','切ない','なんか','もう']},
+  {id:'family',  icon:'🏠', label:'家庭環境の話',
+   ck:['親','家族','実家','お母さん','お父さん','お兄ちゃん','お姉ちゃん'],
+   tk:['親','父','母','家族','実家','お母さん','お父さん','兄弟','姉','妹','幼少期','子供の頃','小学校','中学','家庭']},
+  {id:'serious', icon:'💬', label:'真面目な話',
+   ck:['確かに','なるほど','深い','勉強になった','ほんとそれ','同意'],
+   tk:['実は','正直','本当のこと','ちゃんと','大事','大切','ずっと','悩んで','告白','告知','真剣']},
+];
+
+// 1レコードからキーワードヒットのピーク窓を抽出（chat or tr）
+function _peakClips(rec,kwList,useChat,topN){
+  const WIN=45; // 秒
+  const src=useChat?(rec.chatData||[]):(rec.trData||[]);
+  const hits=src.filter(x=>{
+    const t=(useChat?x.message:x.text)||'';
+    return kwList.some(k=>t.toLowerCase().includes(k.toLowerCase()));
+  });
+  if(!hits.length)return[];
+  // 窓ごとのスコア（ヒット数）
+  const windows=new Map();
+  hits.forEach(h=>{
+    const w=Math.floor(h.sec/WIN);
+    windows.set(w,(windows.get(w)||[]).concat(h));
+  });
+  return [...windows.entries()]
+    .sort((a,b)=>b[1].length-a[1].length)
+    .slice(0,topN)
+    .map(([w,hs])=>({
+      sec:hs[0].sec,
+      score:hs.length,
+      snippet:((useChat?hs[0].message:hs[0].text)||'').slice(0,80),
+    }));
+}
+
+function openExtModal(){
+  const records=applyTagFilter(sortedCache());
+  if(!records.length){toast('対象データがありません','wrn');return;}
+  const catEl=document.getElementById('ext-cat-list');
+  catEl.innerHTML=_CATS.map(cat=>
+    '<button class="ext-cat" onclick="runExtract(\''+cat.id+'\')">'+cat.icon+' '+esc(cat.label)+'</button>'
+  ).join('');
+  document.getElementById('ext-results').innerHTML='';
+  document.getElementById('ext-modal').classList.add('open');
+}
+function closeExtModal(){document.getElementById('ext-modal').classList.remove('open');}
+
+function runExtract(catId){
+  const cat=_CATS.find(c=>c.id===catId);
+  if(!cat)return;
+  const records=applyTagFilter(sortedCache());
+  const allClips=[];
+  for(const rec of records){
+    const vid=_getVidId(rec);
+    const chatClips=_peakClips(rec,cat.ck,true,2);
+    const trClips=_peakClips(rec,cat.tk,false,2);
+    const clips=[...chatClips,...trClips]
+      .sort((a,b)=>b.score-a.score).slice(0,2);
+    clips.forEach(cl=>allClips.push({rec,vid,cl}));
+  }
+  allClips.sort((a,b)=>b.cl.score-a.cl.score);
+  const top=allClips.slice(0,30);
+  const resEl=document.getElementById('ext-results');
+  if(!top.length){
+    resEl.innerHTML='<div style="color:var(--t2);font-size:12px;margin-top:12px">該当するシーンが見つかりませんでした。</div>';
+    return;
+  }
+  const title=(rec)=>(rec.title||'(タイトル不明)').replace(/^\(\d+\)\s*/,'').slice(0,30);
+  resEl.innerHTML='<div style="font-size:11px;color:var(--t2);margin:10px 0 8px">'+cat.icon+' <b>'+cat.label+'</b> — '+top.length+'件</div>'
+    +'<div class="ext-res">'+top.map(({rec,vid,cl})=>{
+      const ts=fmtSec(cl.sec);
+      const tsHtml=vid
+        ?'<a class="ext-ts" href="javascript:void(0)" onclick="ytSeek(\''+vid+'\','+Math.floor(cl.sec)+')">'+esc(ts)+'</a>'
+        :'<span class="ext-ts" style="cursor:default">'+esc(ts)+'</span>';
+      return'<div class="ext-ri">'
+        +'<div class="ext-ri-hdr">'+tsHtml
+        +'<span class="ext-ep">#'+esc(rec.episodeNum||'?')+' '+esc(title(rec))+'</span>'
+        +'<span style="font-size:10px;color:var(--t2);margin-left:auto">'+cl.score+'ヒット</span>'
+        +'</div>'
+        +'<div class="ext-txt">'+esc(cl.snippet)+(cl.snippet.length>=80?'…':'')+'</div>'
+        +'</div>';
+    }).join('')+'</div>';
+}
+
+// ─── §RECOMMEND ───────────────────────────────────────────────────────────────
+function showRecommend(){
+  const records=applyTagFilter(sortedCache());
+  if(!records.length){toast('対象データがありません','wrn');return;}
+  // チャット密度のピーク窓を各レコードから抽出、全体からランダムに5〜8件選ぶ
+  const pool=[];
+  const WIN=30;
+  for(const rec of records){
+    const vid=_getVidId(rec);
+    const chat=rec.chatData||[];
+    if(!chat.length)continue;
+    const wMap=new Map();
+    chat.forEach(c=>{const w=Math.floor(c.sec/WIN);wMap.set(w,(wMap.get(w)||[]).concat(c));});
+    const best=[...wMap.values()].sort((a,b)=>b.length-a.length).slice(0,3);
+    best.forEach(msgs=>{
+      const snip=(msgs[0].message||'').slice(0,60);
+      pool.push({rec,vid,sec:msgs[0].sec,cnt:msgs.length,snip});
+    });
+  }
+  if(!pool.length){toast('チャットデータのある動画がありません','wrn');return;}
+  // ランダムシャッフル
+  for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+  const picks=pool.slice(0,7);
+  const titleOf=rec=>(rec.title||'(タイトル不明)').replace(/^\(\d+\)\s*/,'').slice(0,28);
+  // 既存の ext-modal を使いまわして表示
+  document.getElementById('ext-cat-list').innerHTML=
+    '<div style="font-size:12px;color:var(--t2);margin-bottom:10px">🎲 再クリックで別のおすすめを表示</div>'
+    +'<button class="ext-cat" onclick="showRecommend()" style="justify-content:center;font-weight:700">🎲 シャッフル</button>';
+  document.getElementById('ext-results').innerHTML='<div class="rec-wrap">'+picks.map(p=>{
+    const ts=fmtSec(p.sec);
+    const tsHtml=p.vid
+      ?'<a class="ext-ts" href="javascript:void(0)" onclick="ytSeek(\''+p.vid+'\','+Math.floor(p.sec)+')">'+esc(ts)+'</a>'
+      :'<span class="ext-ts" style="cursor:default">'+esc(ts)+'</span>';
+    return'<div class="rec-card">'
+      +'<div class="rec-card-hdr">'
+      +'<span class="rec-card-ep">#'+esc(p.rec.episodeNum||'?')+'</span>'
+      +'<span class="rec-card-title">'+esc(titleOf(p.rec))+'</span>'
+      +'</div>'
+      +'<div class="rec-card-body">'+tsHtml
+      +'<span style="color:var(--t2)">盛り上がり '+p.cnt+'コメ/'+WIN+'秒</span>'
+      +'<span class="ext-txt">'+esc(p.snip)+(p.snip.length>=60?'…':'')+'</span>'
+      +'</div>'
+      +'</div>';
+  }).join('')+'</div>';
+  document.getElementById('ext-modal').classList.add('open');
+}
+
 function setNoteSearch(q){
   _noteQ=q.trim();
   renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
@@ -2314,7 +2551,7 @@ function renderDB(records,q,acct){
 
   function makeHitRow(h,kw){
     const t=fmtSec(h.sec);
-    const link=h.vid?'<a href="https://www.youtube.com/watch?v='+esc(h.vid)+'&t='+Math.floor(h.sec)+'" target="_blank">'+esc(t)+'</a>':esc(t);
+    const link=h.vid?'<a href="javascript:void(0)" onclick="ytSeek(\''+h.vid+'\','+Math.floor(h.sec)+')" style="cursor:pointer">'+esc(t)+'</a>':esc(t);
     // rawMsg があればスタンプHTML描画、なければ通常テキスト
     const content=h.rawMsg!==undefined
       ?(h.uname?'@'+esc(h.uname)+' ':'')+_renderMsgHtml(h.rawMsg,kw)
@@ -2363,8 +2600,8 @@ function renderDB(records,q,acct){
       chatMatchCnt=chatData.filter(c=>matchUser(c.username)).length;
       trMatchCnt=trData.length; // tr data not filtered by account
     }else if(q){
-      chatMatchCnt=chatData.filter(c=>_stripStamps(c.message).toLowerCase().includes(ql)).length;
-      trMatchCnt=trData.filter(t=>t.text.toLowerCase().includes(ql)).length;
+      chatMatchCnt=chatData.filter(c=>_dbMatchFn?_dbMatch(_stripStamps(c.message)):_stripStamps(c.message).toLowerCase().includes(ql)).length;
+      trMatchCnt=trData.filter(t=>_dbMatchFn?_dbMatch(t.text):t.text.toLowerCase().includes(ql)).length;
     }else{
       chatMatchCnt=chatData.length;
       trMatchCnt=trData.length;
@@ -2409,22 +2646,26 @@ function renderDB(records,q,acct){
     let hitsHtml='';
     if(showHits){
       if(al){
+        const _vid=_getVidId(rec);
         const userHits=chatData
           .filter(c=>matchUser(c.username))
-          .map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:rec.videoId}))
+          .map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid}))
           .sort((a,b)=>a.sec-b.sec);
         if(userHits.length)hitsHtml='<div class="db-hits">'+userHits.map(h=>makeHitRow(h,'')).join('')+'</div>';
       }else if(q){
-        const chatHits=chatData.filter(c=>_stripStamps(c.message).toLowerCase().includes(ql))
-          .map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:rec.videoId}));
-        const trHits=trData.filter(t=>t.text.toLowerCase().includes(ql))
-          .map(t=>({sec:t.sec,txt:t.text,vid:rec.videoId}));
+        const _vid=_getVidId(rec);
+        const _chkQ=_dbMatchFn?_dbMatch:t=>t.toLowerCase().includes(ql);
+        const chatHits=chatData.filter(c=>_chkQ(_stripStamps(c.message)))
+          .map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid}));
+        const trHits=trData.filter(t=>_chkQ(t.text))
+          .map(t=>({sec:t.sec,txt:t.text,vid:_vid}));
         const allHits=[...chatHits,...trHits].sort((a,b)=>a.sec-b.sec);
         if(allHits.length)hitsHtml='<div class="db-hits">'+allHits.map(h=>makeHitRow(h,q)).join('')+'</div>';
       }else{
+        const _vid=_getVidId(rec);
         const allRows=[
-          ...trData.map(t=>({sec:t.sec,txt:t.text,vid:rec.videoId})),
-          ...chatData.map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:rec.videoId})),
+          ...trData.map(t=>({sec:t.sec,txt:t.text,vid:_vid})),
+          ...chatData.map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid})),
         ].sort((a,b)=>a.sec-b.sec);
         if(allRows.length)hitsHtml='<div class="db-hits">'+allRows.map(h=>makeHitRow(h,'')).join('')+'</div>';
       }
@@ -3764,9 +4005,8 @@ function toggleRankDetail(row){
     if(!item)return'<div class="rank-detail-line">'+label+' — データなし</div>';
     const{rec,c}=item;
     const t=fmtSec(c.sec);
-    const url=rec.videoId?'https://www.youtube.com/watch?v='+encodeURIComponent(rec.videoId)+'&t='+Math.floor(c.sec):null;
-    const timeHtml=url
-      ?'<a href="'+url+'" target="_blank" style="color:var(--r1);font-family:var(--mf);font-size:11px;text-decoration:none;flex-shrink:0">'+esc(t)+'</a>'
+    const timeHtml=rec.videoId
+      ?'<a href="javascript:void(0)" onclick="ytSeek(\''+rec.videoId+'\','+Math.floor(c.sec)+')" style="color:var(--r1);font-family:var(--mf);font-size:11px;text-decoration:none;flex-shrink:0;cursor:pointer">'+esc(t)+'</a>'
       :'<span style="color:var(--t2);font-family:var(--mf);font-size:11px;flex-shrink:0">'+esc(t)+'</span>';
     const videoTitle=(rec.title||'').replace(/^\(\d+\)\s*/,'').slice(0,22)||'(タイトル不明)';
     const msg=esc(c.message).slice(0,80)+(c.message.length>80?'…':'');
@@ -3943,6 +4183,19 @@ document.addEventListener('DOMContentLoaded',()=>{
     const qEl=document.getElementById('db-q');
     qEl.addEventListener('keydown',function(e){if(e.key==='Enter')searchDB(this.value);});
     document.getElementById('db-search-btn').addEventListener('click',()=>searchDB(qEl.value));
+  });
+  safe('db-extract-btn',()=>{
+    document.getElementById('db-extract-btn').addEventListener('click',openExtModal);
+  });
+  safe('db-recommend-btn',()=>{
+    document.getElementById('db-recommend-btn').addEventListener('click',showRecommend);
+  });
+  safe('db-fuzzy',()=>{
+    // あいまいモード切替時は現在のクエリで再検索
+    document.getElementById('db-fuzzy').addEventListener('change',()=>{
+      const q=document.getElementById('db-q').value;
+      if(q.trim())searchDB(q);
+    });
   });
 
   safe('db-qn',()=>{
@@ -4192,6 +4445,17 @@ document.addEventListener('DOMContentLoaded',()=>{
       <button class="db-bar-btn" onclick="doAiExport()">⬇ ダウンロード</button>
       <button class="db-bar-btn" onclick="closeAiModal()">✕ キャンセル</button>
     </div>
+  </div>
+</div>
+<div class="ext-modal" id="ext-modal" onclick="closeExtModal()">
+  <div class="ext-inner" onclick="event.stopPropagation()">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <h3 style="flex:1">📂 シーン抽出</h3>
+      <button class="db-bar-btn" onclick="closeExtModal()">✕</button>
+    </div>
+    <div style="font-size:11px;color:var(--t2);margin-bottom:14px">現在のタグフィルタに一致する動画から、カテゴリに該当するシーンを抽出します（キーワードベース）。</div>
+    <div id="ext-cat-list"></div>
+    <div id="ext-results"></div>
   </div>
 </div>
 </body>
