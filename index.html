@@ -524,7 +524,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.5.6</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.5.7</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -822,10 +822,15 @@ function ytSeek(videoId,sec){
   const evt=new CustomEvent('ynp-seek-request',{cancelable:true,detail:{videoId,sec}});
   if(!window.dispatchEvent(evt))return; // 拡張が処理済み
   // 拡張なしフォールバック
-  // モバイル: location.href = url → AndroidインテントでYouTubeアプリが開き、空タブが生まれない
+  // モバイル: target無し<a>クリック → AndroidインテントがYouTubeアプリに渡す
+  //           Chromeタブ(FASTCUT)はそのまま残り、空タブも生まれない
   // PC: window.open で新タブ
   if(/Android|iPhone|iPad/i.test(navigator.userAgent)){
-    window.location.href=url;
+    const a=document.createElement('a');
+    a.href=url;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   }else{
     window.open(url,'_blank');
   }
