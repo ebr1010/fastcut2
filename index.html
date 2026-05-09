@@ -338,18 +338,49 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .sm-btn:hover{background:var(--r3);color:var(--t0)}
 .sm-btn.active{background:var(--r2);color:var(--t0)}
 /* 抽出モーダル */
-.ext-modal{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center}
+/* ── シーン抽出モーダル ── */
+.ext-modal{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.78);display:none;align-items:center;justify-content:center}
 .ext-modal.open{display:flex}
-.ext-inner{background:var(--bg2);border:1px solid var(--r3);border-radius:8px;padding:20px;width:560px;max-width:94vw;max-height:86vh;overflow-y:auto}
-.ext-cat{display:flex;align-items:center;gap:10px;width:100%;padding:9px 14px;margin-bottom:5px;background:var(--bg1);border:1px solid var(--r3);border-radius:5px;color:var(--t0);font-size:13px;cursor:pointer;text-align:left;transition:all .15s;font-family:var(--bf)}
-.ext-cat:hover{border-color:var(--r1);background:rgba(185,24,40,0.08)}
-.ext-res{margin-top:14px}
-.ext-ri{padding:8px 10px;margin-bottom:5px;background:var(--bg1);border-left:3px solid var(--r1);border-radius:0 4px 4px 0;line-height:1.5}
-.ext-ri-hdr{display:flex;gap:8px;align-items:baseline;margin-bottom:3px;flex-wrap:wrap}
-.ext-ts{color:var(--r1);font-family:var(--mf);font-size:11px;font-weight:700;cursor:pointer;text-decoration:none;flex-shrink:0}
-.ext-ts:hover{text-decoration:underline}
-.ext-ep{font-size:10px;color:var(--t2)}
-.ext-txt{font-size:11px;color:var(--t1);word-break:break-all}
+.ext-inner{background:var(--bg2);border:1px solid var(--r3);border-radius:10px;padding:20px;width:640px;max-width:96vw;max-height:88vh;display:flex;flex-direction:column;gap:0}
+.ext-inner-scroll{overflow-y:auto;flex:1;min-height:0;padding-right:2px}
+/* カテゴリグリッド */
+.ext-cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+@media(max-width:520px){.ext-cat-grid{grid-template-columns:repeat(2,1fr)}}
+.ext-cat{display:flex;flex-direction:column;align-items:center;gap:5px;padding:14px 8px;background:var(--bg1);border:1px solid var(--r3);border-radius:7px;color:var(--t0);cursor:pointer;transition:all .15s;font-family:var(--bf)}
+.ext-cat:hover{border-color:var(--r1);background:rgba(185,24,40,0.1);transform:translateY(-1px)}
+.ext-cat-icon{font-size:24px;line-height:1}
+.ext-cat-lbl{font-size:10px;color:var(--t1);text-align:center;line-height:1.3;word-break:keep-all}
+/* 結果ヘッダー */
+.ext-res-hdr{display:flex;align-items:center;gap:10px;padding:10px 0 10px;border-bottom:1px solid var(--r3);margin-bottom:10px;flex-shrink:0}
+.ext-res-back{background:none;border:1px solid var(--r3);border-radius:4px;color:var(--t1);padding:3px 9px;font-size:11px;cursor:pointer;white-space:nowrap;font-family:var(--bf)}
+.ext-res-back:hover{border-color:var(--r1);color:var(--r1)}
+.ext-res-title{font-size:13px;font-weight:700;color:var(--t0);flex:1}
+.ext-res-count{font-size:11px;color:var(--t2);white-space:nowrap}
+/* エピソードブロック */
+.ext-ep-block{margin-bottom:14px;border:1px solid var(--r3);border-radius:6px;overflow:hidden}
+.ext-ep-hdr{padding:6px 12px;background:rgba(185,24,40,0.12);border-bottom:1px solid var(--r3);font-size:11px;font-weight:700;color:var(--t0);display:flex;gap:8px;align-items:baseline}
+.ext-ep-hdr-num{color:var(--r1);font-family:var(--mf)}
+.ext-ep-hdr-ttl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ext-ep-hdr-cnt{color:var(--t2);font-size:10px;white-space:nowrap}
+/* ヒット行 */
+.ext-row{display:flex;align-items:flex-start;gap:8px;padding:6px 12px;border-bottom:1px solid rgba(255,255,255,0.04);line-height:1.45}
+.ext-row:last-child{border-bottom:none}
+.ext-row-ts{color:var(--r1);font-family:var(--mf);font-size:11px;font-weight:700;text-decoration:none;flex-shrink:0;min-width:52px;padding-top:1px}
+.ext-row-ts:hover{text-decoration:underline}
+.ext-row-icon{font-size:11px;flex-shrink:0;padding-top:1px;opacity:0.6}
+.ext-row-txt{font-size:11px;color:var(--t1);word-break:break-word;flex:1;min-width:0}
+.ext-row-txt mark{background:rgba(185,24,40,0.35);color:var(--t0);border-radius:2px;padding:0 1px}
+.ext-row-user{color:var(--t2);font-size:10px;margin-right:3px}
+.ext-more{font-size:10px;color:var(--t2);padding:4px 12px 6px;text-align:center}
+/* 空 */
+.ext-empty{color:var(--t2);font-size:12px;text-align:center;padding:24px 0}
+/* おすすめカード */
+.rec-wrap{margin-top:4px}
+.rec-card{padding:10px 14px;margin-bottom:8px;background:var(--bg1);border:1px solid var(--r3);border-radius:6px}
+.rec-card-hdr{display:flex;gap:8px;align-items:baseline;margin-bottom:4px;flex-wrap:wrap}
+.rec-card-ep{font-size:11px;color:var(--r1);font-weight:700}
+.rec-card-title{font-size:12px;color:var(--t0);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rec-card-body{font-size:11px;color:var(--t1);display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap}
 /* おすすめカード */
 .rec-wrap{margin-top:14px}
 .rec-card{padding:10px 14px;margin-bottom:8px;background:var(--bg1);border:1px solid var(--r3);border-radius:6px}
@@ -524,7 +555,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.5.7</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.5.8</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -2368,63 +2399,95 @@ function _peakClips(rec,kwList,useChat,topN){
 function openExtModal(){
   const records=applyTagFilter(sortedCache());
   if(!records.length){toast('対象データがありません','wrn');return;}
-  const catEl=document.getElementById('ext-cat-list');
-  catEl.innerHTML=_CATS.map(cat=>
-    '<button class="ext-cat" onclick="runExtract(\''+cat.id+'\')">'+cat.icon+' '+esc(cat.label)+'</button>'
-  ).join('');
-  document.getElementById('ext-results').innerHTML='';
+  const scroll=document.getElementById('ext-scroll');
+  scroll.innerHTML=
+    '<div class="ext-cat-grid">'
+    +_CATS.map(cat=>
+      '<button class="ext-cat" onclick="runExtract(\''+cat.id+'\')">'
+      +'<span class="ext-cat-icon">'+cat.icon+'</span>'
+      +'<span class="ext-cat-lbl">'+esc(cat.label)+'</span>'
+      +'</button>'
+    ).join('')
+    +'</div>';
   document.getElementById('ext-modal').classList.add('open');
 }
 function closeExtModal(){document.getElementById('ext-modal').classList.remove('open');}
+
+function _extHlStr(s,kwList){
+  if(!kwList||!kwList.length)return esc(s);
+  let out=esc(s);
+  for(const kw of kwList){
+    if(!kw)continue;
+    out=out.replace(new RegExp(esc(kw).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'),m=>'<mark>'+m+'</mark>');
+  }
+  return out;
+}
 
 function runExtract(catId){
   const cat=_CATS.find(c=>c.id===catId);
   if(!cat)return;
   const records=applyTagFilter(sortedCache());
 
-  let totalFound=0;
-  let html='<div style="font-size:11px;color:var(--t2);margin:10px 0 8px">'+cat.icon+' <b>'+cat.label+'</b></div>';
+  let totalHits=0;
+  let epBlocks='';
 
   for(const rec of records){
     const vid=_getVidId(rec);
-    // 音声データ（trData）: tkキーワードで検索
+    // 音声: tkキーワード
     const trHits=cat.tk.length?(rec.trData||[]).filter(t=>
       cat.tk.some(k=>t.text.toLowerCase().includes(k.toLowerCase()))
     ).sort((a,b)=>a.sec-b.sec):[];
-    // チャットデータ（chatData）: ckキーワードで検索
+    // チャット: ckキーワード
     const chatHits=cat.ck.length?(rec.chatData||[]).filter(c=>
       cat.ck.some(k=>c.message.toLowerCase().includes(k.toLowerCase()))
     ).sort((a,b)=>a.sec-b.sec):[];
-
     if(!trHits.length&&!chatHits.length)continue;
-    totalFound+=trHits.length+chatHits.length;
-    const titleShort=(rec.title||'(タイトル不明)').replace(/^\(\d+\)\s*/,'').slice(0,35);
-    html+='<div style="margin:10px 0 3px;padding:3px 8px;background:var(--r3);border-radius:3px;font-size:11px;color:var(--t1);font-weight:600">'
-      +'#'+esc(rec.episodeNum||'?')+' '+esc(titleShort)+'</div>';
-    // 音声ヒット
-    if(trHits.length){
-      const cap=Math.min(trHits.length,5);
-      html+='<div class="db-hits">'+trHits.slice(0,cap).map(t=>{
-        const kw=cat.tk.find(k=>t.text.toLowerCase().includes(k.toLowerCase()))||'';
-        return makeHitRow({sec:t.sec,txt:t.text,vid},kw);
-      }).join('')+(trHits.length>cap?'<div class="db-hits-more">… 他 '+(trHits.length-cap)+' 件</div>':'')+'</div>';
-    }
-    // チャットヒット
-    if(chatHits.length){
-      const cap=Math.min(chatHits.length,5);
-      html+='<div class="db-hits">'+chatHits.slice(0,cap).map(c=>{
-        const kw=cat.ck.find(k=>c.message.toLowerCase().includes(k.toLowerCase()))||'';
-        return makeHitRow({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'',vid},kw);
-      }).join('')+(chatHits.length>cap?'<div class="db-hits-more">… 他 '+(chatHits.length-cap)+' 件</div>':'')+'</div>';
-    }
+
+    const epTotal=trHits.length+chatHits.length;
+    totalHits+=epTotal;
+    const titleShort=(rec.title||'(タイトル不明)').replace(/^\(\d+\)\s*/,'').slice(0,40);
+    const cap=6;
+
+    // 音声行
+    const trRows=trHits.slice(0,cap).map(t=>{
+      const tsLink=vid?'<a class="ext-row-ts" href="javascript:void(0)" onclick="ytSeek(\''+vid+'\','+Math.floor(t.sec)+')">'+esc(fmtSec(t.sec))+'</a>'
+        :'<span class="ext-row-ts" style="cursor:default">'+esc(fmtSec(t.sec))+'</span>';
+      return'<div class="ext-row">'+tsLink+'<span class="ext-row-icon">🎙</span><span class="ext-row-txt">'+_extHlStr(t.text,cat.tk)+'</span></div>';
+    }).join('')+(trHits.length>cap?'<div class="ext-more">… 他 '+(trHits.length-cap)+' 件（音声）</div>':'');
+
+    // チャット行
+    const chatRows=chatHits.slice(0,cap).map(c=>{
+      const tsLink=vid?'<a class="ext-row-ts" href="javascript:void(0)" onclick="ytSeek(\''+vid+'\','+Math.floor(c.sec)+')">'+esc(fmtSec(c.sec))+'</a>'
+        :'<span class="ext-row-ts" style="cursor:default">'+esc(fmtSec(c.sec))+'</span>';
+      const user=c.username?'<span class="ext-row-user">@'+esc(c.username)+'</span>':'';
+      return'<div class="ext-row">'+tsLink+'<span class="ext-row-icon">💬</span><span class="ext-row-txt">'+user+_extHlStr(c.message,cat.ck)+'</span></div>';
+    }).join('')+(chatHits.length>cap?'<div class="ext-more">… 他 '+(chatHits.length-cap)+' 件（チャット）</div>':'');
+
+    epBlocks+='<div class="ext-ep-block">'
+      +'<div class="ext-ep-hdr">'
+      +'<span class="ext-ep-hdr-num">#'+esc(rec.episodeNum||'?')+'</span>'
+      +'<span class="ext-ep-hdr-ttl">'+esc(titleShort)+'</span>'
+      +'<span class="ext-ep-hdr-cnt">'+epTotal+'件</span>'
+      +'</div>'
+      +trRows+chatRows
+      +'</div>';
   }
 
-  const resEl=document.getElementById('ext-results');
-  if(!totalFound){
-    resEl.innerHTML='<div style="color:var(--t2);font-size:12px;margin-top:12px">該当するデータが見つかりませんでした。</div>';
+  const scroll=document.getElementById('ext-scroll');
+  if(!totalHits){
+    scroll.innerHTML='<div class="ext-res-hdr">'
+      +'<button class="ext-res-back" onclick="openExtModal()">← カテゴリ</button>'
+      +'<span class="ext-res-title">'+cat.icon+' '+esc(cat.label)+'</span>'
+      +'</div>'
+      +'<div class="ext-empty">該当するデータが見つかりませんでした</div>';
     return;
   }
-  resEl.innerHTML=html;
+  scroll.innerHTML='<div class="ext-res-hdr">'
+    +'<button class="ext-res-back" onclick="openExtModal()">← カテゴリ</button>'
+    +'<span class="ext-res-title">'+cat.icon+' '+esc(cat.label)+'</span>'
+    +'<span class="ext-res-count">計 '+totalHits+' 件</span>'
+    +'</div>'
+    +epBlocks;
 }
 
 // ─── §RECOMMEND ───────────────────────────────────────────────────────────────
@@ -2451,26 +2514,29 @@ function showRecommend(){
   for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
   const picks=pool.slice(0,7);
   const titleOf=rec=>(rec.title||'(タイトル不明)').replace(/^\(\d+\)\s*/,'').slice(0,28);
-  // 既存の ext-modal を使いまわして表示
-  document.getElementById('ext-cat-list').innerHTML=
-    '<div style="font-size:12px;color:var(--t2);margin-bottom:10px">🎲 再クリックで別のおすすめを表示</div>'
-    +'<button class="ext-cat" onclick="showRecommend()" style="justify-content:center;font-weight:700">🎲 シャッフル</button>';
-  document.getElementById('ext-results').innerHTML='<div class="rec-wrap">'+picks.map(p=>{
-    const ts=fmtSec(p.sec);
-    const tsHtml=p.vid
-      ?'<a class="ext-ts" href="javascript:void(0)" onclick="ytSeek(\''+p.vid+'\','+Math.floor(p.sec)+')">'+esc(ts)+'</a>'
-      :'<span class="ext-ts" style="cursor:default">'+esc(ts)+'</span>';
-    return'<div class="rec-card">'
-      +'<div class="rec-card-hdr">'
-      +'<span class="rec-card-ep">#'+esc(p.rec.episodeNum||'?')+'</span>'
-      +'<span class="rec-card-title">'+esc(titleOf(p.rec))+'</span>'
-      +'</div>'
-      +'<div class="rec-card-body">'+tsHtml
-      +'<span style="color:var(--t2)">盛り上がり '+p.cnt+'コメ/'+WIN+'秒</span>'
-      +'<span class="ext-txt">'+esc(p.snip)+(p.snip.length>=60?'…':'')+'</span>'
-      +'</div>'
-      +'</div>';
-  }).join('')+'</div>';
+  const scroll=document.getElementById('ext-scroll');
+  scroll.innerHTML=
+    '<div class="ext-res-hdr">'
+    +'<button class="ext-res-back" onclick="openExtModal()">← カテゴリ</button>'
+    +'<span class="ext-res-title">🎲 おすすめシーン</span>'
+    +'<button class="db-bar-btn" onclick="showRecommend()" style="font-size:11px">🎲 シャッフル</button>'
+    +'</div>'
+    +'<div class="rec-wrap">'+picks.map(p=>{
+      const ts=fmtSec(p.sec);
+      const tsLink=p.vid
+        ?'<a class="ext-row-ts" href="javascript:void(0)" onclick="ytSeek(\''+p.vid+'\','+Math.floor(p.sec)+')">'+esc(ts)+'</a>'
+        :'<span class="ext-row-ts" style="cursor:default">'+esc(ts)+'</span>';
+      return'<div class="rec-card">'
+        +'<div class="rec-card-hdr">'
+        +'<span class="rec-card-ep">#'+esc(p.rec.episodeNum||'?')+'</span>'
+        +'<span class="rec-card-title">'+esc(titleOf(p.rec))+'</span>'
+        +'</div>'
+        +'<div class="rec-card-body">'+tsLink
+        +'<span style="color:var(--t2)">盛り上がり '+p.cnt+'コメ/'+WIN+'秒</span>'
+        +'<span style="font-size:11px;color:var(--t1)">'+esc(p.snip)+(p.snip.length>=60?'…':'')+'</span>'
+        +'</div>'
+        +'</div>';
+    }).join('')+'</div>';
   document.getElementById('ext-modal').classList.add('open');
 }
 
@@ -4507,13 +4573,12 @@ document.addEventListener('DOMContentLoaded',()=>{
 </div>
 <div class="ext-modal" id="ext-modal" onclick="closeExtModal()">
   <div class="ext-inner" onclick="event.stopPropagation()">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
-      <h3 style="flex:1">📂 シーン抽出</h3>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:2px;flex-shrink:0">
+      <h3 style="flex:1;font-size:14px">📂 シーン抽出</h3>
       <button class="db-bar-btn" onclick="closeExtModal()">✕</button>
     </div>
-    <div style="font-size:11px;color:var(--t2);margin-bottom:14px">現在のタグフィルタに一致する動画から、カテゴリに該当するシーンを抽出します（キーワードベース）。</div>
-    <div id="ext-cat-list"></div>
-    <div id="ext-results"></div>
+    <div style="font-size:10px;color:var(--t2);margin-bottom:2px;flex-shrink:0">現在のタグフィルタの動画からカテゴリに該当するシーンを抽出します</div>
+    <div class="ext-inner-scroll" id="ext-scroll"></div>
   </div>
 </div>
 </body>
