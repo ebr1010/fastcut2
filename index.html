@@ -329,9 +329,8 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .db-bar-btn{background:var(--bg2);border:1px solid var(--r3);border-radius:var(--rad);color:var(--t1);padding:6px 11px;font-size:12px;cursor:pointer;transition:all 0.15s;white-space:nowrap}
 .db-bar-btn:hover{border-color:var(--r4);color:var(--t0)}
 .db-bar-btn:disabled{opacity:0.35;cursor:default;pointer-events:none}
-.db-fuzzy-lbl{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--t1);cursor:pointer;white-space:nowrap;padding:6px 4px;border:1px solid var(--r3);border-radius:var(--rad);background:var(--bg2)}
-.db-fuzzy-lbl:hover{border-color:var(--r4)}
-.db-fuzzy-lbl input{accent-color:var(--r1);cursor:pointer;margin:0}
+.db-fuzzy-sel{background:var(--bg2);border:1px solid var(--r3);border-radius:var(--rad);color:var(--t1);padding:5px 7px;font-size:11px;cursor:pointer;outline:none;font-family:var(--bf);white-space:nowrap}
+.db-fuzzy-sel:hover,.db-fuzzy-sel:focus{border-color:var(--r4);color:var(--t0)}
 .sm-group{display:flex;border:1px solid var(--r3);border-radius:var(--rad);overflow:hidden;flex-shrink:0}
 .sm-btn{background:none;border:none;color:var(--t1);padding:4px 10px;font-size:11px;cursor:pointer;font-family:var(--bf);white-space:nowrap;border-right:1px solid var(--r3);transition:all .15s}
 .sm-btn:last-child{border-right:none}
@@ -524,7 +523,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.0</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.1</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -669,9 +668,11 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
       <input type="text" class="db-search" id="db-q" placeholder="チャット・音声検索... (Enter)">
       <button class="db-bar-btn" id="db-search-btn">🔍 検索</button>
     </div>
-    <label class="db-fuzzy-lbl" title="表記ゆれ・カタカナ・伸ばし棒なども一致させる（ぱるむ → パルム・ぱああるむ も検索）">
-      <input type="checkbox" id="db-fuzzy"> あいまい
-    </label>
+    <select class="db-fuzzy-sel" id="db-fuzzy" title="検索モード">
+      <option value="off">完全一致</option>
+      <option value="weak">あいまい弱</option>
+      <option value="strong">あいまい強</option>
+    </select>
     <div class="sm-group">
       <button class="sm-btn active" id="sm-all"  onclick="setSearchMode('all')">全て</button>
       <button class="sm-btn"        id="sm-tr"   onclick="setSearchMode('tr')">🎤 音声</button>
@@ -2259,51 +2260,92 @@ function getAcctSearch(){
   return el?el.value.trim():'';
 }
 
-function searchDB(q){
-  const terms=_qTerms(q);
-  const fuzzy=_isFuzzy();
-  _dbMatchFn=terms.length
-    ?(text)=>(fuzzy?_fuzzyHit(terms,text):_plainHit(terms,text))
-    :null;
-  renderDB(applyTagFilter(sortedCache()),q.trim(),getAcctSearch());
-}
-
 // ─── §FUZZY SEARCH ─────────────────────────────────────────────────────────────
-// テキスト正規化（カタカナ↔ひらがな・小文字かな・長音・重複・空白除去）
+// 強正規化（ー除去）
 function _norm(s){
   if(!s)return'';
   let v=String(s).toLowerCase();
-  // 全角英数 → 半角
   v=v.replace(/[！-～]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
-  // カタカナ → ひらがな
   v=v.replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60));
-  // 小文字かな → 大文字かな
   v=v.replace(/[ぁぃぅぇぉゃゅょっ]/g,c=>({'ぁ':'あ','ぃ':'い','ぅ':'う','ぇ':'え','ぉ':'お','ゃ':'や','ゅ':'ゆ','ょ':'よ','っ':'つ'})[c]||c);
-  // 長音符除去
-  v=v.replace(/ー/g,'');
-  // スペース除去（「ぱ るむ」→「ぱるむ」）
+  v=v.replace(/[ー〜～]/g,'');
   v=v.replace(/[\s　]/g,'');
-  // 同じ文字の連続を1文字に（ぱああるむ→ぱあるむ, wwww→w）
   v=v.replace(/(.)\1+/g,'$1');
   return v;
 }
-// あいまい正規表現: 各文字間に0〜5個の母音を許容（ぱるむ→ぱあるむ にも一致）
-function _fuzzyRe(term){
-  const n=_norm(term);if(!n)return null;
-  const er=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-  const vo='(?:[あいうえお]{0,5})?';
-  return new RegExp(n.split('').map(er).join(vo),'i');
+// 弱正規化（ー→い に変換）
+function _normW(s){
+  if(!s)return'';
+  let v=String(s).toLowerCase();
+  v=v.replace(/[！-～]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+  v=v.replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60));
+  v=v.replace(/[ぁぃぅぇぉゃゅょっ]/g,c=>({'ぁ':'あ','ぃ':'い','ぅ':'う','ぇ':'え','ぉ':'お','ゃ':'や','ゅ':'ゆ','ょ':'よ','っ':'つ'})[c]||c);
+  v=v.replace(/[ー〜～]/g,'い');
+  v=v.replace(/[\s　]/g,'');
+  v=v.replace(/(.)\1+/g,'$1');
+  return v;
 }
-function _fuzzyHit(terms,text){
+// レーベンシュタイン距離
+function _lev(a,b){
+  const m=a.length,n=b.length;
+  if(!m)return n;if(!n)return m;
+  const dp=Array.from({length:m+1},(_,i)=>Array.from({length:n+1},(_,j)=>i||j));
+  for(let i=1;i<=m;i++)
+    for(let j=1;j<=n;j++)
+      dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  return dp[m][n];
+}
+// 編集距離ヒット（スライドウィンドウ + 短テキスト対応）
+function _editHit(normQ,normT,maxDist){
+  const m=normQ.length,n=normT.length;
+  if(!m)return true;
+  if(!n)return m<=maxDist;
+  const qSet=new Set(normQ);
+  let common=0,need=Math.max(1,Math.min(m,n)-maxDist);
+  for(const c of normT){if(qSet.has(c)&&++common>=need)break;}
+  if(common<need)return false;
+  if(n<m){
+    if(m-n>maxDist)return false;
+    return _lev(normQ,normT)<=maxDist;
+  }
+  for(let i=0;i<=n-m;i++){
+    if(_lev(normQ,normT.slice(i,i+m))<=maxDist)return true;
+  }
+  return false;
+}
+// メインマッチ関数
+function _fuzzyHit(terms,text,level){
+  if(level==='weak'){
+    const nw=_normW(text);
+    return terms.some(t=>nw.includes(_normW(t)));
+  }
   const nt=_norm(text);
-  return terms.some(t=>{const re=_fuzzyRe(t);return re&&re.test(nt);});
+  return terms.some(t=>{
+    const nq=_norm(t);
+    if(!nq)return false;
+    const maxDist=nq.length>=6?2:nq.length>=2?1:0;
+    return maxDist>0&&_editHit(nq,nt,maxDist);
+  });
 }
 function _plainHit(terms,text){
   const tl=text.toLowerCase();
   return terms.some(t=>tl.includes(t.toLowerCase()));
 }
-function _isFuzzy(){const el=document.getElementById('db-fuzzy');return el&&el.checked;}
+function _fuzzyLevel(){const el=document.getElementById('db-fuzzy');return el?el.value:'off';}
 function _qTerms(q){return(q||'').trim().split(/\s+/).filter(Boolean);}
+
+function searchDB(q){
+  const terms=_qTerms(q);
+  const level=_fuzzyLevel();
+  _dbMatchFn=terms.length
+    ?(text)=>{
+        if(level==='off')return _plainHit(terms,text);
+        return _fuzzyHit(terms,text,level);
+      }
+    :null;
+  renderDB(applyTagFilter(sortedCache()),q.trim(),getAcctSearch());
+}
+
 // renderDB が参照するグローバルマッチ関数（searchDB で更新）
 let _searchMode='all'; // 'all'|'tr'|'chat'
 function setSearchMode(m){
@@ -4318,10 +4360,8 @@ document.addEventListener('DOMContentLoaded',()=>{
     document.getElementById('db-recommend-btn').addEventListener('click',showRecommend);
   });
   safe('db-fuzzy',()=>{
-    // あいまいモード切替時は現在のクエリで再検索
-    document.getElementById('db-fuzzy').addEventListener('change',()=>{
-      const q=document.getElementById('db-q').value;
-      if(q.trim())searchDB(q);
+    document.getElementById('db-fuzzy').addEventListener('change',function(){
+      searchDB(document.getElementById('db-q').value||'');
     });
   });
 
