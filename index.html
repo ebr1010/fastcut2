@@ -302,8 +302,7 @@ input[type=range]{
 .db-hits::-webkit-scrollbar-track{background:transparent}
 .db-hits::-webkit-scrollbar-thumb{background:var(--r2);border-radius:3px}
 .db-hits::-webkit-scrollbar-thumb:hover{background:var(--r1)}
-.db-hits-more{font-size:10px;color:var(--r1);padding:4px 6px;text-align:center;border-top:1px solid var(--r3);margin-top:2px;cursor:pointer;transition:background .12s}
-.db-hits-more:hover{background:rgba(185,24,40,0.1)}
+.db-hits-more{font-size:10px;color:var(--t2);padding:3px 6px;text-align:center;border-top:1px solid var(--r3);margin-top:2px}
 .db-hit{font-size:11px;color:var(--t1);display:flex;gap:6px;align-items:flex-start}
 .db-hit a{color:var(--r1);text-decoration:none;flex-shrink:0;font-family:var(--mf);font-size:10px}
 .db-hit a:hover{text-decoration:underline}
@@ -330,59 +329,27 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .db-bar-btn{background:var(--bg2);border:1px solid var(--r3);border-radius:var(--rad);color:var(--t1);padding:6px 11px;font-size:12px;cursor:pointer;transition:all 0.15s;white-space:nowrap}
 .db-bar-btn:hover{border-color:var(--r4);color:var(--t0)}
 .db-bar-btn:disabled{opacity:0.35;cursor:default;pointer-events:none}
-.db-fuzzy-sel{background:var(--bg2);border:1px solid var(--r3);border-radius:var(--rad);color:var(--t1);padding:5px 8px;font-size:11px;cursor:pointer;font-family:var(--bf);outline:none}
-.db-fuzzy-sel:hover,.db-fuzzy-sel:focus{border-color:var(--r4)}
+.db-fuzzy-lbl{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--t1);cursor:pointer;white-space:nowrap;padding:6px 4px;border:1px solid var(--r3);border-radius:var(--rad);background:var(--bg2)}
+.db-fuzzy-lbl:hover{border-color:var(--r4)}
+.db-fuzzy-lbl input{accent-color:var(--r1);cursor:pointer;margin:0}
 .sm-group{display:flex;border:1px solid var(--r3);border-radius:var(--rad);overflow:hidden;flex-shrink:0}
 .sm-btn{background:none;border:none;color:var(--t1);padding:4px 10px;font-size:11px;cursor:pointer;font-family:var(--bf);white-space:nowrap;border-right:1px solid var(--r3);transition:all .15s}
 .sm-btn:last-child{border-right:none}
 .sm-btn:hover{background:var(--r3);color:var(--t0)}
 .sm-btn.active{background:var(--r2);color:var(--t0)}
 /* 抽出モーダル */
-/* ── シーン抽出モーダル ── */
-.ext-modal{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.78);display:none;align-items:center;justify-content:center}
+.ext-modal{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center}
 .ext-modal.open{display:flex}
-.ext-inner{background:var(--bg2);border:1px solid var(--r3);border-radius:10px;padding:20px;width:640px;max-width:96vw;max-height:88vh;display:flex;flex-direction:column;gap:0}
-.ext-inner-scroll{overflow-y:auto;flex:1;min-height:0;padding-right:2px}
-/* カテゴリグリッド */
-.ext-cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
-@media(max-width:520px){.ext-cat-grid{grid-template-columns:repeat(2,1fr)}}
-.ext-cat{display:flex;flex-direction:column;align-items:center;gap:5px;padding:14px 8px;background:var(--bg1);border:1px solid var(--r3);border-radius:7px;color:var(--t0);cursor:pointer;transition:all .15s;font-family:var(--bf)}
-.ext-cat:hover{border-color:var(--r1);background:rgba(185,24,40,0.1);transform:translateY(-1px)}
-.ext-cat-icon{font-size:24px;line-height:1}
-.ext-cat-lbl{font-size:10px;color:var(--t1);text-align:center;line-height:1.3;word-break:keep-all}
-/* 結果ヘッダー */
-.ext-res-hdr{display:flex;align-items:center;gap:10px;padding:10px 0 10px;border-bottom:1px solid var(--r3);margin-bottom:10px;flex-shrink:0}
-.ext-res-back{background:none;border:1px solid var(--r3);border-radius:4px;color:var(--t1);padding:3px 9px;font-size:11px;cursor:pointer;white-space:nowrap;font-family:var(--bf)}
-.ext-res-back:hover{border-color:var(--r1);color:var(--r1)}
-.ext-res-title{font-size:13px;font-weight:700;color:var(--t0);flex:1}
-.ext-res-count{font-size:11px;color:var(--t2);white-space:nowrap}
-/* エピソードブロック */
-.ext-ep-block{margin-bottom:14px;border:1px solid var(--r3);border-radius:6px;overflow:hidden}
-.ext-ep-hdr{padding:6px 12px;background:rgba(185,24,40,0.12);border-bottom:1px solid var(--r3);font-size:11px;font-weight:700;color:var(--t0);display:flex;gap:8px;align-items:baseline}
-.ext-ep-hdr-num{color:var(--r1);font-family:var(--mf)}
-.ext-ep-hdr-ttl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ext-ep-hdr-cnt{color:var(--t2);font-size:10px;white-space:nowrap}
-/* ヒット行 */
-.ext-row{display:flex;align-items:flex-start;gap:8px;padding:6px 12px;border-bottom:1px solid rgba(255,255,255,0.04);line-height:1.45}
-.ext-row:last-child{border-bottom:none}
-.ext-row-ts{color:var(--r1);font-family:var(--mf);font-size:11px;font-weight:700;text-decoration:none;flex-shrink:0;min-width:52px;padding-top:1px}
-.ext-row-ts:hover{text-decoration:underline}
-.ext-row-icon{font-size:11px;flex-shrink:0;padding-top:1px;opacity:0.6}
-.ext-row-txt{font-size:11px;color:var(--t1);word-break:break-word;flex:1;min-width:0}
-.ext-row-txt mark{background:rgba(185,24,40,0.35);color:var(--t0);border-radius:2px;padding:0 1px}
-.ext-row-user{color:var(--t2);font-size:10px;margin-right:3px}
-.ext-ep-rows{display:flex;flex-direction:column}
-.ext-more{font-size:10px;color:var(--r1);padding:4px 12px 6px;text-align:center;cursor:pointer;transition:background .12s}
-.ext-more:hover{background:rgba(185,24,40,0.1)}
-/* 空 */
-.ext-empty{color:var(--t2);font-size:12px;text-align:center;padding:24px 0}
-/* おすすめカード */
-.rec-wrap{margin-top:4px}
-.rec-card{padding:10px 14px;margin-bottom:8px;background:var(--bg1);border:1px solid var(--r3);border-radius:6px}
-.rec-card-hdr{display:flex;gap:8px;align-items:baseline;margin-bottom:4px;flex-wrap:wrap}
-.rec-card-ep{font-size:11px;color:var(--r1);font-weight:700}
-.rec-card-title{font-size:12px;color:var(--t0);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rec-card-body{font-size:11px;color:var(--t1);display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap}
+.ext-inner{background:var(--bg2);border:1px solid var(--r3);border-radius:8px;padding:20px;width:560px;max-width:94vw;max-height:86vh;overflow-y:auto}
+.ext-cat{display:flex;align-items:center;gap:10px;width:100%;padding:9px 14px;margin-bottom:5px;background:var(--bg1);border:1px solid var(--r3);border-radius:5px;color:var(--t0);font-size:13px;cursor:pointer;text-align:left;transition:all .15s;font-family:var(--bf)}
+.ext-cat:hover{border-color:var(--r1);background:rgba(185,24,40,0.08)}
+.ext-res{margin-top:14px}
+.ext-ri{padding:8px 10px;margin-bottom:5px;background:var(--bg1);border-left:3px solid var(--r1);border-radius:0 4px 4px 0;line-height:1.5}
+.ext-ri-hdr{display:flex;gap:8px;align-items:baseline;margin-bottom:3px;flex-wrap:wrap}
+.ext-ts{color:var(--r1);font-family:var(--mf);font-size:11px;font-weight:700;cursor:pointer;text-decoration:none;flex-shrink:0}
+.ext-ts:hover{text-decoration:underline}
+.ext-ep{font-size:10px;color:var(--t2)}
+.ext-txt{font-size:11px;color:var(--t1);word-break:break-all}
 /* おすすめカード */
 .rec-wrap{margin-top:14px}
 .rec-card{padding:10px 14px;margin-bottom:8px;background:var(--bg1);border:1px solid var(--r3);border-radius:6px}
@@ -557,7 +524,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.13</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.5.8</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -702,11 +669,9 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
       <input type="text" class="db-search" id="db-q" placeholder="チャット・音声検索... (Enter)">
       <button class="db-bar-btn" id="db-search-btn">🔍 検索</button>
     </div>
-    <select class="db-fuzzy-sel" id="db-fuzzy" title="完全一致: 入力文字列が完全に含まれる&#10;弱: 1文字の違い・カタカナ統一・長音無視&#10;強: 2文字差・欠落2文字まで許容">
-      <option value="off">完全一致</option>
-      <option value="weak">あいまい弱</option>
-      <option value="strong">あいまい強</option>
-    </select>
+    <label class="db-fuzzy-lbl" title="表記ゆれ・カタカナ・伸ばし棒なども一致させる（ぱるむ → パルム・ぱああるむ も検索）">
+      <input type="checkbox" id="db-fuzzy"> あいまい
+    </label>
     <div class="sm-group">
       <button class="sm-btn active" id="sm-all"  onclick="setSearchMode('all')">全て</button>
       <button class="sm-btn"        id="sm-tr"   onclick="setSearchMode('tr')">🎤 音声</button>
@@ -719,6 +684,10 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     <div class="db-search-group">
       <input type="text" class="db-search" id="db-acct" placeholder="@アカウント名で絞り込み...">
       <button class="db-bar-btn" id="db-acct-btn">🔍</button>
+    </div>
+    <div class="db-search-group">
+      <input type="text" class="db-search" id="db-ep" placeholder="配信番号..." style="width:90px" title="配信番号で絞り込み（部分一致）">
+      <button class="db-bar-btn" id="db-ep-btn">🔍</button>
     </div>
     <span id="db-cnt"></span>
     <select id="db-sort" class="db-sort" title="並び替え">
@@ -2255,10 +2224,9 @@ async function loadAndRenderDB(){
           if(r.mainTag!==undefined&&r.mainTag!==local.mainTag)patch.mainTag=r.mainTag;
           if(r.subTags!==undefined&&JSON.stringify(r.subTags||[])!==JSON.stringify(local.subTags||[]))patch.subTags=r.subTags;
           if(r.tnotes!==undefined&&r.tnotes!==(local.tnotes||''))patch.tnotes=r.tnotes||'';
-          if(r.episodeNum&&!local.episodeNum)patch.episodeNum=r.episodeNum;
-          if(r.title&&!local.title)patch.title=r.title;
-          if(r.videoUrl&&!local.videoUrl)patch.videoUrl=r.videoUrl;
-          if(r.streamStart&&!local.streamStart)patch.streamStart=r.streamStart;
+          if(r.title&&r.title!==local.title)patch.title=r.title;
+          if(r.videoUrl&&r.videoUrl!==local.videoUrl)patch.videoUrl=r.videoUrl;
+          if(r.streamStart&&r.streamStart!==local.streamStart)patch.streamStart=r.streamStart;
           if(Object.keys(patch).length)await dbUpdate(local.id,patch);
         }
 
@@ -2293,38 +2261,11 @@ function getAcctSearch(){
 
 function searchDB(q){
   const terms=_qTerms(q);
-  const level=_fuzzyLevel();
+  const fuzzy=_isFuzzy();
   _dbMatchFn=terms.length
-    ?(text)=>(level==='off'?_plainHit(terms,text):_fuzzyHit(terms,text,level))
+    ?(text)=>(fuzzy?_fuzzyHit(terms,text):_plainHit(terms,text))
     :null;
   renderDB(applyTagFilter(sortedCache()),q.trim(),getAcctSearch());
-}
-
-// ─── §HIT OVERFLOW (クリック展開) ────────────────────────────────────────────────
-// ヒット件数上限を超えた分をMapに保持し、クリックで追記展開する
-const _hitOv=new Map();
-let _hitOvSeq=0;
-
-// hits: 全アイテム配列, cap: 初期表示件数, makeRow: item→HTML関数
-// wrapClass: 'db-hits' or 'ext-ep-rows'(省略時'db-hits')
-function _hitsBlock(hits,cap,makeRow,wrapClass){
-  if(!hits.length)return'';
-  const cls=wrapClass||'db-hits';
-  const shown=hits.slice(0,cap).map(makeRow).join('');
-  if(hits.length<=cap)return'<div class="'+cls+'">'+shown+'</div>';
-  const id=++_hitOvSeq;
-  _hitOv.set(id,{items:hits.slice(cap),makeRow,cls});
-  return'<div class="'+cls+'">'+shown
-    +'<div class="db-hits-more" onclick="expandHits('+id+',this)">▼ 他 '+(hits.length-cap)+' 件（タップで全表示）</div>'
-    +'</div>';
-}
-
-function expandHits(id,el){
-  const ov=_hitOv.get(id);
-  if(!ov){el.remove();return;}
-  _hitOv.delete(id);
-  el.insertAdjacentHTML('beforebegin',ov.items.map(ov.makeRow).join(''));
-  el.remove();
 }
 
 // ─── §FUZZY SEARCH ─────────────────────────────────────────────────────────────
@@ -2338,89 +2279,30 @@ function _norm(s){
   v=v.replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60));
   // 小文字かな → 大文字かな
   v=v.replace(/[ぁぃぅぇぉゃゅょっ]/g,c=>({'ぁ':'あ','ぃ':'い','ぅ':'う','ぇ':'え','ぉ':'お','ゃ':'や','ゅ':'ゆ','ょ':'よ','っ':'つ'})[c]||c);
-  // 長音符・波線除去（ー〜～）
-  v=v.replace(/[ー〜～]/g,'');
+  // 長音符除去
+  v=v.replace(/ー/g,'');
   // スペース除去（「ぱ るむ」→「ぱるむ」）
   v=v.replace(/[\s　]/g,'');
   // 同じ文字の連続を1文字に（ぱああるむ→ぱあるむ, wwww→w）
   v=v.replace(/(.)\1+/g,'$1');
   return v;
 }
-// あいまい弱用正規化: _norm と同じだが ー〜～ → 「い」に変換（い・ぃ・イ・ィ と同一視）
-function _normW(s){
-  if(!s)return'';
-  let v=String(s).toLowerCase();
-  v=v.replace(/[！-～]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
-  v=v.replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60));
-  v=v.replace(/[ぁぃぅぇぉゃゅょっ]/g,c=>({'ぁ':'あ','ぃ':'い','ぅ':'う','ぇ':'え','ぉ':'お','ゃ':'や','ゅ':'ゆ','ょ':'よ','っ':'つ'})[c]||c);
-  // ー〜～ → い（長音をい・イと同一視: コーヒー=コーヒイ、タクシー=タクシイ など）
-  v=v.replace(/[ー〜～]/g,'い');
-  v=v.replace(/[\s　]/g,'');
-  v=v.replace(/(.)\1+/g,'$1');
-  return v;
+// あいまい正規表現: 各文字間に0〜5個の母音を許容（ぱるむ→ぱあるむ にも一致）
+function _fuzzyRe(term){
+  const n=_norm(term);if(!n)return null;
+  const er=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const vo='(?:[あいうえお]{0,5})?';
+  return new RegExp(n.split('').map(er).join(vo),'i');
 }
-
-// ── 編集距離（Levenshtein）: 2行DPで省メモリ ──────────────────────────────────
-function _lev(a,b){
-  const m=a.length,n=b.length;
-  if(!m)return n; if(!n)return m;
-  let prev=Array.from({length:n+1},(_,j)=>j),curr=new Array(n+1);
-  for(let i=1;i<=m;i++){
-    curr[0]=i;
-    for(let j=1;j<=n;j++)
-      curr[j]=a[i-1]===b[j-1]?prev[j-1]:1+Math.min(prev[j],curr[j-1],prev[j-1]);
-    [prev,curr]=[curr,prev];
-  }
-  return prev[n];
-}
-
-// ── ウィンドウ付き編集距離マッチ ───────────────────────────────────────────────
-// normQ を normT 内のどこかで許容距離以内に見つかれば true
-// 高速化: 共通文字が必要数未満なら即 false
-function _editHit(normQ,normT,maxDist){
-  const m=normQ.length,n=normT.length;
-  if(!m)return true;
-  if(!n)return m<=maxDist;
-  // 共通文字プレフィルタ（n<m の場合は短い方に合わせる）
-  const qSet=new Set(normQ);
-  let common=0,need=Math.max(1,Math.min(m,n)-maxDist);
-  for(const c of normT){if(qSet.has(c)&&++common>=need)break;}
-  if(common<need)return false;
-  // テキストがクエリより短い場合: 欠落文字数が許容距離内のときのみ
-  if(n<m){
-    if(m-n>maxDist)return false; // 欠落が多すぎる
-    return _lev(normQ,normT)<=maxDist;
-  }
-  // スライドウィンドウ（サイズ m）
-  for(let i=0;i<=n-m;i++){
-    if(_lev(normQ,normT.slice(i,i+m))<=maxDist)return true;
-  }
-  return false;
-}
-
-// ── メインマッチ関数 ───────────────────────────────────────────────────────────
-// level='weak' : _normW正規化後に完全一致（ー=い=イ=ィ・カタカナ統一・長音→い）
-// level='strong': _norm正規化 + 編集距離（1文字の打ち間違い・認識ミス・欠落）
-// 漢字←→かな変換は辞書なしでは不可能
-function _fuzzyHit(terms,text,level){
-  if(level==='weak'){
-    const nw=_normW(text);
-    return terms.some(t=>nw.includes(_normW(t)));
-  }
-  // 強: 編集距離（2〜5文字→1, 6文字以上→2）
+function _fuzzyHit(terms,text){
   const nt=_norm(text);
-  return terms.some(t=>{
-    const nq=_norm(t);
-    if(!nq)return false;
-    const maxDist=nq.length>=6?2:nq.length>=2?1:0;
-    return maxDist>0&&_editHit(nq,nt,maxDist);
-  });
+  return terms.some(t=>{const re=_fuzzyRe(t);return re&&re.test(nt);});
 }
 function _plainHit(terms,text){
   const tl=text.toLowerCase();
   return terms.some(t=>tl.includes(t.toLowerCase()));
 }
-function _fuzzyLevel(){const el=document.getElementById('db-fuzzy');return el?el.value:'off';}
+function _isFuzzy(){const el=document.getElementById('db-fuzzy');return el&&el.checked;}
 function _qTerms(q){return(q||'').trim().split(/\s+/).filter(Boolean);}
 // renderDB が参照するグローバルマッチ関数（searchDB で更新）
 let _searchMode='all'; // 'all'|'tr'|'chat'
@@ -2490,93 +2372,63 @@ function _peakClips(rec,kwList,useChat,topN){
 function openExtModal(){
   const records=applyTagFilter(sortedCache());
   if(!records.length){toast('対象データがありません','wrn');return;}
-  const scroll=document.getElementById('ext-scroll');
-  scroll.innerHTML=
-    '<div class="ext-cat-grid">'
-    +_CATS.map(cat=>
-      '<button class="ext-cat" onclick="runExtract(\''+cat.id+'\')">'
-      +'<span class="ext-cat-icon">'+cat.icon+'</span>'
-      +'<span class="ext-cat-lbl">'+esc(cat.label)+'</span>'
-      +'</button>'
-    ).join('')
-    +'</div>';
+  const catEl=document.getElementById('ext-cat-list');
+  catEl.innerHTML=_CATS.map(cat=>
+    '<button class="ext-cat" onclick="runExtract(\''+cat.id+'\')">'+cat.icon+' '+esc(cat.label)+'</button>'
+  ).join('');
+  document.getElementById('ext-results').innerHTML='';
   document.getElementById('ext-modal').classList.add('open');
 }
 function closeExtModal(){document.getElementById('ext-modal').classList.remove('open');}
-
-function _extHlStr(s,kwList){
-  if(!kwList||!kwList.length)return esc(s);
-  let out=esc(s);
-  for(const kw of kwList){
-    if(!kw)continue;
-    out=out.replace(new RegExp(esc(kw).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'),m=>'<mark>'+m+'</mark>');
-  }
-  return out;
-}
 
 function runExtract(catId){
   const cat=_CATS.find(c=>c.id===catId);
   if(!cat)return;
   const records=applyTagFilter(sortedCache());
 
-  let totalHits=0;
-  let epBlocks='';
+  let totalFound=0;
+  let html='<div style="font-size:11px;color:var(--t2);margin:10px 0 8px">'+cat.icon+' <b>'+cat.label+'</b></div>';
 
   for(const rec of records){
     const vid=_getVidId(rec);
-    // 音声: tkキーワード
+    // 音声データ（trData）: tkキーワードで検索
     const trHits=cat.tk.length?(rec.trData||[]).filter(t=>
       cat.tk.some(k=>t.text.toLowerCase().includes(k.toLowerCase()))
     ).sort((a,b)=>a.sec-b.sec):[];
-    // チャット: ckキーワード
+    // チャットデータ（chatData）: ckキーワードで検索
     const chatHits=cat.ck.length?(rec.chatData||[]).filter(c=>
       cat.ck.some(k=>c.message.toLowerCase().includes(k.toLowerCase()))
     ).sort((a,b)=>a.sec-b.sec):[];
+
     if(!trHits.length&&!chatHits.length)continue;
-
-    const epTotal=trHits.length+chatHits.length;
-    totalHits+=epTotal;
-    const titleShort=(rec.title||'(タイトル不明)').replace(/^\(\d+\)\s*/,'').slice(0,40);
-    const _v=vid; // クロージャキャプチャ用
-    const mkTr=t=>{
-      const tsLink=_v?'<a class="ext-row-ts" href="javascript:void(0)" onclick="ytSeek(\''+_v+'\','+Math.floor(t.sec)+')">'+esc(fmtSec(t.sec))+'</a>'
-        :'<span class="ext-row-ts" style="cursor:default">'+esc(fmtSec(t.sec))+'</span>';
-      return'<div class="ext-row">'+tsLink+'<span class="ext-row-icon">🎙</span><span class="ext-row-txt">'+_extHlStr(t.text,cat.tk)+'</span></div>';
-    };
-    const mkChat=c=>{
-      const tsLink=_v?'<a class="ext-row-ts" href="javascript:void(0)" onclick="ytSeek(\''+_v+'\','+Math.floor(c.sec)+')">'+esc(fmtSec(c.sec))+'</a>'
-        :'<span class="ext-row-ts" style="cursor:default">'+esc(fmtSec(c.sec))+'</span>';
-      const user=c.username?'<span class="ext-row-user">@'+esc(c.username)+'</span>':'';
-      return'<div class="ext-row">'+tsLink+'<span class="ext-row-icon">💬</span><span class="ext-row-txt">'+user+_extHlStr(c.message,cat.ck)+'</span></div>';
-    };
-    const trRows=_hitsBlock(trHits,6,mkTr,'ext-ep-rows');
-    const chatRows=_hitsBlock(chatHits,6,mkChat,'ext-ep-rows');
-
-    epBlocks+='<div class="ext-ep-block">'
-      +'<div class="ext-ep-hdr">'
-      +'<span class="ext-ep-hdr-num">#'+esc(rec.episodeNum||'?')+'</span>'
-      +'<span class="ext-ep-hdr-ttl">'+esc(titleShort)+'</span>'
-      +'<span class="ext-ep-hdr-cnt">'+epTotal+'件</span>'
-      +'</div>'
-      +trRows+chatRows
-      +'</div>';
+    totalFound+=trHits.length+chatHits.length;
+    const titleShort=(rec.title||'(タイトル不明)').replace(/^\(\d+\)\s*/,'').slice(0,35);
+    html+='<div style="margin:10px 0 3px;padding:3px 8px;background:var(--r3);border-radius:3px;font-size:11px;color:var(--t1);font-weight:600">'
+      +'#'+esc(rec.episodeNum||'?')+' '+esc(titleShort)+'</div>';
+    // 音声ヒット
+    if(trHits.length){
+      const cap=Math.min(trHits.length,5);
+      html+='<div class="db-hits">'+trHits.slice(0,cap).map(t=>{
+        const kw=cat.tk.find(k=>t.text.toLowerCase().includes(k.toLowerCase()))||'';
+        return makeHitRow({sec:t.sec,txt:t.text,vid},kw);
+      }).join('')+(trHits.length>cap?'<div class="db-hits-more">… 他 '+(trHits.length-cap)+' 件</div>':'')+'</div>';
+    }
+    // チャットヒット
+    if(chatHits.length){
+      const cap=Math.min(chatHits.length,5);
+      html+='<div class="db-hits">'+chatHits.slice(0,cap).map(c=>{
+        const kw=cat.ck.find(k=>c.message.toLowerCase().includes(k.toLowerCase()))||'';
+        return makeHitRow({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'',vid},kw);
+      }).join('')+(chatHits.length>cap?'<div class="db-hits-more">… 他 '+(chatHits.length-cap)+' 件</div>':'')+'</div>';
+    }
   }
 
-  const scroll=document.getElementById('ext-scroll');
-  if(!totalHits){
-    scroll.innerHTML='<div class="ext-res-hdr">'
-      +'<button class="ext-res-back" onclick="openExtModal()">← カテゴリ</button>'
-      +'<span class="ext-res-title">'+cat.icon+' '+esc(cat.label)+'</span>'
-      +'</div>'
-      +'<div class="ext-empty">該当するデータが見つかりませんでした</div>';
+  const resEl=document.getElementById('ext-results');
+  if(!totalFound){
+    resEl.innerHTML='<div style="color:var(--t2);font-size:12px;margin-top:12px">該当するデータが見つかりませんでした。</div>';
     return;
   }
-  scroll.innerHTML='<div class="ext-res-hdr">'
-    +'<button class="ext-res-back" onclick="openExtModal()">← カテゴリ</button>'
-    +'<span class="ext-res-title">'+cat.icon+' '+esc(cat.label)+'</span>'
-    +'<span class="ext-res-count">計 '+totalHits+' 件</span>'
-    +'</div>'
-    +epBlocks;
+  resEl.innerHTML=html;
 }
 
 // ─── §RECOMMEND ───────────────────────────────────────────────────────────────
@@ -2603,29 +2455,26 @@ function showRecommend(){
   for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
   const picks=pool.slice(0,7);
   const titleOf=rec=>(rec.title||'(タイトル不明)').replace(/^\(\d+\)\s*/,'').slice(0,28);
-  const scroll=document.getElementById('ext-scroll');
-  scroll.innerHTML=
-    '<div class="ext-res-hdr">'
-    +'<button class="ext-res-back" onclick="openExtModal()">← カテゴリ</button>'
-    +'<span class="ext-res-title">🎲 おすすめシーン</span>'
-    +'<button class="db-bar-btn" onclick="showRecommend()" style="font-size:11px">🎲 シャッフル</button>'
-    +'</div>'
-    +'<div class="rec-wrap">'+picks.map(p=>{
-      const ts=fmtSec(p.sec);
-      const tsLink=p.vid
-        ?'<a class="ext-row-ts" href="javascript:void(0)" onclick="ytSeek(\''+p.vid+'\','+Math.floor(p.sec)+')">'+esc(ts)+'</a>'
-        :'<span class="ext-row-ts" style="cursor:default">'+esc(ts)+'</span>';
-      return'<div class="rec-card">'
-        +'<div class="rec-card-hdr">'
-        +'<span class="rec-card-ep">#'+esc(p.rec.episodeNum||'?')+'</span>'
-        +'<span class="rec-card-title">'+esc(titleOf(p.rec))+'</span>'
-        +'</div>'
-        +'<div class="rec-card-body">'+tsLink
-        +'<span style="color:var(--t2)">盛り上がり '+p.cnt+'コメ/'+WIN+'秒</span>'
-        +'<span style="font-size:11px;color:var(--t1)">'+esc(p.snip)+(p.snip.length>=60?'…':'')+'</span>'
-        +'</div>'
-        +'</div>';
-    }).join('')+'</div>';
+  // 既存の ext-modal を使いまわして表示
+  document.getElementById('ext-cat-list').innerHTML=
+    '<div style="font-size:12px;color:var(--t2);margin-bottom:10px">🎲 再クリックで別のおすすめを表示</div>'
+    +'<button class="ext-cat" onclick="showRecommend()" style="justify-content:center;font-weight:700">🎲 シャッフル</button>';
+  document.getElementById('ext-results').innerHTML='<div class="rec-wrap">'+picks.map(p=>{
+    const ts=fmtSec(p.sec);
+    const tsHtml=p.vid
+      ?'<a class="ext-ts" href="javascript:void(0)" onclick="ytSeek(\''+p.vid+'\','+Math.floor(p.sec)+')">'+esc(ts)+'</a>'
+      :'<span class="ext-ts" style="cursor:default">'+esc(ts)+'</span>';
+    return'<div class="rec-card">'
+      +'<div class="rec-card-hdr">'
+      +'<span class="rec-card-ep">#'+esc(p.rec.episodeNum||'?')+'</span>'
+      +'<span class="rec-card-title">'+esc(titleOf(p.rec))+'</span>'
+      +'</div>'
+      +'<div class="rec-card-body">'+tsHtml
+      +'<span style="color:var(--t2)">盛り上がり '+p.cnt+'コメ/'+WIN+'秒</span>'
+      +'<span class="ext-txt">'+esc(p.snip)+(p.snip.length>=60?'…':'')+'</span>'
+      +'</div>'
+      +'</div>';
+  }).join('')+'</div>';
   document.getElementById('ext-modal').classList.add('open');
 }
 
@@ -2700,7 +2549,8 @@ function renderDB(records,q,acct){
     const txtEl=document.getElementById('fban-txt');
     const total=_dbCache.length;
     const shown=records.length; // note/tag filter 後の件数（さらにq/acctで絞られる前）
-    const anyActive=_tagFilter!==null||_subTagFilter!==null||_noteFilter!==null||_timeFilter!==null||_noteQ||q||acct;
+    const epQBan=(document.getElementById('db-ep')?.value||'').trim();
+    const anyActive=_tagFilter!==null||_subTagFilter!==null||_noteFilter!==null||_timeFilter!==null||_noteQ||q||acct||epQBan;
     if(banner&&txtEl){
       if(anyActive){
         const labels=[];
@@ -2709,7 +2559,8 @@ function renderDB(records,q,acct){
         if(_subTagFilter&&_subTagFilter!=='__none__')labels.push('サブ: '+_subTagFilter);
         if(_noteFilter==='has')labels.push('ノートあり');
         else if(_noteFilter==='none')labels.push('ノートなし');
-        if(_timeFilter!==null){const tp=_TIME_PERIODS.find(p=>p.id===_timeFilter);if(tp)labels.push('時間帯: '+tp.label);}
+        if(_timeFilter!==null){const p=_TIME_PERIODS.find(p=>p.id===_timeFilter);if(p)labels.push('時間: '+p.label);}
+        if(epQBan)labels.push('配信番号: '+epQBan);
         if(q)labels.push('チャット検索: "'+q+'"');
         if(_noteQ)labels.push('ノート検索: "'+_noteQ+'"');
         if(acct)labels.push('アカウント: '+acct);
@@ -2857,7 +2708,8 @@ function renderDB(records,q,acct){
           .filter(c=>matchUser(c.username))
           .map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid}))
           .sort((a,b)=>a.sec-b.sec);
-        if(userHits.length)hitsHtml=_hitsBlock(userHits,5,h=>makeHitRow(h,''));
+        const _uhCap=5,_uhOver=userHits.length-_uhCap;
+        if(userHits.length)hitsHtml='<div class="db-hits">'+userHits.slice(0,_uhCap).map(h=>makeHitRow(h,'')).join('')+(_uhOver>0?'<div class="db-hits-more">… 他 '+_uhOver+' 件</div>':'')+'</div>';
       }else if(q){
         const _vid=_getVidId(rec);
         const _chkQ=_dbMatchFn?_dbMatch:t=>t.toLowerCase().includes(ql);
@@ -2870,14 +2722,16 @@ function renderDB(records,q,acct){
             .map(t=>({sec:t.sec,txt:t.text,vid:_vid}))
           :[];
         const allHits=[...chatHits,...trHits].sort((a,b)=>a.sec-b.sec);
-        if(allHits.length)hitsHtml=_hitsBlock(allHits,5,h=>makeHitRow(h,q));
+        const _ahCap=5,_ahOver=allHits.length-_ahCap;
+        if(allHits.length)hitsHtml='<div class="db-hits">'+allHits.slice(0,_ahCap).map(h=>makeHitRow(h,q)).join('')+(_ahOver>0?'<div class="db-hits-more">… 他 '+_ahOver+' 件</div>':'')+'</div>';
       }else{
         const _vid=_getVidId(rec);
         const allRows=[
           ...(_searchMode!=='chat'?trData.map(t=>({sec:t.sec,txt:t.text,vid:_vid})):[]),
           ...(_searchMode!=='tr'?chatData.map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid})):[]),
         ].sort((a,b)=>a.sec-b.sec);
-        if(allRows.length)hitsHtml=_hitsBlock(allRows,50,h=>makeHitRow(h,''));
+        const _arCap=50,_arOver=allRows.length-_arCap;
+        if(allRows.length)hitsHtml='<div class="db-hits">'+allRows.slice(0,_arCap).map(h=>makeHitRow(h,'')).join('')+(_arOver>0?'<div class="db-hits-more">… 他 '+_arOver+' 件（解析タブで全件確認）</div>':'')+'</div>';
       }
     }
 
@@ -2998,134 +2852,35 @@ function startEdit(id){
   const card=document.getElementById('dbcard-'+id);
   if(!card)return;
   card.ondblclick=null;
-  card.innerHTML='<div onclick="event.stopPropagation()" style="padding:4px 0">'
-    +'<div class="db-edit-row"><label>配信番号</label><input class="db-edit-in" id="edi-ep-'+id+'" value="'+esc(rec.episodeNum||'')+'" placeholder="例: 042" style="width:100px"></div>'
+  card.innerHTML='<div onclick="event.stopPropagation()">'
     +'<div class="db-edit-row"><label>タイトル</label><input class="db-edit-in" id="edi-t-'+id+'" value="'+esc(rec.title||'')+'"></div>'
-    +'<div class="db-edit-row"><label>配信開始時刻</label>'
-      +'<input class="db-edit-in" id="edi-s-'+id+'" value="'+esc(rec.streamStart||'')+'" placeholder="2024-07-05T21:00:07" style="font-family:monospace">'
-    +'</div>'
-    +'<div class="db-edit-row"><label style="color:var(--warn)">⏱ sec補正（旧の基準時刻）</label>'
-      +'<input class="db-edit-in" id="edi-secbase-'+id+'" placeholder="例: 2024-07-05T00:00:00　←　こので時間ずれが生じた場合のみ入力" style="font-family:monospace">'
-    +'</div>'
     +'<div class="db-edit-row"><label>URL</label><input class="db-edit-in" id="edi-u-'+id+'" value="'+esc(rec.videoUrl||'')+'"></div>'
-    +'<div class="db-edit-row"><label>メインタグ</label><div id="edi-tags-'+id+'"></div></div>'
+    +'<div class="db-edit-row"><label>配信開始時刻</label><input class="db-edit-in" id="edi-s-'+id+'" value="'+esc(rec.streamStart||'')+'"></div>'
+    +'<div class="db-edit-row"><label>タグ</label><div id="edi-tags-'+id+'"></div></div>'
     +'<div class="db-edit-row"><label>サブタグ</label><div id="edi-subtags-'+id+'"></div></div>'
     +'<div class="db-edit-row"><label>📌 タイムラインノート (TN)</label><textarea class="db-edit-ta" id="edi-tn-'+id+'" rows="5">'+esc(rec.tnotes||'')+'</textarea></div>'
-    +'<div class="db-edit-row" style="flex-direction:column;align-items:flex-start;gap:6px">'
-      +'<label style="color:var(--r1);font-weight:600">🔄 再解析（チャット・音声データを上書き）</label>'
-      +'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'
-        +'<label class="db-bar-btn" style="cursor:pointer">💬 チャット<input type="file" id="edi-fc-'+id+'" accept=".jsonl,.txt,.log" style="display:none" onchange="updateReanalyzeLabel('+id+')"></label>'
-        +'<label class="db-bar-btn" style="cursor:pointer">🎙 音声<input type="file" id="edi-ft-'+id+'" accept=".vtt,.txt,.srt" style="display:none" onchange="updateReanalyzeLabel('+id+')"></label>'
-        +'<span id="edi-rlabel-'+id+'" style="font-size:11px;color:var(--t2)">ファイル未選択</span>'
-      +'</div>'
-    +'</div>'
-    +'<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">'
-    +'<button class="db-txt-btn" onclick="saveCardEdit('+id+')">💾 メタ保存</button>'
-    +'<button class="db-txt-btn" style="background:var(--r2);border-color:var(--r1)" onclick="reanalyzeAndSave('+id+')">🔄 再解析して保存</button>'
-    +'<button class="db-bar-btn" onclick="cancelEdit('+id+')">✕ キャンセル</button>'
+    +'<div style="display:flex;gap:6px;margin-top:10px">'
+    +'<button class="db-txt-btn" onclick="saveCardEdit('+id+')">保存</button>'
+    +'<button class="db-del" onclick="loadAndRenderDB()">キャンセル</button>'
     +'</div></div>';
   renderEditMainTag(id);
   renderEditSubTags(id);
 }
 
-function cancelEdit(id){
-  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
-}
-
 async function saveCardEdit(id){
   try{
-    const episodeNum=document.getElementById('edi-ep-'+id).value.trim();
     const title=document.getElementById('edi-t-'+id).value;
     const url=document.getElementById('edi-u-'+id).value.trim();
-    const newStart=document.getElementById('edi-s-'+id).value.trim();
+    const start=document.getElementById('edi-s-'+id).value.trim();
     const tnotes=(document.getElementById('edi-tn-'+id)?.value||'').trimEnd();
-    const secBase=document.getElementById('edi-secbase-'+id)?.value.trim()||'';
-    const patch={episodeNum,title,videoUrl:url,streamStart:newStart,tnotes};
-
-    // sec補正: 旧の基準時刻が入力されていれば、chatData/trData の sec をずらす
-    if(secBase){
-      const baseDt=parseStreamStart(secBase);
-      const newDt=parseStreamStart(newStart||secBase);
-      if(!baseDt.isValid)throw new Error('旧の基準時刻が無効です: '+secBase);
-      if(!newDt.isValid)throw new Error('配信開始時刻が無効です: '+newStart);
-      const delta=newDt.diff(baseDt,'seconds').seconds; // 正=新が遅い → secを減らす
-      const rec=_dbCache.find(r=>r.id===id);
-      if(rec&&delta!==0){
-        if(rec.chatData?.length)
-          patch.chatData=rec.chatData.map(c=>({...c,sec:Math.round(c.sec-delta)})).filter(c=>c.sec>=0);
-        if(rec.trData?.length)
-          patch.trData=rec.trData.map(t=>({...t,sec:Math.round(t.sec-delta)})).filter(t=>t.sec>=0);
-        const chatCnt=patch.chatData?.length??0;
-        const trCnt=patch.trData?.length??0;
-        toast('sec補正完了: チャット'+chatCnt+'件 / 音声'+trCnt+'件','ok',4000);
-      }else if(delta===0){
-        toast('旧と新の時刻が同じのため補正なし','wrn');
-      }
-    }
-
-    await dbUpdate(id,patch);
-    _dbCache=await dbAll();
+    await dbUpdate(id,{title,videoUrl:url,streamStart:start,tnotes});
+    const idx=_dbCache.findIndex(r=>r.id===id);
+    if(idx>=0)_dbCache[idx]={..._dbCache[idx],title,videoUrl:url,streamStart:start,tnotes};
     renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
-    if(!secBase)toast('更新しました','ok');
+    toast('更新しました','ok');
     ghSync(true);
   }catch(e){
     toast('更新失敗: '+e.message,'err');
-  }
-}
-
-function updateReanalyzeLabel(id){
-  const fc=document.getElementById('edi-fc-'+id);
-  const ft=document.getElementById('edi-ft-'+id);
-  const label=document.getElementById('edi-rlabel-'+id);
-  if(!label)return;
-  const parts=[];
-  if(fc&&fc.files.length)parts.push('💬 '+fc.files[0].name);
-  if(ft&&ft.files.length)parts.push('🎙 '+ft.files[0].name);
-  label.textContent=parts.length?parts.join('  '):'ファイル未選択';
-  label.style.color=parts.length?'var(--t0)':'var(--t2)';
-}
-
-async function reanalyzeAndSave(id){
-  const fc=document.getElementById('edi-fc-'+id);
-  const ft=document.getElementById('edi-ft-'+id);
-  const hasChatFile=fc&&fc.files.length>0;
-  const hasTrFile=ft&&ft.files.length>0;
-  if(!hasChatFile&&!hasTrFile){toast('チャットまたは音声ファイルを選択してください','wrn');return;}
-  const start=document.getElementById('edi-s-'+id).value.trim();
-  if(hasChatFile&&!start){toast('配信開始時刻を入力してください','wrn');return;}
-  const episodeNum=document.getElementById('edi-ep-'+id).value.trim();
-  const title=document.getElementById('edi-t-'+id).value;
-  const url=document.getElementById('edi-u-'+id).value.trim();
-  const tnotes=(document.getElementById('edi-tn-'+id)?.value||'').trimEnd();
-  try{
-    let chatData=null;
-    let trData=null;
-    if(hasChatFile){
-      const raw=await fc.files[0].text();
-      const parsed=parseChatFile(raw);
-      if(!parsed.records.length){toast('チャットデータが0件です','wrn');return;}
-      const{out:chatConv}=convertTimestamps(parsed.records,start);
-      if(!chatConv.length){toast('配信開始時刻以降のチャットが0件です。配信開始時刻を確認してください','wrn');return;}
-      chatData=chatConv.map(c=>({sec:c.sec,username:c.username,message:c.message}));
-    }
-    if(hasTrFile){
-      const raw=await ft.files[0].text();
-      const parsed=parseTranscriptFile(raw);
-      trData=parsed.records.map(t=>({sec:t.sec,text:t.text}));
-    }
-    const patch={episodeNum,title,videoUrl:url,streamStart:start,tnotes};
-    if(chatData!==null)patch.chatData=chatData;
-    if(trData!==null)patch.trData=trData;
-    await dbUpdate(id,patch);
-    _dbCache=await dbAll();
-    renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
-    const parts=[];
-    if(chatData)parts.push('チャット '+chatData.length+'件');
-    if(trData)parts.push('音声 '+trData.length+'件');
-    toast('再解析完了: '+parts.join(' / '),'ok',4000);
-    ghSync(true);
-  }catch(e){
-    toast('再解析失敗: '+e.message,'err');
   }
 }
 
@@ -3904,7 +3659,7 @@ let _subTagDefs=[];  // [{name}]
 let _tagFilter=null;    // string|null — 選択中のメインタグ名
 let _subTagFilter=null; // string|null — 選択中のサブタグ名
 let _noteFilter=null;   // null | 'has' | 'none' — ノートフィルタ
-let _timeFilter=null;   // null | 'unknown'|'midnight'|'morning'|'noon'|'night'
+let _timeFilter=null;   // null | 'unknown'|'midnight'|'morning'|'noon'|'night' — 時間帯フィルタ
 let _noteQ='';          // ノートキーワード検索（チャット・音声検索 q とは独立）
 let _noteFuzzyMatchFn=null; // あいまい検索が有効なときのノートマッチ関数
 
@@ -4125,15 +3880,18 @@ function renderTagBar(){
     +'<button class="tf-chip" style="font-size:10px;padding:2px 8px;'+(nfNone?'background:rgba(255,255,255,0.08);border-color:var(--t2);color:var(--t1)':'color:var(--t2)')+'" onclick="setNoteFilter(\'none\')">ノートなし</button>'
     +'</div>';
 
-  // ─ 時間帯フィルタ行（常に表示）─
-  html+='<div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">'
-    +'<span style="font-size:9px;color:var(--t2);letter-spacing:1px;text-transform:uppercase;flex-shrink:0;margin-right:2px">TIME</span>'
-    +'<button class="tf-chip" style="font-size:10px;padding:2px 8px;'+(_timeFilter===null?'background:rgba(255,255,255,0.08);border-color:var(--t1);color:var(--t0)':'')+'" onclick="setTimeFilter(null)">すべて</button>';
-  for(const p of _TIME_PERIODS){
-    const sel=_timeFilter===p.id;
-    html+='<button class="tf-chip" style="font-size:10px;padding:2px 8px;'+(sel?p.style+';background:rgba(255,255,255,0.08)':p.style)+'" onclick="setTimeFilter(\''+p.id+'\')">'+p.label+'</button>';
+  // ─ 時間帯フィルタ行 ─
+  {
+    const allTSel=_timeFilter===null;
+    html+='<div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">'
+      +'<span style="font-size:9px;color:var(--t2);letter-spacing:1px;text-transform:uppercase;flex-shrink:0;margin-right:2px">TIME</span>'
+      +'<button class="tf-chip" style="font-size:10px;padding:2px 8px;'+(allTSel?'background:rgba(255,255,255,0.08);border-color:var(--t1);color:var(--t0)':'')+'" onclick="setTimeFilter(null)">すべて</button>';
+    for(const p of _TIME_PERIODS){
+      const sel=_timeFilter===p.id;
+      html+='<button class="tf-chip" style="font-size:10px;padding:2px 8px;'+(sel?p.style+';background:rgba(255,255,255,0.08)':p.style)+'" onclick="setTimeFilter(\''+p.id+'\')">'+p.label+'</button>';
+    }
+    html+='</div>';
   }
-  html+='</div>';
 
   bar.innerHTML=html;
 }
@@ -4150,16 +3908,7 @@ function setSubTagFilter(name){
   renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
 }
 
-// ── 時間帯判定 ─────────────────────────────────────────────────────────────────
-// streamStart が "T00:00:00" で終わる or 未設定 → 'unknown'
-// それ以外は開始時刻(h)で分類: 0-5→深夜, 6-11→午前, 12-17→昼, 18-23→夜
-const _TIME_PERIODS=[
-  {id:'unknown',  label:'時間不明', style:'color:#888;border-color:#444'},
-  {id:'midnight', label:'深夜 0〜5時',  style:'color:#9b7fd4;border-color:#9b7fd455'},
-  {id:'morning',  label:'午前 6〜11時', style:'color:#64b4e8;border-color:#64b4e855'},
-  {id:'noon',     label:'昼 12〜17時',  style:'color:#e8c84a;border-color:#e8c84a55'},
-  {id:'night',    label:'夜 18〜23時',  style:'color:#e8804a;border-color:#e8804a55'},
-];
+// 時間帯判定: streamStart が "T00:00:00" 末尾 or 未設定 → unknown
 function getTimePeriod(rec){
   const s=rec.streamStart||'';
   if(!s||/T00:00:00$/.test(s))return 'unknown';
@@ -4171,6 +3920,13 @@ function getTimePeriod(rec){
   if(h<18)return 'noon';
   return 'night';
 }
+const _TIME_PERIODS=[
+  {id:'unknown',  label:'時間不明',     style:'color:#888;border-color:#444'},
+  {id:'midnight', label:'深夜 0〜5時',  style:'color:#9b7fd4;border-color:#9b7fd455'},
+  {id:'morning',  label:'午前 6〜11時', style:'color:#64b4e8;border-color:#64b4e855'},
+  {id:'noon',     label:'昼 12〜17時',  style:'color:#e8c84a;border-color:#e8c84a55'},
+  {id:'night',    label:'夜 18〜23時',  style:'color:#e8804a;border-color:#e8804a55'},
+];
 function setTimeFilter(id){
   _timeFilter=id;
   renderTagBar();
@@ -4193,6 +3949,8 @@ function applyTagFilter(recs){
     });
   }
   if(_timeFilter!==null)r=r.filter(rec=>getTimePeriod(rec)===_timeFilter);
+  const epQ=(document.getElementById('db-ep')?.value||'').trim();
+  if(epQ)r=r.filter(rec=>String(rec.episodeNum||'').includes(epQ));
   return r;
 }
 
@@ -4207,6 +3965,7 @@ function clearAllFilters(){
   document.getElementById('db-q').value='';
   document.getElementById('db-acct').value='';
   const qnEl=document.getElementById('db-qn');if(qnEl)qnEl.value='';
+  const epEl=document.getElementById('db-ep');if(epEl)epEl.value='';
   renderTagBar();
   renderDB(applyTagFilter(sortedCache()),'','');
 }
@@ -4540,6 +4299,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     document.getElementById('db-recommend-btn').addEventListener('click',showRecommend);
   });
   safe('db-fuzzy',()=>{
+    // あいまいモード切替時は現在のクエリで再検索
     document.getElementById('db-fuzzy').addEventListener('change',()=>{
       const q=document.getElementById('db-q').value;
       if(q.trim())searchDB(q);
@@ -4557,6 +4317,13 @@ document.addEventListener('DOMContentLoaded',()=>{
     const doAcctSearch=()=>renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),acctEl.value.trim());
     acctEl.addEventListener('keydown',function(e){if(e.key==='Enter')doAcctSearch();});
     document.getElementById('db-acct-btn').addEventListener('click',doAcctSearch);
+  });
+
+  safe('db-ep',()=>{
+    const epEl=document.getElementById('db-ep');
+    const doEpSearch=()=>renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
+    epEl.addEventListener('keydown',function(e){if(e.key==='Enter')doEpSearch();});
+    document.getElementById('db-ep-btn').addEventListener('click',doEpSearch);
   });
 
   safe('db-sort',()=>{
@@ -4797,12 +4564,13 @@ document.addEventListener('DOMContentLoaded',()=>{
 </div>
 <div class="ext-modal" id="ext-modal" onclick="closeExtModal()">
   <div class="ext-inner" onclick="event.stopPropagation()">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:2px;flex-shrink:0">
-      <h3 style="flex:1;font-size:14px">📂 シーン抽出</h3>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <h3 style="flex:1">📂 シーン抽出</h3>
       <button class="db-bar-btn" onclick="closeExtModal()">✕</button>
     </div>
-    <div style="font-size:10px;color:var(--t2);margin-bottom:2px;flex-shrink:0">現在のタグフィルタの動画からカテゴリに該当するシーンを抽出します</div>
-    <div class="ext-inner-scroll" id="ext-scroll"></div>
+    <div style="font-size:11px;color:var(--t2);margin-bottom:14px">現在のタグフィルタに一致する動画から、カテゴリに該当するシーンを抽出します（キーワードベース）。</div>
+    <div id="ext-cat-list"></div>
+    <div id="ext-results"></div>
   </div>
 </div>
 </body>
