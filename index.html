@@ -557,7 +557,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.11</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.12</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -3034,12 +3034,31 @@ async function saveCardEdit(id){
     const episodeNum=document.getElementById('edi-ep-'+id).value.trim();
     const title=document.getElementById('edi-t-'+id).value;
     const url=document.getElementById('edi-u-'+id).value.trim();
-    const start=document.getElementById('edi-s-'+id).value.trim();
+    const newStart=document.getElementById('edi-s-'+id).value.trim();
     const tnotes=(document.getElementById('edi-tn-'+id)?.value||'').trimEnd();
-    await dbUpdate(id,{episodeNum,title,videoUrl:url,streamStart:start,tnotes});
+    const patch={episodeNum,title,videoUrl:url,streamStart:newStart,tnotes};
+
+    // 配信開始時刻が変わった場合 → chatData/trData の sec を自動補正
+    const rec=_dbCache.find(r=>r.id===id);
+    if(rec&&rec.streamStart&&newStart&&newStart!==rec.streamStart){
+      const oldDt=parseStreamStart(rec.streamStart);
+      const newDt=parseStreamStart(newStart);
+      if(oldDt.isValid&&newDt.isValid){
+        const delta=newDt.diff(oldDt,'seconds').seconds; // 正=新が遅い → secを小さく
+        if(delta!==0){
+          if(rec.chatData?.length)
+            patch.chatData=rec.chatData.map(c=>({...c,sec:Math.round(c.sec-delta)})).filter(c=>c.sec>=0);
+          if(rec.trData?.length)
+            patch.trData=rec.trData.map(t=>({...t,sec:Math.round(t.sec-delta)})).filter(t=>t.sec>=0);
+          toast('配信開始時刻を補正: チャット'+(patch.chatData?.length??rec.chatData?.length??0)+'件 / 音声'+(patch.trData?.length??rec.trData?.length??0)+'件','ok',4000);
+        }
+      }
+    }
+
+    await dbUpdate(id,patch);
     _dbCache=await dbAll();
     renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
-    toast('更新しました','ok');
+    if(!patch.chatData&&!patch.trData)toast('更新しました','ok');
     ghSync(true);
   }catch(e){
     toast('更新失敗: '+e.message,'err');
