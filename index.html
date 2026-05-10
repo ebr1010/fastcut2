@@ -557,7 +557,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.9</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.11</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -2255,9 +2255,10 @@ async function loadAndRenderDB(){
           if(r.mainTag!==undefined&&r.mainTag!==local.mainTag)patch.mainTag=r.mainTag;
           if(r.subTags!==undefined&&JSON.stringify(r.subTags||[])!==JSON.stringify(local.subTags||[]))patch.subTags=r.subTags;
           if(r.tnotes!==undefined&&r.tnotes!==(local.tnotes||''))patch.tnotes=r.tnotes||'';
-          if(r.title&&r.title!==local.title)patch.title=r.title;
-          if(r.videoUrl&&r.videoUrl!==local.videoUrl)patch.videoUrl=r.videoUrl;
-          if(r.streamStart&&r.streamStart!==local.streamStart)patch.streamStart=r.streamStart;
+          if(r.episodeNum&&!local.episodeNum)patch.episodeNum=r.episodeNum;
+          if(r.title&&!local.title)patch.title=r.title;
+          if(r.videoUrl&&!local.videoUrl)patch.videoUrl=r.videoUrl;
+          if(r.streamStart&&!local.streamStart)patch.streamStart=r.streamStart;
           if(Object.keys(patch).length)await dbUpdate(local.id,patch);
         }
 
@@ -3007,8 +3008,17 @@ function startEdit(id){
     +'<div class="db-edit-row"><label>メインタグ</label><div id="edi-tags-'+id+'"></div></div>'
     +'<div class="db-edit-row"><label>サブタグ</label><div id="edi-subtags-'+id+'"></div></div>'
     +'<div class="db-edit-row"><label>📌 タイムラインノート (TN)</label><textarea class="db-edit-ta" id="edi-tn-'+id+'" rows="5">'+esc(rec.tnotes||'')+'</textarea></div>'
-    +'<div style="display:flex;gap:6px;margin-top:10px">'
-    +'<button class="db-txt-btn" onclick="saveCardEdit('+id+')">💾 保存</button>'
+    +'<div class="db-edit-row" style="flex-direction:column;align-items:flex-start;gap:6px">'
+      +'<label style="color:var(--r1);font-weight:600">🔄 再解析（チャット・音声データを上書き）</label>'
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'
+        +'<label class="db-bar-btn" style="cursor:pointer">💬 チャット<input type="file" id="edi-fc-'+id+'" accept=".jsonl,.txt,.log" style="display:none" onchange="updateReanalyzeLabel('+id+')"></label>'
+        +'<label class="db-bar-btn" style="cursor:pointer">🎙 音声<input type="file" id="edi-ft-'+id+'" accept=".vtt,.txt,.srt" style="display:none" onchange="updateReanalyzeLabel('+id+')"></label>'
+        +'<span id="edi-rlabel-'+id+'" style="font-size:11px;color:var(--t2)">ファイル未選択</span>'
+      +'</div>'
+    +'</div>'
+    +'<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">'
+    +'<button class="db-txt-btn" onclick="saveCardEdit('+id+')">💾 メタ保存</button>'
+    +'<button class="db-txt-btn" style="background:var(--r2);border-color:var(--r1)" onclick="reanalyzeAndSave('+id+')">🔄 再解析して保存</button>'
     +'<button class="db-bar-btn" onclick="cancelEdit('+id+')">✕ キャンセル</button>'
     +'</div></div>';
   renderEditMainTag(id);
@@ -3033,6 +3043,62 @@ async function saveCardEdit(id){
     ghSync(true);
   }catch(e){
     toast('更新失敗: '+e.message,'err');
+  }
+}
+
+function updateReanalyzeLabel(id){
+  const fc=document.getElementById('edi-fc-'+id);
+  const ft=document.getElementById('edi-ft-'+id);
+  const label=document.getElementById('edi-rlabel-'+id);
+  if(!label)return;
+  const parts=[];
+  if(fc&&fc.files.length)parts.push('💬 '+fc.files[0].name);
+  if(ft&&ft.files.length)parts.push('🎙 '+ft.files[0].name);
+  label.textContent=parts.length?parts.join('  '):'ファイル未選択';
+  label.style.color=parts.length?'var(--t0)':'var(--t2)';
+}
+
+async function reanalyzeAndSave(id){
+  const fc=document.getElementById('edi-fc-'+id);
+  const ft=document.getElementById('edi-ft-'+id);
+  const hasChatFile=fc&&fc.files.length>0;
+  const hasTrFile=ft&&ft.files.length>0;
+  if(!hasChatFile&&!hasTrFile){toast('チャットまたは音声ファイルを選択してください','wrn');return;}
+  const start=document.getElementById('edi-s-'+id).value.trim();
+  if(hasChatFile&&!start){toast('配信開始時刻を入力してください','wrn');return;}
+  const episodeNum=document.getElementById('edi-ep-'+id).value.trim();
+  const title=document.getElementById('edi-t-'+id).value;
+  const url=document.getElementById('edi-u-'+id).value.trim();
+  const tnotes=(document.getElementById('edi-tn-'+id)?.value||'').trimEnd();
+  try{
+    let chatData=null;
+    let trData=null;
+    if(hasChatFile){
+      const raw=await fc.files[0].text();
+      const parsed=parseChatFile(raw);
+      if(!parsed.records.length){toast('チャットデータが0件です','wrn');return;}
+      const{out:chatConv}=convertTimestamps(parsed.records,start);
+      if(!chatConv.length){toast('配信開始時刻以降のチャットが0件です。配信開始時刻を確認してください','wrn');return;}
+      chatData=chatConv.map(c=>({sec:c.sec,username:c.username,message:c.message}));
+    }
+    if(hasTrFile){
+      const raw=await ft.files[0].text();
+      const parsed=parseTranscriptFile(raw);
+      trData=parsed.records.map(t=>({sec:t.sec,text:t.text}));
+    }
+    const patch={episodeNum,title,videoUrl:url,streamStart:start,tnotes};
+    if(chatData!==null)patch.chatData=chatData;
+    if(trData!==null)patch.trData=trData;
+    await dbUpdate(id,patch);
+    _dbCache=await dbAll();
+    renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
+    const parts=[];
+    if(chatData)parts.push('チャット '+chatData.length+'件');
+    if(trData)parts.push('音声 '+trData.length+'件');
+    toast('再解析完了: '+parts.join(' / '),'ok',4000);
+    ghSync(true);
+  }catch(e){
+    toast('再解析失敗: '+e.message,'err');
   }
 }
 
