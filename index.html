@@ -557,7 +557,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.12</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.13</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -3004,6 +3004,9 @@ function startEdit(id){
     +'<div class="db-edit-row"><label>配信開始時刻</label>'
       +'<input class="db-edit-in" id="edi-s-'+id+'" value="'+esc(rec.streamStart||'')+'" placeholder="2024-07-05T21:00:07" style="font-family:monospace">'
     +'</div>'
+    +'<div class="db-edit-row"><label style="color:var(--warn)">⏱ sec補正（旧の基準時刻）</label>'
+      +'<input class="db-edit-in" id="edi-secbase-'+id+'" placeholder="例: 2024-07-05T00:00:00　←　こので時間ずれが生じた場合のみ入力" style="font-family:monospace">'
+    +'</div>'
     +'<div class="db-edit-row"><label>URL</label><input class="db-edit-in" id="edi-u-'+id+'" value="'+esc(rec.videoUrl||'')+'"></div>'
     +'<div class="db-edit-row"><label>メインタグ</label><div id="edi-tags-'+id+'"></div></div>'
     +'<div class="db-edit-row"><label>サブタグ</label><div id="edi-subtags-'+id+'"></div></div>'
@@ -3036,29 +3039,34 @@ async function saveCardEdit(id){
     const url=document.getElementById('edi-u-'+id).value.trim();
     const newStart=document.getElementById('edi-s-'+id).value.trim();
     const tnotes=(document.getElementById('edi-tn-'+id)?.value||'').trimEnd();
+    const secBase=document.getElementById('edi-secbase-'+id)?.value.trim()||'';
     const patch={episodeNum,title,videoUrl:url,streamStart:newStart,tnotes};
 
-    // 配信開始時刻が変わった場合 → chatData/trData の sec を自動補正
-    const rec=_dbCache.find(r=>r.id===id);
-    if(rec&&rec.streamStart&&newStart&&newStart!==rec.streamStart){
-      const oldDt=parseStreamStart(rec.streamStart);
-      const newDt=parseStreamStart(newStart);
-      if(oldDt.isValid&&newDt.isValid){
-        const delta=newDt.diff(oldDt,'seconds').seconds; // 正=新が遅い → secを小さく
-        if(delta!==0){
-          if(rec.chatData?.length)
-            patch.chatData=rec.chatData.map(c=>({...c,sec:Math.round(c.sec-delta)})).filter(c=>c.sec>=0);
-          if(rec.trData?.length)
-            patch.trData=rec.trData.map(t=>({...t,sec:Math.round(t.sec-delta)})).filter(t=>t.sec>=0);
-          toast('配信開始時刻を補正: チャット'+(patch.chatData?.length??rec.chatData?.length??0)+'件 / 音声'+(patch.trData?.length??rec.trData?.length??0)+'件','ok',4000);
-        }
+    // sec補正: 旧の基準時刻が入力されていれば、chatData/trData の sec をずらす
+    if(secBase){
+      const baseDt=parseStreamStart(secBase);
+      const newDt=parseStreamStart(newStart||secBase);
+      if(!baseDt.isValid)throw new Error('旧の基準時刻が無効です: '+secBase);
+      if(!newDt.isValid)throw new Error('配信開始時刻が無効です: '+newStart);
+      const delta=newDt.diff(baseDt,'seconds').seconds; // 正=新が遅い → secを減らす
+      const rec=_dbCache.find(r=>r.id===id);
+      if(rec&&delta!==0){
+        if(rec.chatData?.length)
+          patch.chatData=rec.chatData.map(c=>({...c,sec:Math.round(c.sec-delta)})).filter(c=>c.sec>=0);
+        if(rec.trData?.length)
+          patch.trData=rec.trData.map(t=>({...t,sec:Math.round(t.sec-delta)})).filter(t=>t.sec>=0);
+        const chatCnt=patch.chatData?.length??0;
+        const trCnt=patch.trData?.length??0;
+        toast('sec補正完了: チャット'+chatCnt+'件 / 音声'+trCnt+'件','ok',4000);
+      }else if(delta===0){
+        toast('旧と新の時刻が同じのため補正なし','wrn');
       }
     }
 
     await dbUpdate(id,patch);
     _dbCache=await dbAll();
     renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
-    if(!patch.chatData&&!patch.trData)toast('更新しました','ok');
+    if(!secBase)toast('更新しました','ok');
     ghSync(true);
   }catch(e){
     toast('更新失敗: '+e.message,'err');
