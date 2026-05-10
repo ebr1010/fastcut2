@@ -3027,8 +3027,7 @@ async function saveCardEdit(id){
     const start=document.getElementById('edi-s-'+id).value.trim();
     const tnotes=(document.getElementById('edi-tn-'+id)?.value||'').trimEnd();
     await dbUpdate(id,{episodeNum,title,videoUrl:url,streamStart:start,tnotes});
-    const idx=_dbCache.findIndex(r=>r.id===id);
-    if(idx>=0)_dbCache[idx]={..._dbCache[idx],episodeNum,title,videoUrl:url,streamStart:start,tnotes};
+    _dbCache=await dbAll();
     renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
     toast('更新しました','ok');
     ghSync(true);
