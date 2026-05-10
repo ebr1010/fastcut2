@@ -557,7 +557,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.6</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.7</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -2699,7 +2699,7 @@ function renderDB(records,q,acct){
     const txtEl=document.getElementById('fban-txt');
     const total=_dbCache.length;
     const shown=records.length; // note/tag filter 後の件数（さらにq/acctで絞られる前）
-    const anyActive=_tagFilter!==null||_subTagFilter!==null||_noteFilter!==null||_noteQ||q||acct;
+    const anyActive=_tagFilter!==null||_subTagFilter!==null||_noteFilter!==null||_timeFilter!==null||_noteQ||q||acct;
     if(banner&&txtEl){
       if(anyActive){
         const labels=[];
@@ -2708,6 +2708,7 @@ function renderDB(records,q,acct){
         if(_subTagFilter&&_subTagFilter!=='__none__')labels.push('サブ: '+_subTagFilter);
         if(_noteFilter==='has')labels.push('ノートあり');
         else if(_noteFilter==='none')labels.push('ノートなし');
+        if(_timeFilter!==null){const tp=_TIME_PERIODS.find(p=>p.id===_timeFilter);if(tp)labels.push('時間帯: '+tp.label);}
         if(q)labels.push('チャット検索: "'+q+'"');
         if(_noteQ)labels.push('ノート検索: "'+_noteQ+'"');
         if(acct)labels.push('アカウント: '+acct);
@@ -3803,6 +3804,7 @@ let _subTagDefs=[];  // [{name}]
 let _tagFilter=null;    // string|null — 選択中のメインタグ名
 let _subTagFilter=null; // string|null — 選択中のサブタグ名
 let _noteFilter=null;   // null | 'has' | 'none' — ノートフィルタ
+let _timeFilter=null;   // null | 'unknown'|'midnight'|'morning'|'noon'|'night'
 let _noteQ='';          // ノートキーワード検索（チャット・音声検索 q とは独立）
 let _noteFuzzyMatchFn=null; // あいまい検索が有効なときのノートマッチ関数
 
@@ -4023,6 +4025,16 @@ function renderTagBar(){
     +'<button class="tf-chip" style="font-size:10px;padding:2px 8px;'+(nfNone?'background:rgba(255,255,255,0.08);border-color:var(--t2);color:var(--t1)':'color:var(--t2)')+'" onclick="setNoteFilter(\'none\')">ノートなし</button>'
     +'</div>';
 
+  // ─ 時間帯フィルタ行（常に表示）─
+  html+='<div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">'
+    +'<span style="font-size:9px;color:var(--t2);letter-spacing:1px;text-transform:uppercase;flex-shrink:0;margin-right:2px">TIME</span>'
+    +'<button class="tf-chip" style="font-size:10px;padding:2px 8px;'+(_timeFilter===null?'background:rgba(255,255,255,0.08);border-color:var(--t1);color:var(--t0)':'')+'" onclick="setTimeFilter(null)">すべて</button>';
+  for(const p of _TIME_PERIODS){
+    const sel=_timeFilter===p.id;
+    html+='<button class="tf-chip" style="font-size:10px;padding:2px 8px;'+(sel?p.style+';background:rgba(255,255,255,0.08)':p.style)+'" onclick="setTimeFilter(\''+p.id+'\')">'+p.label+'</button>';
+  }
+  html+='</div>';
+
   bar.innerHTML=html;
 }
 
@@ -4034,6 +4046,33 @@ function setTagFilter(name){
 
 function setSubTagFilter(name){
   _subTagFilter=name;
+  renderTagBar();
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
+}
+
+// ── 時間帯判定 ─────────────────────────────────────────────────────────────────
+// streamStart が "T00:00:00" で終わる or 未設定 → 'unknown'
+// それ以外は開始時刻(h)で分類: 0-5→深夜, 6-11→午前, 12-17→昼, 18-23→夜
+const _TIME_PERIODS=[
+  {id:'unknown',  label:'時間不明', style:'color:#888;border-color:#444'},
+  {id:'midnight', label:'深夜 0〜5時',  style:'color:#9b7fd4;border-color:#9b7fd455'},
+  {id:'morning',  label:'午前 6〜11時', style:'color:#64b4e8;border-color:#64b4e855'},
+  {id:'noon',     label:'昼 12〜17時',  style:'color:#e8c84a;border-color:#e8c84a55'},
+  {id:'night',    label:'夜 18〜23時',  style:'color:#e8804a;border-color:#e8804a55'},
+];
+function getTimePeriod(rec){
+  const s=rec.streamStart||'';
+  if(!s||/T00:00:00$/.test(s))return 'unknown';
+  const d=new Date(s);
+  if(isNaN(d.getTime()))return 'unknown';
+  const h=d.getHours();
+  if(h<6)return 'midnight';
+  if(h<12)return 'morning';
+  if(h<18)return 'noon';
+  return 'night';
+}
+function setTimeFilter(id){
+  _timeFilter=id;
   renderTagBar();
   renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
 }
@@ -4053,6 +4092,7 @@ function applyTagFilter(recs){
       return _noteFilter==='has'?has:!has;
     });
   }
+  if(_timeFilter!==null)r=r.filter(rec=>getTimePeriod(rec)===_timeFilter);
   return r;
 }
 
@@ -4063,7 +4103,7 @@ function setNoteFilter(v){
 }
 
 function clearAllFilters(){
-  _tagFilter=null; _subTagFilter=null; _noteFilter=null; _noteQ='';
+  _tagFilter=null; _subTagFilter=null; _noteFilter=null; _noteQ=''; _timeFilter=null;
   document.getElementById('db-q').value='';
   document.getElementById('db-acct').value='';
   const qnEl=document.getElementById('db-qn');if(qnEl)qnEl.value='';
