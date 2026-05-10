@@ -557,7 +557,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.7</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.8</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -2997,30 +2997,43 @@ function startEdit(id){
   const card=document.getElementById('dbcard-'+id);
   if(!card)return;
   card.ondblclick=null;
-  card.innerHTML='<div onclick="event.stopPropagation()">'
+  // datetime-local の value は "YYYY-MM-DDTHH:MM"（秒なし）
+  const dtVal=(rec.streamStart||'').replace(/T00:00:00$/,'').slice(0,16);
+  card.innerHTML='<div onclick="event.stopPropagation()" style="padding:4px 0">'
+    +'<div class="db-edit-row"><label>配信番号</label><input class="db-edit-in" id="edi-ep-'+id+'" value="'+esc(rec.episodeNum||'')+'" placeholder="例: 042" style="width:100px"></div>'
     +'<div class="db-edit-row"><label>タイトル</label><input class="db-edit-in" id="edi-t-'+id+'" value="'+esc(rec.title||'')+'"></div>'
+    +'<div class="db-edit-row"><label>配信開始時刻</label>'
+      +'<input type="datetime-local" class="db-edit-in" id="edi-s-'+id+'" value="'+esc(dtVal)+'" style="width:auto;color-scheme:dark">'
+      +'<button class="db-bar-btn" style="margin-left:6px;font-size:10px" onclick="document.getElementById(\'edi-s-'+id+'\').value=\'\'" title="時刻をクリア">✕ クリア</button>'
+    +'</div>'
     +'<div class="db-edit-row"><label>URL</label><input class="db-edit-in" id="edi-u-'+id+'" value="'+esc(rec.videoUrl||'')+'"></div>'
-    +'<div class="db-edit-row"><label>配信開始時刻</label><input class="db-edit-in" id="edi-s-'+id+'" value="'+esc(rec.streamStart||'')+'"></div>'
-    +'<div class="db-edit-row"><label>タグ</label><div id="edi-tags-'+id+'"></div></div>'
+    +'<div class="db-edit-row"><label>メインタグ</label><div id="edi-tags-'+id+'"></div></div>'
     +'<div class="db-edit-row"><label>サブタグ</label><div id="edi-subtags-'+id+'"></div></div>'
     +'<div class="db-edit-row"><label>📌 タイムラインノート (TN)</label><textarea class="db-edit-ta" id="edi-tn-'+id+'" rows="5">'+esc(rec.tnotes||'')+'</textarea></div>'
     +'<div style="display:flex;gap:6px;margin-top:10px">'
-    +'<button class="db-txt-btn" onclick="saveCardEdit('+id+')">保存</button>'
-    +'<button class="db-del" onclick="loadAndRenderDB()">キャンセル</button>'
+    +'<button class="db-txt-btn" onclick="saveCardEdit('+id+')">💾 保存</button>'
+    +'<button class="db-bar-btn" onclick="cancelEdit('+id+')">✕ キャンセル</button>'
     +'</div></div>';
   renderEditMainTag(id);
   renderEditSubTags(id);
 }
 
+function cancelEdit(id){
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
+}
+
 async function saveCardEdit(id){
   try{
+    const episodeNum=document.getElementById('edi-ep-'+id).value.trim();
     const title=document.getElementById('edi-t-'+id).value;
     const url=document.getElementById('edi-u-'+id).value.trim();
-    const start=document.getElementById('edi-s-'+id).value.trim();
+    // datetime-local は "YYYY-MM-DDTHH:MM"、秒を補完して保存
+    const dtRaw=document.getElementById('edi-s-'+id).value;
+    const start=dtRaw?(dtRaw.length===16?dtRaw+':00':dtRaw):'';
     const tnotes=(document.getElementById('edi-tn-'+id)?.value||'').trimEnd();
-    await dbUpdate(id,{title,videoUrl:url,streamStart:start,tnotes});
+    await dbUpdate(id,{episodeNum,title,videoUrl:url,streamStart:start,tnotes});
     const idx=_dbCache.findIndex(r=>r.id===id);
-    if(idx>=0)_dbCache[idx]={..._dbCache[idx],title,videoUrl:url,streamStart:start,tnotes};
+    if(idx>=0)_dbCache[idx]={..._dbCache[idx],episodeNum,title,videoUrl:url,streamStart:start,tnotes};
     renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
     toast('更新しました','ok');
     ghSync(true);
