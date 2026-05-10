@@ -524,7 +524,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.5.9</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.0</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -2730,8 +2730,7 @@ function renderDB(records,q,acct){
           ...(_searchMode!=='chat'?trData.map(t=>({sec:t.sec,txt:t.text,vid:_vid})):[]),
           ...(_searchMode!=='tr'?chatData.map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid})):[]),
         ].sort((a,b)=>a.sec-b.sec);
-        const _arCap=50,_arOver=allRows.length-_arCap;
-        if(allRows.length)hitsHtml='<div class="db-hits">'+allRows.slice(0,_arCap).map(h=>makeHitRow(h,'')).join('')+(_arOver>0?'<div class="db-hits-more">… 他 '+_arOver+' 件（解析タブで全件確認）</div>':'')+'</div>';
+        if(allRows.length)hitsHtml='<div class="db-hits">'+allRows.map(h=>makeHitRow(h,'')).join('')+'</div>';
       }
     }
 
