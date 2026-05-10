@@ -330,9 +330,8 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .db-bar-btn{background:var(--bg2);border:1px solid var(--r3);border-radius:var(--rad);color:var(--t1);padding:6px 11px;font-size:12px;cursor:pointer;transition:all 0.15s;white-space:nowrap}
 .db-bar-btn:hover{border-color:var(--r4);color:var(--t0)}
 .db-bar-btn:disabled{opacity:0.35;cursor:default;pointer-events:none}
-.db-fuzzy-lbl{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--t1);cursor:pointer;white-space:nowrap;padding:6px 4px;border:1px solid var(--r3);border-radius:var(--rad);background:var(--bg2)}
-.db-fuzzy-lbl:hover{border-color:var(--r4)}
-.db-fuzzy-lbl input{accent-color:var(--r1);cursor:pointer;margin:0}
+.db-fuzzy-sel{background:var(--bg2);border:1px solid var(--r3);border-radius:var(--rad);color:var(--t1);padding:5px 8px;font-size:11px;cursor:pointer;font-family:var(--bf);outline:none}
+.db-fuzzy-sel:hover,.db-fuzzy-sel:focus{border-color:var(--r4)}
 .sm-group{display:flex;border:1px solid var(--r3);border-radius:var(--rad);overflow:hidden;flex-shrink:0}
 .sm-btn{background:none;border:none;color:var(--t1);padding:4px 10px;font-size:11px;cursor:pointer;font-family:var(--bf);white-space:nowrap;border-right:1px solid var(--r3);transition:all .15s}
 .sm-btn:last-child{border-right:none}
@@ -558,7 +557,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.3</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.4</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -703,9 +702,11 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
       <input type="text" class="db-search" id="db-q" placeholder="チャット・音声検索... (Enter)">
       <button class="db-bar-btn" id="db-search-btn">🔍 検索</button>
     </div>
-    <label class="db-fuzzy-lbl" title="表記ゆれ・カタカナ・伸ばし棒なども一致させる（ぱるむ → パルム・ぱああるむ も検索）">
-      <input type="checkbox" id="db-fuzzy"> あいまい
-    </label>
+    <select class="db-fuzzy-sel" id="db-fuzzy" title="完全一致: 入力文字列が完全に含まれる&#10;弱: 1文字の違い・カタカナ統一・長音無視&#10;強: 2文字差・欠落2文字まで許容">
+      <option value="off">完全一致</option>
+      <option value="weak">あいまい弱</option>
+      <option value="strong">あいまい強</option>
+    </select>
     <div class="sm-group">
       <button class="sm-btn active" id="sm-all"  onclick="setSearchMode('all')">全て</button>
       <button class="sm-btn"        id="sm-tr"   onclick="setSearchMode('tr')">🎤 音声</button>
@@ -2291,9 +2292,9 @@ function getAcctSearch(){
 
 function searchDB(q){
   const terms=_qTerms(q);
-  const fuzzy=_isFuzzy();
+  const level=_fuzzyLevel();
   _dbMatchFn=terms.length
-    ?(text)=>(fuzzy?_fuzzyHit(terms,text):_plainHit(terms,text))
+    ?(text)=>(level==='off'?_plainHit(terms,text):_fuzzyHit(terms,text,level))
     :null;
   renderDB(applyTagFilter(sortedCache()),q.trim(),getAcctSearch());
 }
@@ -2384,17 +2385,20 @@ function _editHit(normQ,normT,maxDist){
 }
 
 // ── メインマッチ関数 ───────────────────────────────────────────────────────────
-// 目的: 打ち間違い・音声認識ミス（1〜2文字の代替・欠落・挿入）を吸収
-// 正規化: カタカナ→ひらがな、小文字→大文字、長音除去（_norm）
-// 編集距離: 2〜5文字クエリ→1文字差まで許容、6文字以上→2文字差まで
+// level='weak' : カタカナ統一・長音除去 + 編集距離1（1文字の打ち間違い・認識ミス・欠落）
+// level='strong': 同上             + 編集距離2（2文字差・欠落2文字まで許容）
 // 漢字←→かな変換は辞書なしでは不可能
-function _fuzzyHit(terms,text){
+function _fuzzyHit(terms,text,level){
   const nt=_norm(text);
+  const strong=level==='strong';
   return terms.some(t=>{
     const nq=_norm(t);
     if(!nq)return false;
-    // 許容距離: 1文字→0（完全一致のみ）, 2〜5文字→1, 6文字以上→2
-    const maxDist=nq.length>=6?2:nq.length>=2?1:0;
+    // 弱: 2〜5文字→1, 6文字以上→2
+    // 強: 2〜3文字→1, 4文字以上→2, 6文字以上→3
+    const maxDist=strong
+      ?(nq.length>=6?3:nq.length>=4?2:nq.length>=2?1:0)
+      :(nq.length>=6?2:nq.length>=2?1:0);
     return maxDist>0&&_editHit(nq,nt,maxDist);
   });
 }
@@ -2402,7 +2406,7 @@ function _plainHit(terms,text){
   const tl=text.toLowerCase();
   return terms.some(t=>tl.includes(t.toLowerCase()));
 }
-function _isFuzzy(){const el=document.getElementById('db-fuzzy');return el&&el.checked;}
+function _fuzzyLevel(){const el=document.getElementById('db-fuzzy');return el?el.value:'off';}
 function _qTerms(q){return(q||'').trim().split(/\s+/).filter(Boolean);}
 // renderDB が参照するグローバルマッチ関数（searchDB で更新）
 let _searchMode='all'; // 'all'|'tr'|'chat'
