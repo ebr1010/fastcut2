@@ -524,7 +524,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.5.8</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.5.9</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -2855,7 +2855,8 @@ function startEdit(id){
   card.innerHTML='<div onclick="event.stopPropagation()">'
     +'<div class="db-edit-row"><label>タイトル</label><input class="db-edit-in" id="edi-t-'+id+'" value="'+esc(rec.title||'')+'"></div>'
     +'<div class="db-edit-row"><label>URL</label><input class="db-edit-in" id="edi-u-'+id+'" value="'+esc(rec.videoUrl||'')+'"></div>'
-    +'<div class="db-edit-row"><label>配信開始時刻</label><input class="db-edit-in" id="edi-s-'+id+'" value="'+esc(rec.streamStart||'')+'"></div>'
+    +'<div class="db-edit-row"><label>配信番号</label><input class="db-edit-in" id="edi-ep-'+id+'" value="'+esc(rec.episodeNum||'')+'"></div>'
+    +'<div class="db-edit-row"><label>配信開始時刻</label><input class="db-edit-in" id="edi-s-'+id+'" value="'+esc(rec.streamStart||'')+'" placeholder="YYYY-MM-DDTHH:MM:SS"></div>'
     +'<div class="db-edit-row"><label>タグ</label><div id="edi-tags-'+id+'"></div></div>'
     +'<div class="db-edit-row"><label>サブタグ</label><div id="edi-subtags-'+id+'"></div></div>'
     +'<div class="db-edit-row"><label>📌 タイムラインノート (TN)</label><textarea class="db-edit-ta" id="edi-tn-'+id+'" rows="5">'+esc(rec.tnotes||'')+'</textarea></div>'
@@ -2872,10 +2873,29 @@ async function saveCardEdit(id){
     const title=document.getElementById('edi-t-'+id).value;
     const url=document.getElementById('edi-u-'+id).value.trim();
     const start=document.getElementById('edi-s-'+id).value.trim();
+    const epNum=(document.getElementById('edi-ep-'+id)?.value||'').trim();
     const tnotes=(document.getElementById('edi-tn-'+id)?.value||'').trimEnd();
-    await dbUpdate(id,{title,videoUrl:url,streamStart:start,tnotes});
+
+    // streamStart が変わった場合: chatData/trData の sec をシフト
+    const rec=_dbCache.find(r=>r.id===id);
+    let chatData=rec?.chatData||[];
+    let trData=rec?.trData||[];
+    const oldStart=rec?.streamStart||'';
+    if(start&&oldStart&&start!==oldStart){
+      const oldDt=parseStreamStart(oldStart);
+      const newDt=parseStreamStart(start);
+      if(oldDt.isValid&&newDt.isValid){
+        const delta=newDt.diff(oldDt,'seconds').seconds; // 正=新が遅い
+        chatData=chatData.map(c=>({...c,sec:Math.max(0,c.sec-delta)}));
+        trData=trData.map(t=>({...t,sec:Math.max(0,t.sec-delta)}));
+      }
+    }
+
+    const updates={title,videoUrl:url,streamStart:start,tnotes,chatData,trData};
+    if(epNum!==undefined)updates.episodeNum=epNum;
+    await dbUpdate(id,updates);
     const idx=_dbCache.findIndex(r=>r.id===id);
-    if(idx>=0)_dbCache[idx]={..._dbCache[idx],title,videoUrl:url,streamStart:start,tnotes};
+    if(idx>=0)_dbCache[idx]={..._dbCache[idx],...updates};
     renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
     toast('更新しました','ok');
     ghSync(true);
