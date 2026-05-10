@@ -557,7 +557,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.4</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.5</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -2385,20 +2385,18 @@ function _editHit(normQ,normT,maxDist){
 }
 
 // ── メインマッチ関数 ───────────────────────────────────────────────────────────
-// level='weak' : カタカナ統一・長音除去 + 編集距離1（1文字の打ち間違い・認識ミス・欠落）
-// level='strong': 同上             + 編集距離2（2文字差・欠落2文字まで許容）
+// level='weak' : カタカナ統一・長音除去・小文字統一のみ（_norm正規化後に完全一致）
+// level='strong': 同上 + 編集距離（1文字の打ち間違い・認識ミス・欠落）
 // 漢字←→かな変換は辞書なしでは不可能
 function _fuzzyHit(terms,text,level){
   const nt=_norm(text);
-  const strong=level==='strong';
   return terms.some(t=>{
     const nq=_norm(t);
     if(!nq)return false;
-    // 弱: 2〜5文字→1, 6文字以上→2
-    // 強: 2〜3文字→1, 4文字以上→2, 6文字以上→3
-    const maxDist=strong
-      ?(nq.length>=6?3:nq.length>=4?2:nq.length>=2?1:0)
-      :(nq.length>=6?2:nq.length>=2?1:0);
+    // 弱: 正規化後に完全一致
+    if(level==='weak')return nt.includes(nq);
+    // 強: 編集距離（2〜5文字→1, 6文字以上→2）
+    const maxDist=nq.length>=6?2:nq.length>=2?1:0;
     return maxDist>0&&_editHit(nq,nt,maxDist);
   });
 }
