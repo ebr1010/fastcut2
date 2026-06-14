@@ -524,7 +524,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.3</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.2</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -1536,40 +1536,11 @@ async function run(){
     showOv('チャットを解析中...');await tick();
     const chatResult=parseChatFile(S.chatRaw);
     if(chatResult.header.title)S.videoTitle=chatResult.header.title;
-    if(!chatResult.records.length&&chatResult.skipped>0){
-      // チャット0件 → Transcript形式として再試行
-      try{
-        const tr2=parseTranscriptFile(S.chatRaw);
-        if(tr2.records.length){
-          addMsg(`チャット形式ではなく文字起こし形式として解析しました（${tr2.records.length}件）`,'info');
-          if(!S.trRaw)S.trRecs=tr2.records;
-          S.chatConv=[];
-          // transcript only フローへ
-          showOv('文字起こしを処理中...');await tick();
-          const wins=buildWindows([],S.trRecs);
-          S.lastWins=wins;
-          showOv('スコアリング中...');await tick();
-          scoreWins(wins,S.kws,S.attnWords,W);
-          showOv('ピークを検出中...');await tick();
-          let peaks;
-          if(S.kws.length>0){
-            peaks=buildKwPeaks(wins,S.kws,maxHL);
-            if(!peaks.length)addMsg('キーワードに一致するテキストが見つかりませんでした。','warning');
-          }else{
-            const rawPeaks=detectPeaks(wins,{minP,gap:6,max:maxHL});
-            peaks=rawPeaks.map(pk=>({...pk,reasons:makeReasons(pk,[])}));
-            if(!peaks.length)addMsg('ハイライトが検出されませんでした。','warning');
-          }
-          S.lastPeaks=peaks;
-          showOv('グラフを描画中...');await tick();
-          renderResults([],S.trRecs,wins,peaks,0,0,S.videoId);
-          hideOv();return;
-        }
-      }catch{}
+    if(chatResult.skipped>0)addMsg(`解析できなかったブロック: ${chatResult.skipped}件（スキップ）`,'warning');
+    if(!chatResult.records.length){
       addMsg('チャットメッセージが0件でした。','error');
       hideOv();return;
     }
-    if(chatResult.skipped>0)addMsg(`解析できなかったブロック: ${chatResult.skipped}件（スキップ）`,'warning');
 
     showOv('タイムスタンプを変換中...');await tick();
     let{out:chatConv,pre}=convertTimestamps(chatResult.records,startISO);
