@@ -524,7 +524,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.2</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.3</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -549,13 +549,13 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     <div class="dz-row">
       <label class="dz" id="dz-c" for="fi-c">
         <div class="dz-ico" id="dz-ico-c">📄</div>
-        <div class="dz-ttl" id="dz-ttl-c">チャット</div>
+        <div class="dz-ttl" id="dz-ttl-c">コメント</div>
         <div class="dz-hint">クリックまたはドロップ</div>
         <div class="dz-name" id="fn-c"></div>
       </label>
       <label class="dz" id="dz-t" for="fi-t">
         <div class="dz-ico" id="dz-ico-t">📝</div>
-        <div class="dz-ttl" id="dz-ttl-t">文字起こし</div>
+        <div class="dz-ttl" id="dz-ttl-t">トランスクリプト</div>
         <div class="dz-hint">クリックまたはドロップ</div>
         <div class="dz-name" id="fn-t"></div>
       </label>
@@ -588,7 +588,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
       <div class="tw" id="tw" onclick="document.getElementById('kw-in').focus()">
         <input type="text" id="kw-in" class="tag-in" placeholder="キーワードを追加...">
       </div>
-      <div class="fi-desc">入力するとキーワードが含まれるチャット箇所のみをハイライト抽出します。空欄の場合はコメント数のピークで自動検出します。</div>
+      <div class="fi-desc">入力するとキーワードが含まれるコメント箇所のみをハイライト抽出します。空欄の場合はコメント数のピークで自動検出します。</div>
     </div>
 
     <div class="fi-group">
@@ -596,14 +596,14 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
       <div class="tw" id="tw-attn" onclick="document.getElementById('attn-in').focus()">
         <input type="text" id="attn-in" class="tag-in" placeholder="反応ワードを追加...">
       </div>
-      <div class="fi-desc">草・www・笑 など視聴者の盛り上がりを示す言葉。チャットに含まれる回数が下の「反応ワードの感度」でスコアに加算されます。</div>
+      <div class="fi-desc">草・www・笑 など視聴者の盛り上がりを示す言葉。コメントに含まれる回数が下の「反応ワードの感度」でスコアに加算されます。</div>
     </div>
 
     <div class="acc">
       <div class="acc-h" id="acc-h">詳細設定 <span class="acc-arr">▼</span></div>
       <div class="acc-b" id="acc-b">
         <div class="sl-row">
-          <div class="sl-top"><span class="sl-lbl">チャット急増の感度</span><span class="sl-val" id="sv-c">1</span></div>
+          <div class="sl-top"><span class="sl-lbl">コメント急増の感度</span><span class="sl-val" id="sv-c">1</span></div>
           <input type="range" id="sr-c" min="0" max="5" step="0.5" value="1">
           <div class="sl-desc">短時間にコメントが集中した箇所をスコアに加算する重み。0 にするとコメント数を無視します。</div>
         </div>
@@ -643,7 +643,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     <div id="result-area" style="display:none">
       <div class="stats" id="stats-bar"></div>
       <div class="list-btns">
-        <button id="chat-page-btn">▤ チャット一覧</button>
+        <button id="chat-page-btn">▤ コメント一覧</button>
         <button id="chat-txt-btn">↓ TXT</button>
         <button id="tr-page-btn" style="display:none">▤ 音声データ一覧</button>
         <button id="tr-txt-btn" style="display:none">↓ TXT</button>
@@ -666,7 +666,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
   <div class="db-sticky-head" id="db-sticky-head">
   <div class="db-bar">
     <div class="db-search-group">
-      <input type="text" class="db-search" id="db-q" placeholder="チャット・音声検索... (Enter)">
+      <input type="text" class="db-search" id="db-q" placeholder="コメント・音声検索... (Enter)">
       <button class="db-bar-btn" id="db-search-btn">🔍 検索</button>
     </div>
     <select class="db-fuzzy-sel" id="db-fuzzy" title="検索モード">
@@ -677,7 +677,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     <div class="sm-group">
       <button class="sm-btn active" id="sm-all"  onclick="setSearchMode('all')">全て</button>
       <button class="sm-btn"        id="sm-tr"   onclick="setSearchMode('tr')">🎤 音声</button>
-      <button class="sm-btn"        id="sm-chat" onclick="setSearchMode('chat')">💬 チャット</button>
+      <button class="sm-btn"        id="sm-chat" onclick="setSearchMode('chat')">💬 コメント</button>
     </div>
     <div class="db-search-group">
       <input type="text" class="db-search" id="db-qn" placeholder="📌 ノート検索... (Enter)">
@@ -741,7 +741,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     <thead><tr>
       <th style="text-align:center">#</th>
       <th>アカウント</th>
-      <th style="text-align:right">チャット数</th>
+      <th style="text-align:right">コメント数</th>
       <th style="text-align:right">動画数</th>
     </tr></thead>
     <tbody id="rank-tbody"><tr><td colspan="4" style="color:var(--t2);text-align:center;padding:40px">データベースタブで動画を読み込むとランキングが表示されます</td></tr></tbody>
@@ -1141,7 +1141,7 @@ function detectPeaks(wins,cfg){
 function makeReasons(pk,kws){
   const w=pk.w;
   const r=[];
-  if(w.cnt>0)r.push({i:'▲',t:`チャット急増: ${w.cnt}件 / 5秒`});
+  if(w.cnt>0)r.push({i:'▲',t:`コメント急増: ${w.cnt}件 / 5秒`});
   if(w.kwS>0&&kws.length){
     const hits=kws.map(kw=>{
       let c=0,p=0;
@@ -1177,7 +1177,7 @@ function buildKwPeaks(wins,kws,maxHL){
       }).filter(h=>h.c>0).map(h=>h.c>1?`${h.kw}(×${h.c})`:h.kw);
       const reasons=[
         {i:'◆',t:`キーワード: ${hits.join(', ')}`},
-        {i:'▲',t:`チャット件数: ${w.cnt}件 / 5秒`},
+        {i:'▲',t:`コメント件数: ${w.cnt}件 / 5秒`},
       ];
       if(w.atS>0)reasons.push({i:'→',t:`反応ワード: ${w.atS}回`});
       return{i:w.i,score:w.kwS,prom:1,w,reasons};
@@ -1365,7 +1365,7 @@ function renderResults(chatConv,trRecs,wins,peaks,pre,chatTotal,vidId){
   const dur=wins.length?fmtSec(wins[wins.length-1].s1):'—';
 
   document.getElementById('stats-bar').innerHTML=`
-    <div class="stat"><div class="stat-v red">${chatTotal}</div><div class="stat-l">チャット件数</div></div>
+    <div class="stat"><div class="stat-v red">${chatTotal}</div><div class="stat-l">コメント件数</div></div>
     <div class="stat"><div class="stat-v">${dur}</div><div class="stat-l">配信時間</div></div>
     <div class="stat"><div class="stat-v">${peaks.length}</div><div class="stat-l">ハイライト数</div></div>
     <div class="stat"><div class="stat-v red">${trRecs.length}</div><div class="stat-l">音声データ件数</div></div>
@@ -1487,11 +1487,11 @@ async function run(){
   const urlVal=document.getElementById('fi-url').value.trim();
   const epVal=document.getElementById('fi-ep').value.trim();
 
-  if(!S.chatRaw && !S.trRaw){addMsg('チャットまたは文字起こしファイルを選択してください。','error');return;}
+  if(!S.chatRaw && !S.trRaw){addMsg('コメントまたはトランスクリプトファイルを選択してください。','error');return;}
   if(!S.chatRaw && S.trRaw){
     // 音声のみモード（通常動画・ショート・プレミア音声のみ）— 開始時刻は任意
     try{
-      showOv('文字起こしを処理中...');await tick();
+      showOv('トランスクリプトを処理中...');await tick();
       S.trRecs=[];
       const tr=parseTranscriptFile(S.trRaw);
       S.trRecs=tr.records;
@@ -1503,10 +1503,10 @@ async function run(){
       if(epVal)histSave('fc_ep_hist',epVal);
       document.getElementById('empty').style.display='none';
       document.getElementById('result-area').style.display='block';
-      document.getElementById('stats-bar').innerHTML='<span style="color:var(--t1)">音声データのみ — チャット: 0件 / 音声: '+S.trRecs.length+'件</span>';
+      document.getElementById('stats-bar').innerHTML='<span style="color:var(--t1)">音声データのみ — コメント: 0件 / 音声: '+S.trRecs.length+'件</span>';
       document.getElementById('hl-list').innerHTML='<div style="color:var(--t2);font-size:12px;padding:8px 0">音声データのみモードです（通常動画・ショート・プレミア対応）。<br>「＋ データ登録」でDBに登録できます。</div>';
       addMsg('音声データ読み込み完了（'+S.trRecs.length+'件）。「＋ データ登録」を押してDBに登録できます。','info');
-    }catch(e){hideOv();addMsg('文字起こし解析失敗: '+e.message,'error');}
+    }catch(e){hideOv();addMsg('トランスクリプト解析失敗: '+e.message,'error');}
     return;
   }
   if(!startISO){
@@ -1533,12 +1533,12 @@ async function run(){
   const fps=parseInt(document.getElementById('sr-fps').value)||30;
 
   try{
-    showOv('チャットを解析中...');await tick();
+    showOv('コメントを解析中...');await tick();
     const chatResult=parseChatFile(S.chatRaw);
     if(chatResult.header.title)S.videoTitle=chatResult.header.title;
     if(chatResult.skipped>0)addMsg(`解析できなかったブロック: ${chatResult.skipped}件（スキップ）`,'warning');
     if(!chatResult.records.length){
-      addMsg('チャットメッセージが0件でした。','error');
+      addMsg('コメントが0件でした。','error');
       hideOv();return;
     }
 
@@ -1566,7 +1566,7 @@ async function run(){
     }
     S.chatConv=chatConv;
 
-    showOv('文字起こしを処理中...');await tick();
+    showOv('トランスクリプトを処理中...');await tick();
     S.trRecs=[];
     if(S.trRaw){
       try{
@@ -1574,7 +1574,7 @@ async function run(){
         S.trRecs=tr.records;
         if(!S.videoTitle&&tr.header.title)S.videoTitle=tr.header.title;
       }catch(e){
-        addMsg('文字起こし解析失敗（スキップ）: '+e.message,'warning');
+        addMsg('トランスクリプト解析失敗（スキップ）: '+e.message,'warning');
       }
     }
 
@@ -1589,7 +1589,7 @@ async function run(){
     let peaks;
     if(S.kws.length>0){
       peaks=buildKwPeaks(wins,S.kws,maxHL);
-      if(!peaks.length) addMsg('キーワードに一致するチャットが見つかりませんでした。','warning');
+      if(!peaks.length) addMsg('キーワードに一致するコメントが見つかりませんでした。','warning');
     }else{
       const rawPeaks=detectPeaks(wins,{minP,gap:6,max:maxHL});
       peaks=rawPeaks.map(pk=>({...pk,reasons:makeReasons(pk,[])}));
@@ -1599,6 +1599,7 @@ async function run(){
 
     showOv('グラフを描画中...');await tick();
     renderResults(chatConv,S.trRecs,wins,peaks,pre,chatConv.length+pre,S.videoId);
+
 
     histSave('fc_start_hist',document.getElementById('fi-start').value.trim());
     if(urlVal)histSave('fc_url_hist',urlVal);
@@ -1650,7 +1651,7 @@ function setupDZ(zoneId,inputId,fnId,key){
   const sfx=zoneId.slice(-1);
   const icoEl=document.getElementById('dz-ico-'+sfx);
   const ttlEl=document.getElementById('dz-ttl-'+sfx);
-  const lbl=key==='chatRaw'?'チャット':'文字起こし';
+  const lbl=key==='chatRaw'?'コメント':'トランスクリプト';
 
   function load(file){
     if(!file)return;
@@ -2493,7 +2494,7 @@ function showRecommend(){
       pool.push({rec,vid,sec:msgs[0].sec,cnt:msgs.length,snip});
     });
   }
-  if(!pool.length){toast('チャットデータのある動画がありません','wrn');return;}
+  if(!pool.length){toast('コメントデータのある動画がありません','wrn');return;}
   // ランダムシャッフル
   for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
   const picks=pool.slice(0,7);
@@ -2608,7 +2609,7 @@ function renderDB(records,q,acct){
         else if(_noteFilter==='none')labels.push('ノートなし');
         if(_timeFilter!==null){const p=_TIME_PERIODS.find(p=>p.id===_timeFilter);if(p)labels.push('時間: '+p.label);}
         if(epQBan)labels.push('配信番号: '+epQBan);
-        if(q)labels.push('チャット検索: "'+q+'"');
+        if(q)labels.push('コメント検索: "'+q+'"');
         if(_noteQ)labels.push('ノート検索: "'+_noteQ+'"');
         if(acct)labels.push('アカウント: '+acct);
         txtEl.innerHTML='<b>'+shown+'</b> / '+total+' 件  —  '+labels.join(' · ');
@@ -2713,7 +2714,7 @@ function renderDB(records,q,acct){
     // ノート検索ヒット数（高速indexOf方式）
     const tnHitCnt=_noteQ?_countHits(_tn,_noteQ):0;
     const memoHitCnt=_noteQ?_countHits(_memo,_noteQ):0;
-    const acctLabel=al?'@'+acct+' ':'チャット ';
+    const acctLabel=al?'@'+acct+' ':'コメント ';
     const countsHtml='<div class="db-counts">'
       +(_searchMode!=='tr'?'<span class="cnt-chip chat">'+esc(acctLabel)+'<b>'+chatMatchCnt+'</b>件</span>':'')
       +((!al&&_searchMode!=='chat')?'<span class="cnt-chip tr">音声 <b>'+trMatchCnt+'</b>件</span>':'')
@@ -2804,7 +2805,7 @@ function renderDB(records,q,acct){
     const hasData=!!(chatData.length||trData.length);
     const expandHint=(!q&&!al)
       ?'<div class="db-expand-btns">'
-        +(hasData?'<button class="db-expand-btn'+(isExpanded?' active':'')+'" onclick="toggleCardExpand(event,'+rec.id+')">'+(isExpanded?'▲ チャット・音声':'▼ チャット・音声')+'</button>':'')
+        +(hasData?'<button class="db-expand-btn'+(isExpanded?' active':'')+'" onclick="toggleCardExpand(event,'+rec.id+')">'+(isExpanded?'▲ コメント・音声':'▼ コメント・音声')+'</button>':'')
         +(hasNotes?'<button class="db-expand-btn'+(isTNExpanded?' active':'')+'" onclick="toggleTNExpand(event,'+rec.id+')">'+(isTNExpanded?'▲ ノート':'▼ ノート')+'</button>':'')
         +'</div>'
       :'';
@@ -2985,7 +2986,7 @@ async function loadRecordToAnalysis(id){
   const ttlC=document.getElementById('dz-ttl-c');
   const fnC =document.getElementById('fn-c');
   if(icoC)icoC.textContent='✅';
-  if(ttlC)ttlC.textContent='チャット 読込済(DB)';
+  if(ttlC)ttlC.textContent='コメント 読込済(DB)';
   if(fnC) fnC.textContent='✓ '+rec.episodeNum+' (DB)';
   document.getElementById('dz-c').classList.add('ready');
 
@@ -2994,7 +2995,7 @@ async function loadRecordToAnalysis(id){
     const ttlT=document.getElementById('dz-ttl-t');
     const fnT =document.getElementById('fn-t');
     if(icoT)icoT.textContent='✅';
-    if(ttlT)ttlT.textContent='文字起こし 読込済(DB)';
+    if(ttlT)ttlT.textContent='トランスクリプト 読込済(DB)';
     if(fnT) fnT.textContent='✓ '+rec.episodeNum+' (DB)';
     document.getElementById('dz-t').classList.add('ready');
   }
@@ -3007,7 +3008,7 @@ async function loadRecordToAnalysis(id){
 
 async function runFromLoaded(){
   clearMsgs();
-  if(!S.chatConv.length){addMsg('チャットデータがありません','error');return;}
+  if(!S.chatConv.length){addMsg('コメントデータがありません','error');return;}
 
   const W={
     c:parseFloat(document.getElementById('sr-c').value),
@@ -3029,7 +3030,7 @@ async function runFromLoaded(){
     let peaks;
     if(S.kws.length>0){
       peaks=buildKwPeaks(wins,S.kws,maxHL);
-      if(!peaks.length) addMsg('キーワードに一致するチャットが見つかりませんでした。','warning');
+      if(!peaks.length) addMsg('キーワードに一致するコメントが見つかりませんでした。','warning');
     }else{
       const rawPeaks=detectPeaks(wins,{minP,gap:6,max:maxHL});
       peaks=rawPeaks.map(pk=>({...pk,reasons:makeReasons(pk,[])}));
@@ -3675,7 +3676,7 @@ function buildCombinedText(rec){
   }
 
   if(chatData.length){
-    lines.push('[チャット]');
+    lines.push('[コメント]');
     for(const c of chatData){
       lines.push(fmtSec(c.sec));
       lines.push('@'+c.username+' '+c.message);
@@ -4322,14 +4323,14 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   safe('chat-page-btn',()=>{
     document.getElementById('chat-page-btn').addEventListener('click',()=>{
-      if(!S.chatConv.length){toast('チャットデータがありません','wrn');return;}
-      openListPage(S.chatConv,'チャット一覧',S.videoId);
+      if(!S.chatConv.length){toast('コメントデータがありません','wrn');return;}
+      openListPage(S.chatConv,'コメント一覧',S.videoId);
     });
   });
 
   safe('chat-txt-btn',()=>{
     document.getElementById('chat-txt-btn').addEventListener('click',()=>{
-      if(!S.chatConv.length){toast('チャットデータがありません','wrn');return;}
+      if(!S.chatConv.length){toast('コメントデータがありません','wrn');return;}
       const txt=S.chatConv.map(c=>`${fmtSec(c.sec)} @${c.username} ${c.message}`).join('\n');
       dl(txt,'chat.txt','text/plain');
     });
@@ -4608,7 +4609,7 @@ document.addEventListener('DOMContentLoaded',()=>{
         <button class="db-bar-btn" onclick="addStampDef()" style="margin-left:auto">➕ 登録</button>
       </div>
       <div style="font-size:11px;color:var(--t2);margin-top:8px;line-height:1.5">
-        スタンプ名はYCSチャットの <code style="background:rgba(185,24,40,0.15);padding:1px 4px;border-radius:3px">:名前:</code> や <code style="background:rgba(185,24,40,0.15);padding:1px 4px;border-radius:3px">:_名前:</code> の名前部分を入力してください。<br>
+        スタンプ名はYCSコメントの <code style="background:rgba(185,24,40,0.15);padding:1px 4px;border-radius:3px">:名前:</code> や <code style="background:rgba(185,24,40,0.15);padding:1px 4px;border-radius:3px">:_名前:</code> の名前部分を入力してください。<br>
         URLかファイルどちらか一方を指定してください。ファイルはデータURIとして保存されます。
       </div>
     </div>
