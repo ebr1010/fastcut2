@@ -2737,7 +2737,7 @@ function renderDB(records,q,acct){
         if(_noteQ&&tNote)parts.push('ノート <b>'+tNote.toLocaleString()+'</b>ヒット');
         if(parts.length){
           totEl.innerHTML='すべての動画の合算: '+parts.join(' &ensp;/&ensp; ');
-          totEl.style.display='';
+          totEl.style.display='block';
         } else {
           totEl.style.display='none';
         }
