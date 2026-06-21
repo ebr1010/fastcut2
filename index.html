@@ -524,7 +524,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.3</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.4</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -2525,8 +2525,9 @@ function showRecommend(){
 function setNoteSearch(q){
   _noteQ=q.trim();
   const nTerms=_qTerms(_noteQ);
-  _noteFuzzyMatchFn=(nTerms.length&&_isFuzzy())
-    ?(text)=>_fuzzyHit(nTerms,text)
+  const nlevel=_fuzzyLevel();
+  _noteFuzzyMatchFn=(nTerms.length&&nlevel!=='off')
+    ?(text)=>_fuzzyHit(nTerms,text,nlevel)
     :null;
   renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
 }
@@ -2714,10 +2715,21 @@ function renderDB(records,q,acct){
     // ノート検索ヒット数（高速indexOf方式）
     const tnHitCnt=_noteQ?_countHits(_tn,_noteQ):0;
     const memoHitCnt=_noteQ?_countHits(_memo,_noteQ):0;
+    // キーワード出現回数（件数ではなく単語レベルのカウント）
+    let chatWordCnt=0,trWordCnt=0;
+    if(q&&!al){
+      const _qts=_qTerms(q);
+      const _cntT=text=>_qts.reduce((s,t)=>s+_countHits(text,t.toLowerCase()),0);
+      const _chkQ2=_dbMatchFn?_dbMatch:t=>t.toLowerCase().includes(ql);
+      if(_searchMode!=='tr')
+        chatWordCnt=chatData.filter(c=>_chkQ2(_stripStamps(c.message))).reduce((s,c)=>s+_cntT(_stripStamps(c.message)),0);
+      if(_searchMode!=='chat')
+        trWordCnt=trData.filter(t=>_chkQ2(t.text)).reduce((s,t)=>s+_cntT(t.text),0);
+    }
     const acctLabel=al?'@'+acct+' ':'コメント ';
     const countsHtml='<div class="db-counts">'
-      +(_searchMode!=='tr'?'<span class="cnt-chip chat">'+esc(acctLabel)+'<b>'+chatMatchCnt+'</b>件</span>':'')
-      +((!al&&_searchMode!=='chat')?'<span class="cnt-chip tr">音声 <b>'+trMatchCnt+'</b>件</span>':'')
+      +(_searchMode!=='tr'?'<span class="cnt-chip chat">'+esc(acctLabel)+'<b>'+chatMatchCnt+'</b>件'+(chatWordCnt?'&thinsp;·&thinsp;<b>'+chatWordCnt+'</b>回':'')+'</span>':'')
+      +((!al&&_searchMode!=='chat')?'<span class="cnt-chip tr">音声 <b>'+trMatchCnt+'</b>件'+(trWordCnt?'&thinsp;·&thinsp;<b>'+trWordCnt+'</b>回':'')+'</span>':'')
       +(_tnLines?'<span class="cnt-chip tn'+(tnHitCnt?' hit':'')+'">'
         +'TN <b>'+_tnLines+'</b>行'+(tnHitCnt?' · <b>'+tnHitCnt+'</b>ヒット':'')
         +'</span>':'')
