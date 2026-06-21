@@ -467,10 +467,15 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 #view-rank{display:none;padding:16px;height:calc(100vh - 50px);overflow-y:auto}
 #view-rank::-webkit-scrollbar{width:10px}
 #view-rank::-webkit-scrollbar-thumb{background:var(--r2);border-radius:5px}
-.rank-bar{display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
-.rank-q{background:var(--bg1);border:1px solid var(--r3);border-radius:var(--rad);color:var(--t0);padding:6px 10px;font-size:13px;outline:none;width:220px}
+.rank-bar{display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.rank-q{background:var(--bg1);border:1px solid var(--r3);border-radius:var(--rad);color:var(--t0);padding:6px 10px;font-size:13px;outline:none;width:200px}
 .rank-q:focus{border-color:var(--r1)}
 .rank-tag-sel{background:var(--bg1);border:1px solid var(--r3);border-radius:var(--rad);color:var(--t0);padding:6px 8px;font-size:12px;outline:none;cursor:pointer}
+.rank-mode-btn{background:var(--bg1);border:1px solid var(--r3);border-radius:var(--rad);color:var(--t1);padding:5px 12px;font-size:12px;cursor:pointer;transition:all 0.15s;white-space:nowrap}
+.rank-mode-btn:hover{border-color:var(--r4);color:var(--t0)}
+.rank-mode-btn.active{background:var(--r3);border-color:var(--r1);color:var(--t0);font-weight:600}
+.rank-word-ctrl{background:var(--bg1);border:1px solid var(--r3);border-radius:var(--rad);color:var(--t0);padding:5px 7px;font-size:11px;outline:none;cursor:pointer}
+.rank-word-ctrl:focus{border-color:var(--r1)}
 .rank-table{width:100%;border-collapse:collapse;font-size:12px}
 .rank-table th{text-align:left;color:var(--t1);font-size:11px;padding:6px 10px;border-bottom:1px solid var(--r3);font-family:var(--hf);font-weight:500;letter-spacing:1px;text-transform:uppercase}
 .rank-table td{padding:7px 10px;border-bottom:1px solid rgba(185,24,40,0.08);vertical-align:middle}
@@ -524,7 +529,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.4</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.5</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -731,13 +736,25 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 
 <div id="view-rank" style="display:none">
   <div class="rank-bar">
+    <button id="rank-mode-acct" class="rank-mode-btn active" onclick="setRankMode('acct')">👤 アカウント</button>
+    <button id="rank-mode-word" class="rank-mode-btn" onclick="setRankMode('word')">📊 頻出ワード(音声)</button>
     <input class="rank-q" id="rank-q" placeholder="@アカウント名で検索..." oninput="renderRanking()">
-    <select class="rank-tag-sel" id="rank-tag" onchange="renderRanking()">
+    <select class="rank-tag-sel" id="rank-tag" onchange="_rankTagChanged()">
       <option value="">すべてのタグ</option>
     </select>
-    <span id="rank-info" style="font-size:11px;color:var(--t2)"></span>
+    <div id="rank-word-ctrls" style="display:none;gap:6px;align-items:center">
+      <input class="rank-q" id="rank-wq" placeholder="ワードで絞り込み..." oninput="renderWordRanking()" style="width:160px">
+      <select class="rank-word-ctrl" id="rank-ngram" onchange="renderWordRanking()" title="何文字のまとまりで集計するか">
+        <option value="2">2文字</option>
+        <option value="3" selected>3文字</option>
+        <option value="4">4文字</option>
+      </select>
+      <input type="number" class="rank-word-ctrl" id="rank-mincount" value="3" min="1" max="9999" style="width:52px" onchange="renderWordRanking()" title="最小出現回数">
+      <span style="font-size:11px;color:var(--t2)">回以上</span>
+    </div>
+    <span id="rank-info" style="font-size:11px;color:var(--t2);margin-left:4px"></span>
   </div>
-  <table class="rank-table">
+  <table class="rank-table" id="rank-acct-table">
     <thead><tr>
       <th style="text-align:center">#</th>
       <th>アカウント</th>
@@ -745,6 +762,15 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
       <th style="text-align:right">動画数</th>
     </tr></thead>
     <tbody id="rank-tbody"><tr><td colspan="4" style="color:var(--t2);text-align:center;padding:40px">データベースタブで動画を読み込むとランキングが表示されます</td></tr></tbody>
+  </table>
+  <table class="rank-table" id="rank-word-table" style="display:none">
+    <thead><tr>
+      <th style="text-align:center">#</th>
+      <th>単語（音声）</th>
+      <th style="text-align:right">出現回数</th>
+      <th style="text-align:right">動画数</th>
+    </tr></thead>
+    <tbody id="rank-word-tbody"><tr><td colspan="4" style="color:var(--t2);text-align:center;padding:40px">データベースタブで動画を読み込むとランキングが表示されます</td></tr></tbody>
   </table>
 </div>
 
@@ -4136,6 +4162,80 @@ async function removeVideoSubTag(videoId,tagName){
 }
 
 // ── ランキング ────────────────────────────────────────────────────────────────
+let _rankMode='acct';
+let _wfCache=null,_wfCacheTag=null,_wfCacheN=0;
+
+function _rankTagChanged(){
+  _wfCache=null; // タグ変更でキャッシュ破棄
+  if(_rankMode==='word')renderWordRanking();else renderRanking();
+}
+
+function setRankMode(mode){
+  _rankMode=mode;
+  document.getElementById('rank-mode-acct').classList.toggle('active',mode==='acct');
+  document.getElementById('rank-mode-word').classList.toggle('active',mode==='word');
+  document.getElementById('rank-q').style.display=mode==='acct'?'':'none';
+  document.getElementById('rank-acct-table').style.display=mode==='acct'?'':'none';
+  document.getElementById('rank-word-table').style.display=mode==='word'?'':'none';
+  const wc=document.getElementById('rank-word-ctrls');
+  if(wc)wc.style.display=mode==='word'?'flex':'none';
+  if(mode==='word')renderWordRanking();else renderRanking();
+}
+
+// CJK・かな・カナのみ判定
+function _isCJK(c){
+  const cp=c.codePointAt(0);
+  return(cp>=0x3040&&cp<=0x9FFF)||(cp>=0xFF66&&cp<=0xFF9F);
+}
+
+function computeWordFreq(tagFilter,n){
+  if(_wfCache&&_wfCacheTag===tagFilter&&_wfCacheN===n)return _wfCache;
+  _wfCacheTag=tagFilter;_wfCacheN=n;
+  const recs=tagFilter?_dbCache.filter(r=>r.mainTag===tagFilter):_dbCache;
+  const map=new Map();
+  for(const rec of recs){
+    for(const t of(rec.trData||[])){
+      const text=(t.text||'').trim();
+      for(let i=0;i<=text.length-n;i++){
+        const gram=text.slice(i,i+n);
+        if(![...gram].every(_isCJK))continue;
+        if(!map.has(gram))map.set(gram,{w:gram,c:0,v:new Set()});
+        const e=map.get(gram);e.c++;e.v.add(rec.id);
+      }
+    }
+  }
+  _wfCache=[...map.values()]
+    .map(e=>({word:e.w,count:e.c,vids:e.v.size}))
+    .sort((a,b)=>b.count-a.count);
+  return _wfCache;
+}
+
+function renderWordRanking(){
+  const tagF=(document.getElementById('rank-tag')?.value)||'';
+  const n=parseInt(document.getElementById('rank-ngram')?.value)||3;
+  const minC=parseInt(document.getElementById('rank-mincount')?.value)||2;
+  const wq=(document.getElementById('rank-wq')?.value||'').toLowerCase();
+  const data=computeWordFreq(tagF||null,n);
+  const filtered=data.filter(e=>e.count>=minC&&(!wq||e.word.includes(wq)));
+  const info=document.getElementById('rank-info');
+  if(info)info.textContent=filtered.length.toLocaleString()+'語';
+  const tbody=document.getElementById('rank-word-tbody');
+  if(!filtered.length){
+    tbody.innerHTML='<tr><td colspan="4" style="color:var(--t2);text-align:center;padding:40px">音声データがありません</td></tr>';
+    return;
+  }
+  const medals=['🥇','🥈','🥉'];
+  tbody.innerHTML=filtered.slice(0,300).map((e,i)=>{
+    const r=i+1;
+    return'<tr>'
+      +'<td class="rank-num">'+(r<=3?medals[r-1]:r)+'</td>'
+      +'<td class="rank-name">'+esc(e.word)+'</td>'
+      +'<td class="rank-cnt">'+e.count.toLocaleString()+'</td>'
+      +'<td class="rank-vids">'+e.vids+'動画</td>'
+      +'</tr>';
+  }).join('');
+}
+
 function computeRanking(tagFilter){
   const map=new Map();
   let recs=tagFilter?_dbCache.filter(r=>r.mainTag===tagFilter):_dbCache;
