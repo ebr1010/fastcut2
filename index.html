@@ -444,6 +444,9 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .fban-clear{font-size:10px;color:var(--t2);cursor:pointer;border:1px solid var(--r3);
   border-radius:3px;padding:1px 6px;transition:all .12s;white-space:nowrap;background:none;font-family:inherit}
 .fban-clear:hover{border-color:var(--r4);color:var(--t0)}
+#db-search-total{display:none;padding:4px 10px 4px;font-size:11px;color:var(--t1);
+  border-bottom:1px solid var(--r3);background:rgba(185,24,40,0.04)}
+#db-search-total b{color:var(--t0);font-weight:600}
 /* ── tag manager modal ─────────────────────────────────────────────────────── */
 .tg-modal{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center}
 .tg-modal.open{display:flex}
@@ -529,7 +532,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.5</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.6</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -729,6 +732,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     <span class="fban-txt" id="fban-txt"></span>
     <button class="fban-clear" onclick="clearAllFilters()">✕ フィルタを解除</button>
   </div>
+  <div id="db-search-total"></div>
   <div id="db-select-bar"></div>
   </div><!-- /db-sticky-head -->
   <div class="db-grid" id="db-grid"></div>
@@ -742,15 +746,35 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     <select class="rank-tag-sel" id="rank-tag" onchange="_rankTagChanged()">
       <option value="">すべてのタグ</option>
     </select>
-    <div id="rank-word-ctrls" style="display:none;gap:6px;align-items:center">
-      <input class="rank-q" id="rank-wq" placeholder="ワードで絞り込み..." oninput="renderWordRanking()" style="width:160px">
-      <select class="rank-word-ctrl" id="rank-ngram" onchange="renderWordRanking()" title="何文字のまとまりで集計するか">
+    <div id="rank-word-ctrls" style="display:none;gap:6px;align-items:center;flex-wrap:wrap">
+      <select class="rank-word-ctrl" id="rank-wsrc" onchange="_wfCache=null;renderWordRanking()" title="集計対象">
+        <option value="tr">音声</option>
+        <option value="chat">コメント</option>
+        <option value="both">両方</option>
+      </select>
+      <select class="rank-word-ctrl" id="rank-ngram" onchange="_wfCache=null;renderWordRanking()" title="何文字のまとまりで集計するか">
         <option value="2">2文字</option>
         <option value="3" selected>3文字</option>
         <option value="4">4文字</option>
+        <option value="5">5文字</option>
+        <option value="6">6文字</option>
+        <option value="7">7文字</option>
+        <option value="8">8文字</option>
+        <option value="9">9文字</option>
+        <option value="10">10文字</option>
+        <option value="11">11文字</option>
+        <option value="12">12文字</option>
+        <option value="13">13文字</option>
+        <option value="14">14文字</option>
+        <option value="15">15文字</option>
       </select>
       <input type="number" class="rank-word-ctrl" id="rank-mincount" value="3" min="1" max="9999" style="width:52px" onchange="renderWordRanking()" title="最小出現回数">
       <span style="font-size:11px;color:var(--t2)">回以上</span>
+      <span style="font-size:11px;color:var(--t2);margin-left:4px">｜ フレーズ:</span>
+      <input class="rank-q" id="rank-wq" placeholder="任意の単語・フレーズ (Enter)" style="width:200px"
+        onkeydown="if(event.key==='Enter')runPhraseRank()"
+        oninput="if(!this.value.trim())renderWordRanking()">
+      <button class="rank-mode-btn" onclick="runPhraseRank()" style="padding:4px 10px;font-size:11px">🔍 集計</button>
     </div>
     <span id="rank-info" style="font-size:11px;color:var(--t2);margin-left:4px"></span>
   </div>
@@ -2684,6 +2708,45 @@ function renderDB(records,q,acct){
   if(al)cntLabel+=' '+(exactAcct?'=':'~')+'@'+al;
   document.getElementById('db-cnt').textContent=cntLabel;
 
+  // 合算集計バナー（すべての動画の合算数）
+  {
+    const totEl=document.getElementById('db-search-total');
+    if(totEl){
+      if((q||al||_noteQ)&&filtered.length){
+        let tChat=0,tTr=0,tNote=0;
+        const _noteChkT=_noteFuzzyMatchFn?_noteFuzzyMatchFn:t=>t.toLowerCase().includes(qnl);
+        for(const rec of filtered){
+          const cd=rec.chatData||[],td=rec.trData||[];
+          if(al){
+            tChat+=cd.filter(c=>matchUser(c.username)).length;
+          } else if(q){
+            if(_searchMode!=='tr')
+              tChat+=cd.filter(c=>_cardChk(_stripStamps(c.message))).length;
+            if(_searchMode!=='chat')
+              tTr+=td.filter(t=>_cardChk(t.text)).length;
+          }
+          if(_noteQ){
+            const ep=String(rec.episodeNum||''),vid=rec.videoId||'';
+            const nm=_ynpMemos?(_ynpMemos.byEp[ep]||_ynpMemos.byVid[vid]||''):'';
+            tNote+=_countHits((rec.tnotes||'').toLowerCase(),qnl)+_countHits(nm.toLowerCase(),qnl);
+          }
+        }
+        const parts=[];
+        if((q||al)&&_searchMode!=='tr')parts.push('コメント <b>'+tChat.toLocaleString()+'</b>件');
+        if(q&&!al&&_searchMode!=='chat')parts.push('音声 <b>'+tTr.toLocaleString()+'</b>件');
+        if(_noteQ&&tNote)parts.push('ノート <b>'+tNote.toLocaleString()+'</b>ヒット');
+        if(parts.length){
+          totEl.innerHTML='すべての動画の合算: '+parts.join(' &ensp;/&ensp; ');
+          totEl.style.display='';
+        } else {
+          totEl.style.display='none';
+        }
+      } else {
+        totEl.style.display='none';
+      }
+    }
+  }
+
   if(!filtered.length){
     grid.innerHTML='<div class="db-empty">'+(records.length?'該当する動画がありません':'登録済み動画がありません')+'</div>';
     return;
@@ -4188,21 +4251,30 @@ function _isCJK(c){
   return(cp>=0x3040&&cp<=0x9FFF)||(cp>=0xFF66&&cp<=0xFF9F);
 }
 
-function computeWordFreq(tagFilter,n){
-  if(_wfCache&&_wfCacheTag===tagFilter&&_wfCacheN===n)return _wfCache;
-  _wfCacheTag=tagFilter;_wfCacheN=n;
+let _wfCacheSrc=null;
+
+function computeWordFreq(tagFilter,n,src){
+  src=src||'tr';
+  if(_wfCache&&_wfCacheTag===tagFilter&&_wfCacheN===n&&_wfCacheSrc===src)return _wfCache;
+  _wfCacheTag=tagFilter;_wfCacheN=n;_wfCacheSrc=src;
   const recs=tagFilter?_dbCache.filter(r=>r.mainTag===tagFilter):_dbCache;
   const map=new Map();
-  for(const rec of recs){
-    for(const t of(rec.trData||[])){
-      const text=(t.text||'').trim();
-      for(let i=0;i<=text.length-n;i++){
-        const gram=text.slice(i,i+n);
+  function _addTexts(texts,vid){
+    for(const text of texts){
+      const t=(text||'').trim();
+      for(let i=0;i<=t.length-n;i++){
+        const gram=t.slice(i,i+n);
         if(![...gram].every(_isCJK))continue;
         if(!map.has(gram))map.set(gram,{w:gram,c:0,v:new Set()});
-        const e=map.get(gram);e.c++;e.v.add(rec.id);
+        const e=map.get(gram);e.c++;e.v.add(vid);
       }
     }
+  }
+  for(const rec of recs){
+    if(src==='tr'||src==='both')
+      _addTexts((rec.trData||[]).map(t=>t.text),rec.id);
+    if(src==='chat'||src==='both')
+      _addTexts((rec.chatData||[]).map(c=>_stripStamps(c.message)),rec.id);
   }
   _wfCache=[...map.values()]
     .map(e=>({word:e.w,count:e.c,vids:e.v.size}))
@@ -4214,14 +4286,16 @@ function renderWordRanking(){
   const tagF=(document.getElementById('rank-tag')?.value)||'';
   const n=parseInt(document.getElementById('rank-ngram')?.value)||3;
   const minC=parseInt(document.getElementById('rank-mincount')?.value)||2;
-  const wq=(document.getElementById('rank-wq')?.value||'').toLowerCase();
-  const data=computeWordFreq(tagF||null,n);
-  const filtered=data.filter(e=>e.count>=minC&&(!wq||e.word.includes(wq)));
+  const src=(document.getElementById('rank-wsrc')?.value)||'tr';
+  const data=computeWordFreq(tagF||null,n,src);
+  const filtered=data.filter(e=>e.count>=minC);
   const info=document.getElementById('rank-info');
   if(info)info.textContent=filtered.length.toLocaleString()+'語';
+  const thead=document.querySelector('#rank-word-table thead tr th:nth-child(2)');
+  if(thead)thead.textContent=src==='chat'?'単語（コメント）':src==='both'?'単語（音声+コメント）':'単語（音声）';
   const tbody=document.getElementById('rank-word-tbody');
   if(!filtered.length){
-    tbody.innerHTML='<tr><td colspan="4" style="color:var(--t2);text-align:center;padding:40px">音声データがありません</td></tr>';
+    tbody.innerHTML='<tr><td colspan="4" style="color:var(--t2);text-align:center;padding:40px">データがありません</td></tr>';
     return;
   }
   const medals=['🥇','🥈','🥉'];
@@ -4232,6 +4306,47 @@ function renderWordRanking(){
       +'<td class="rank-name">'+esc(e.word)+'</td>'
       +'<td class="rank-cnt">'+e.count.toLocaleString()+'</td>'
       +'<td class="rank-vids">'+e.vids+'動画</td>'
+      +'</tr>';
+  }).join('');
+}
+
+function runPhraseRank(){
+  const phrase=(document.getElementById('rank-wq')?.value||'').trim();
+  if(!phrase){renderWordRanking();return;}
+  const tagF=(document.getElementById('rank-tag')?.value)||'';
+  const src=(document.getElementById('rank-wsrc')?.value)||'tr';
+  const minC=parseInt(document.getElementById('rank-mincount')?.value)||2;
+  const recs=tagF?_dbCache.filter(r=>r.mainTag===tagF):_dbCache;
+  const pl=phrase.toLowerCase();
+  const results=[];
+  for(const rec of recs){
+    let cnt=0;
+    if(src==='tr'||src==='both')
+      for(const t of(rec.trData||[]))cnt+=_countHits((t.text||'').toLowerCase(),pl);
+    if(src==='chat'||src==='both')
+      for(const c of(rec.chatData||[]))cnt+=_countHits(_stripStamps(c.message).toLowerCase(),pl);
+    if(cnt>0)results.push({word:phrase,count:cnt,vids:1,recId:rec.id});
+  }
+  const totalCnt=results.reduce((s,r)=>s+r.count,0);
+  const totalVids=results.length;
+  const info=document.getElementById('rank-info');
+  if(info)info.textContent='フレーズ検索: '+totalCnt.toLocaleString()+'回 / '+totalVids+'動画';
+  const tbody=document.getElementById('rank-word-tbody');
+  if(totalCnt<minC){
+    tbody.innerHTML='<tr><td colspan="4" style="color:var(--t2);text-align:center;padding:40px">「'+esc(phrase)+'」は見つかりませんでした</td></tr>';
+    return;
+  }
+  results.sort((a,b)=>b.count-a.count);
+  const medals=['🥇','🥈','🥉'];
+  tbody.innerHTML=results.slice(0,300).map((e,i)=>{
+    const r=i+1;
+    const rec=_dbCache.find(d=>d.id===e.recId);
+    const title=rec?(rec.episodeNum?'#'+rec.episodeNum+' '+(rec.title||''):(rec.title||rec.videoId||rec.id)):String(e.recId);
+    return'<tr>'
+      +'<td class="rank-num">'+(r<=3?medals[r-1]:r)+'</td>'
+      +'<td class="rank-name" style="font-size:11px;color:var(--t2)">'+esc(title.slice(0,40))+'</td>'
+      +'<td class="rank-cnt">'+e.count.toLocaleString()+'回</td>'
+      +'<td class="rank-vids">─</td>'
       +'</tr>';
   }).join('');
 }
