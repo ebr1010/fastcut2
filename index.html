@@ -3416,7 +3416,7 @@ async function _ghFetchFile(path){
   if(!json.content||json.content.trim()===''){
     if(!json.download_url)throw new Error('データが空です (サイズ: '+json.size+' バイト)');
     const dlUrl=json.download_url+(json.download_url.includes('?')?'&':'?')+'_='+ts;
-    const dl=await fetch(dlUrl,{headers:{'Authorization':'token '+_ghCfg.token}});
+    const dl=await fetch(dlUrl);
     if(!dl.ok)throw new Error('ファイルダウンロード失敗 (HTTP '+dl.status+')');
     text=await dl.text();
   }else{
