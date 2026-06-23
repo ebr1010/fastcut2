@@ -532,7 +532,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.7</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.8</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -3399,15 +3399,15 @@ async function _ghFetchFile(path){
   const url='https://api.github.com/repos/'+_ghCfg.repo+'/contents/'+path+'?_='+ts;
   const res=await fetch(url,{headers:{'Authorization':'token '+_ghCfg.token,'Accept':'application/vnd.github.v3+json'}});
   if(res.status===404)return{content:null,sha:null};
-  if(!res.ok)throw new Error('GitHub取得失敗 (HTTP '+res.status+' '+path+')');
+  if(res.status===401)throw new Error('GitHubトークンが無効または期限切れです。同期設定からトークンを再入力してください。');
+  if(!res.ok)throw new Error('GitHub接続失敗 (HTTP '+res.status+')');
   const json=await res.json();
   let text;
   if(!json.content||json.content.trim()===''){
-    if(!json.download_url)throw new Error('content空 (size:'+json.size+')');
-    // raw.githubusercontent.com も ?_=ts でキャッシュバイパス（privateリポジトリ用にAuthヘッダーも付与）
+    if(!json.download_url)throw new Error('データが空です (サイズ: '+json.size+' bytes)');
     const dlUrl=json.download_url+(json.download_url.includes('?')?'&':'?')+'_='+ts;
     const dl=await fetch(dlUrl,{headers:{'Authorization':'token '+_ghCfg.token}});
-    if(!dl.ok)throw new Error('download_url失敗 (HTTP '+dl.status+')');
+    if(!dl.ok)throw new Error('ファイルダウンロード失敗 (HTTP '+dl.status+')');
     text=await dl.text();
   }else{
     text=_b64dec(json.content);
@@ -3440,7 +3440,7 @@ async function _ghWriteFile(path,data,sha,msg){
     if(res.ok){const j=await res.json();return j.content?j.content.sha:null;}
     let detail='';try{const j=await res.json();detail=j.message||'';}catch{}
     if(!detail.toLowerCase().includes('large')&&res.status!==422)
-      throw new Error('GitHub書き込み失敗 ('+res.status+(detail?' — '+detail:'')+')');
+      throw new Error('GitHub書き込み失敗 (HTTP '+res.status+(detail?' / '+detail:'')+')');
     console.log('[ghWrite] contents API rejected → fallback Git Data API');
   }else{
     console.log('[ghWrite] large → Git Data API');
@@ -3453,11 +3453,11 @@ async function _ghWriteGitData(path,jsonStr,msg){
   const repo=_ghCfg.repo;
   const hdrs={'Authorization':'token '+_ghCfg.token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'};
   const api='https://api.github.com/repos/'+repo;
-  const ok=async(r,label)=>{if(!r.ok){let d='';try{const j=await r.json();d=j.message||'';}catch{}throw new Error(label+' ('+r.status+(d?' — '+d:'')+')');} return r.json();};
+  const ok=async(r,label)=>{if(!r.ok){let d='';try{const j=await r.json();d=j.message||'';}catch{}throw new Error(label+' (HTTP '+r.status+(d?' / '+d:'')+')');} return r.json();};
 
   // 1. Blob 作成（UTF-8 テキストとして直接送信 → base64 不要でサイズ削減）
   const blob=await ok(await fetch(api+'/git/blobs',{method:'POST',headers:hdrs,
-    body:JSON.stringify({content:jsonStr,encoding:'utf-8'})}),'blob作成失敗');
+    body:JSON.stringify({content:jsonStr,encoding:'utf-8'})}),'データアップロード失敗');
 
   // 2. デフォルトブランチの HEAD SHA を取得（main → master の順で試行）
   let branch=null,headSha=null;
@@ -3467,7 +3467,7 @@ async function _ghWriteGitData(path,jsonStr,msg){
   }
   if(!branch){
     // refs/heads が見つからない場合はリポジトリ情報から default_branch を取得
-    const ri=await ok(await fetch(api,{headers:hdrs}),'リポジトリ情報取得失敗');
+    const ri=await ok(await fetch(api,{headers:hdrs}),'リポジトリ情報の取得に失敗');
     const rb=ri.default_branch||'main';
     const rr=await fetch(api+'/git/refs/heads/'+rb,{headers:hdrs});
     if(rr.ok){const d=await rr.json();branch=rb;headSha=d.object.sha;}
@@ -3475,19 +3475,19 @@ async function _ghWriteGitData(path,jsonStr,msg){
   if(!branch)throw new Error('ブランチが見つかりません。リポジトリにコミットが1件以上必要です。');
 
   // 3. 現在のコミットからツリー SHA を取得
-  const commit=await ok(await fetch(api+'/git/commits/'+headSha,{headers:hdrs}),'コミット取得失敗');
+  const commit=await ok(await fetch(api+'/git/commits/'+headSha,{headers:hdrs}),'コミット情報の取得に失敗');
 
   // 4. 新しいツリーを作成（指定パスのみ更新）
   const tree=await ok(await fetch(api+'/git/trees',{method:'POST',headers:hdrs,
-    body:JSON.stringify({base_tree:commit.tree.sha,tree:[{path,mode:'100644',type:'blob',sha:blob.sha}]})}),'tree作成失敗');
+    body:JSON.stringify({base_tree:commit.tree.sha,tree:[{path,mode:'100644',type:'blob',sha:blob.sha}]})}),'ファイルツリーの作成に失敗');
 
   // 5. 新しいコミットを作成
   const newCommit=await ok(await fetch(api+'/git/commits',{method:'POST',headers:hdrs,
-    body:JSON.stringify({message:msg||('FASTCUT '+new Date().toISOString().slice(0,16)),tree:tree.sha,parents:[headSha]})}),'コミット作成失敗');
+    body:JSON.stringify({message:msg||('FASTCUT '+new Date().toISOString().slice(0,16)),tree:tree.sha,parents:[headSha]})}),'コミットの作成に失敗');
 
   // 6. ブランチの HEAD を更新
   await ok(await fetch(api+'/git/refs/heads/'+branch,{method:'PATCH',headers:hdrs,
-    body:JSON.stringify({sha:newCommit.sha})}),'ref更新失敗');
+    body:JSON.stringify({sha:newCommit.sha})}),'ブランチの更新に失敗');
 
   return newCommit.sha;
 }
@@ -3519,11 +3519,11 @@ async function ghGet(){
   let raw=remote.content;
   if(raw&&raw.z===1&&raw.d){
     try{raw=JSON.parse(await _ungzipB64(raw.d));}
-    catch(e){throw new Error('データ展開失敗: '+e.message);}
+    catch(e){throw new Error('データの展開に失敗しました: '+e.message);}
   }
   // 旧フォーマット {v,t} / 動画のみ配列 / 新フォーマット {v,mainTags,subTagDefs} 全対応
   const data=Array.isArray(raw)?raw:(raw.v||[]);
-  if(!Array.isArray(data))throw new Error('データが配列ではありません');
+  if(!Array.isArray(data))throw new Error('データ形式が正しくありません');
   const mainTags=(!Array.isArray(raw)&&raw.mainTags)||(!Array.isArray(raw)&&raw.t)||[];
   const subTagDefs=(!Array.isArray(raw)&&raw.subTagDefs)||[];
   const stampDefs=(!Array.isArray(raw)&&raw.stampDefs)||[];
