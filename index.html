@@ -532,7 +532,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.8</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.9</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -1661,8 +1661,8 @@ async function run(){
     toast(`解析完了: ハイライト${peaks.length}件`,'ok');
   }catch(e){
     hideOv();
-    addMsg(e.message,'error');
-    toast(e.message,'err',4000);
+    addMsg(_jpErr(e),'error');
+    toast(_jpErr(e),'err',4000);
   }
 }
 
@@ -2019,7 +2019,7 @@ async function registerCurrentVideo(){
     _dbCache=await dbAll();
     ghSync(true);
   }catch(e){
-    toast('登録失敗: '+e.message,'err');
+    toast('登録失敗: '+_jpErr(e),'err');
   }
 }
 
@@ -2302,7 +2302,7 @@ async function loadAndRenderDB(){
         }
       }catch(e){
         console.warn('GitHub pull:',e);
-        toast('GitHub同期失敗: '+e.message,'err',8000);
+        toast('GitHub同期失敗: '+_jpErr(e),'err',8000);
       }
     }
   }catch{_dbCache=[];}
@@ -2953,7 +2953,7 @@ async function delVideo(id){
     toast('削除しました','ok');
     ghSync(true);
   }catch(e){
-    toast('削除失敗: '+e.message,'err');
+    toast('削除失敗: '+_jpErr(e),'err');
   }
 }
 
@@ -2981,7 +2981,7 @@ async function clearAllVideos(){
     }else{
       toast('全'+n+'件を消去しました','ok');
     }
-  }catch(e){toast('消去失敗: '+e.message,'err');}
+  }catch(e){toast('消去失敗: '+_jpErr(e),'err');}
 }
 
 function renderEditMainTag(id){
@@ -3063,7 +3063,7 @@ async function saveCardEdit(id){
     toast('更新しました','ok');
     ghSync(true);
   }catch(e){
-    toast('更新失敗: '+e.message,'err');
+    toast('更新失敗: '+_jpErr(e),'err');
   }
 }
 
@@ -3151,8 +3151,8 @@ async function runFromLoaded(){
     toast(`解析完了: ハイライト${peaks.length}件`,'ok');
   }catch(e){
     hideOv();
-    addMsg(e.message,'error');
-    toast(e.message,'err',4000);
+    addMsg(_jpErr(e),'error');
+    toast(_jpErr(e),'err',4000);
   }
 }
 
@@ -3336,7 +3336,7 @@ async function importBackup(file){
     if(tagAdded)msg.push('タグ'+tagAdded+'件');
     toast(msg.join(' / ')+' を読み込みました','ok');
   }catch(e){
-    toast('読み込み失敗: '+e.message,'err');
+    toast('読み込み失敗: '+_jpErr(e),'err');
   }
 }
 
@@ -3348,6 +3348,16 @@ function loadGhCfg(){
 }
 function saveGhCfg(){localStorage.setItem('fc_gh',JSON.stringify(_ghCfg));}
 function ghEnabled(){return!!(_ghCfg.repo&&_ghCfg.token);}
+
+function _jpErr(e){
+  const m=e?.message||String(e);
+  if(/failed to fetch/i.test(m))return 'ネットワーク接続失敗（インターネット接続またはGitHubへのアクセスを確認してください）';
+  if(/network ?error/i.test(m))return 'ネットワークエラー';
+  if(/load failed/i.test(m))return '通信に失敗しました（接続を確認してください）';
+  if(/abort/i.test(m))return '通信がキャンセルされました';
+  if(/timeout/i.test(m))return '接続タイムアウト';
+  return m;
+}
 
 function _b64enc(str){
   const bytes=new TextEncoder().encode(str);
@@ -3652,8 +3662,8 @@ async function ghPull(){
     if(tagChanges.length)briefParts.push('タグ変更'+tagChanges.length+'件');
     toast('⬇ 更新完了 '+_dbCache.length+'件'+(briefParts.length?' / '+briefParts.join(' / '):' / 変更なし'),'ok',6000);
   }catch(e){
-    if(st)st.textContent='エラー: '+e.message;
-    toast('GitHub更新失敗: '+e.message,'err');
+    if(st)st.textContent='エラー: '+_jpErr(e);
+    toast('GitHub更新失敗: '+_jpErr(e),'err');
   }finally{
     setGhBusy(false);
   }
@@ -3755,8 +3765,8 @@ async function ghSync(silent){
       toast('⬆ 保存完了 '+merged.length+'件 / '+brief,'ok',6000);
     }else updateLastSyncLabel(new Date().toISOString());
   }catch(e){
-    if(st)st.textContent='エラー: '+e.message;
-    if(!silent)toast('GitHub同期失敗: '+e.message,'err');
+    if(st)st.textContent='エラー: '+_jpErr(e);
+    if(!silent)toast('GitHub同期失敗: '+_jpErr(e),'err');
   }finally{
     if(!silent)setGhBusy(false);
   }
@@ -4753,7 +4763,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     if(lsa)updateLastSyncLabel(lsa);
   }).catch(e=>{
     console.warn('IndexedDB init error:',e);
-    setTimeout(()=>toast('IndexedDB が使えません ('+e.message+')。データ登録は無効です。','err',8000),800);
+    setTimeout(()=>toast('データベースが使えません ('+_jpErr(e)+')。データ登録は無効です。','err',8000),800);
   });
 });
 </script>
