@@ -532,7 +532,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.6</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.6.7</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -2052,6 +2052,8 @@ function updateGhUi(){
   const pull=document.getElementById('gh-pull-btn');
   if(push)push.style.display=on?'':'none';
   if(pull)pull.style.display=on?'':'none';
+  const lbl=document.getElementById('last-sync-label');
+  if(lbl&&!on)lbl.textContent='⚙ 同期未設定';
 }
 
 // ── 同期中ローディング表示 ─────────────────────────────────────────────────────
@@ -2298,7 +2300,10 @@ async function loadAndRenderDB(){
           console.log('[loadAndRenderDB] ローカル専用レコード',localOnly.length,'件 → 自動同期開始');
           ghSync(true);
         }
-      }catch(e){console.warn('GitHub pull:',e);}
+      }catch(e){
+        console.warn('GitHub pull:',e);
+        toast('GitHub同期失敗: '+e.message,'err',8000);
+      }
     }
   }catch{_dbCache=[];}
   renderDB(applyTagFilter(sortedCache()),'',getAcctSearch());
@@ -3373,6 +3378,8 @@ async function _gzipB64(str){
   }catch(e){console.warn('[gzip]',e);return null;}
 }
 async function _ungzipB64(b64){
+  if(typeof DecompressionStream==='undefined')
+    throw new Error('このブラウザはgzip展開非対応です（Safari/iOS 16.4以降が必要）');
   const bin=atob(b64);
   const bytes=new Uint8Array(bin.length);
   for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
@@ -3397,9 +3404,9 @@ async function _ghFetchFile(path){
   let text;
   if(!json.content||json.content.trim()===''){
     if(!json.download_url)throw new Error('content空 (size:'+json.size+')');
-    // raw.githubusercontent.com も ?_=ts でキャッシュバイパス
+    // raw.githubusercontent.com も ?_=ts でキャッシュバイパス（privateリポジトリ用にAuthヘッダーも付与）
     const dlUrl=json.download_url+(json.download_url.includes('?')?'&':'?')+'_='+ts;
-    const dl=await fetch(dlUrl);
+    const dl=await fetch(dlUrl,{headers:{'Authorization':'token '+_ghCfg.token}});
     if(!dl.ok)throw new Error('download_url失敗 (HTTP '+dl.status+')');
     text=await dl.text();
   }else{
