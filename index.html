@@ -538,7 +538,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.8.1</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.8.2</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -649,6 +649,11 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
           <div class="sl-desc">ハイライト・キーワード抽出の最大表示件数。</div>
         </div>
         <div class="fps-row">
+          <span class="sl-lbl">集計窓サイズ（秒）</span>
+          <input type="number" class="fps-in" id="sr-win" value="5" min="1" max="60">
+        </div>
+        <div class="sl-desc" style="margin-top:0">コメントをまとめる時間単位（秒）。小さいほど細かく、大きいほど大まかに集計されます。</div>
+        <div class="fps-row" style="margin-top:6px">
           <span class="sl-lbl">エクスポートFPS</span>
           <input type="number" class="fps-in" id="sr-fps" value="30" min="1" max="120">
         </div>
@@ -815,7 +820,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 
 <script>
 // ─── §0 CONSTANTS & GLOBALS ─────────────────────────────────────────────────
-const WIN = 5;
+let WIN = 5;
 const HIST_MAX = 10;
 const DEFAULT_ATTN = ['草','ｗｗ','www','笑','わら','LMAO','lol','kusa','ｋｕｓａ'];
 
@@ -1206,7 +1211,7 @@ function detectPeaks(wins,cfg){
 function makeReasons(pk,kws,attnWords){
   const w=pk.w;
   const r=[];
-  if(w.cnt>0)r.push({i:'▲',t:`コメント急増: ${w.cnt}件 / 5秒`});
+  if(w.cnt>0)r.push({i:'▲',t:`コメント急増: ${w.cnt}件 / ${WIN}秒`});
   if(w.kwS>0&&kws.length){
     const hits=kws.map(kw=>{
       let c=0,p=0;
@@ -1327,13 +1332,14 @@ function buildMarkerList(peaks,ep,fps){
     +'<\/script><\/body><\/html>';
 }
 
-function buildMarkerTxt(peaks, ep, fps, attnWords) {
+function buildMarkerTxt(peaks, ep, attnWords, presetName) {
   const now = new Date();
   const pad = n => String(n).padStart(2,'0');
   const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
   const lines = [];
   lines.push('FASTCUT マーカーリスト' + (ep ? ' — ' + ep : ''));
   lines.push('作成: ' + dateStr);
+  if (presetName) lines.push('プリセット: ' + presetName);
   lines.push('');
   lines.push('■ 反応ワード設定');
   lines.push('  ' + (attnWords && attnWords.length ? attnWords.join(' / ') : '（なし）'));
@@ -1342,8 +1348,8 @@ function buildMarkerTxt(peaks, ep, fps, attnWords) {
   lines.push('');
   peaks.forEach((pk, i) => {
     const w = pk.w;
-    const tc = toTC(w.s0, fps);
-    lines.push(`  ${pad(i+1)}  ${tc}`);
+    const time = fmtSec(w.s0);
+    lines.push(`  ${pad(i+1)}  ${time}`);
     lines.push(`      Highlight ${pad(i+1)}` + (ep ? ' [' + ep + ']' : ''));
     pk.reasons.forEach(r => {
       lines.push('      ' + r.i + ' ' + r.t);
@@ -1620,6 +1626,7 @@ async function run(){
     S.videoId=null;
   }
 
+  WIN=parseInt(document.getElementById('sr-win').value)||5;
   const W={
     c:parseFloat(document.getElementById('sr-c').value),
     k:parseFloat(document.getElementById('sr-k').value),
@@ -1950,13 +1957,34 @@ function setupAcc(){
 }
 
 function setupSliders(){
-  [['sr-c','sv-c'],['sr-k','sv-k'],['sr-a','sv-a'],['sr-p','sv-p'],['sr-m','sv-m']].forEach(([rid,vid])=>{
+  const SKEY='fc_settings';
+  const saved=(()=>{try{return JSON.parse(localStorage.getItem(SKEY)||'{}');}catch{return{};}})();
+  const sliders=[['sr-c','sv-c'],['sr-k','sv-k'],['sr-a','sv-a'],['sr-p','sv-p'],['sr-m','sv-m']];
+  const nums=['sr-win','sr-fps'];
+
+  sliders.forEach(([rid,vid])=>{
     const r=document.getElementById(rid);
     const v=document.getElementById(vid);
-    if(r&&v){
+    if(!r||!v)return;
+    if(saved[rid]!==undefined)r.value=saved[rid];
+    v.textContent=r.value;
+    r.addEventListener('input',()=>{
       v.textContent=r.value;
-      r.addEventListener('input',()=>{v.textContent=r.value;});
-    }
+      const s=(()=>{try{return JSON.parse(localStorage.getItem(SKEY)||'{}');}catch{return{};}})();
+      s[rid]=r.value;
+      try{localStorage.setItem(SKEY,JSON.stringify(s));}catch{}
+    });
+  });
+
+  nums.forEach(rid=>{
+    const r=document.getElementById(rid);
+    if(!r)return;
+    if(saved[rid]!==undefined)r.value=saved[rid];
+    r.addEventListener('change',()=>{
+      const s=(()=>{try{return JSON.parse(localStorage.getItem(SKEY)||'{}');}catch{return{};}})();
+      s[rid]=r.value;
+      try{localStorage.setItem(SKEY,JSON.stringify(s));}catch{}
+    });
   });
 }
 
@@ -3255,6 +3283,7 @@ async function runFromLoaded(){
   clearMsgs();
   if(!S.chatConv.length){addMsg('コメントデータがありません','error');return;}
 
+  WIN=parseInt(document.getElementById('sr-win').value)||5;
   const W={
     c:parseFloat(document.getElementById('sr-c').value),
     k:parseFloat(document.getElementById('sr-k').value),
@@ -3264,7 +3293,7 @@ async function runFromLoaded(){
   const maxHL=parseInt(document.getElementById('sr-m').value);
 
   try{
-    showOv('5秒窓で集計中...');await tick();
+    showOv(`${WIN}秒窓で集計中...`);await tick();
     const wins=buildWindows(S.chatConv,S.trRecs);
     S.lastWins=wins;
 
@@ -4708,9 +4737,13 @@ document.addEventListener('DOMContentLoaded',()=>{
     document.getElementById('jsx-txt-btn').addEventListener('click',()=>{
       if(!S.lastPeaks.length){toast('ハイライトがありません','wrn');return;}
       const ep=document.getElementById('fi-ep').value.trim();
-      const fps=parseInt(document.getElementById('sr-fps').value)||30;
-      const txt=buildMarkerTxt(S.lastPeaks,ep,fps,S.attnWords);
-      const fname=(ep?ep+'_':'')+'markers.txt';
+      const preset=document.getElementById('attn-preset-sel').value.trim();
+      const txt=buildMarkerTxt(S.lastPeaks,ep,S.attnWords,preset);
+      const parts=[];
+      if(ep)parts.push(ep);
+      if(preset)parts.push(preset);
+      parts.push('markers');
+      const fname=parts.join('_')+'.txt';
       dl(txt,fname,'text/plain;charset=utf-8');
       toast(fname+' をダウンロードしました','ok');
     });
