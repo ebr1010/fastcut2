@@ -1203,7 +1203,7 @@ function detectPeaks(wins,cfg){
 }
 
 // ─── §10 REASONS ──────────────────────────────────────────────────────────────
-function makeReasons(pk,kws){
+function makeReasons(pk,kws,attnWords){
   const w=pk.w;
   const r=[];
   if(w.cnt>0)r.push({i:'▲',t:`コメント急増: ${w.cnt}件 / 5秒`});
@@ -1220,13 +1220,16 @@ function makeReasons(pk,kws){
     }).filter(h=>h.c>0).map(h=>h.c>1?`${h.kw}(×${h.c})`:h.kw);
     if(hits.length)r.push({i:'◆',t:`キーワード: ${hits.join(', ')}`});
   }
-  if(w.atS>0)r.push({i:'→',t:`反応ワード (草/www): ${w.atS}回`});
+  if(w.atS>0){
+    const label=(attnWords&&attnWords.length)?attnWords.slice(0,4).join('/'):'反応ワード';
+    r.push({i:'→',t:`反応ワード (${label}): ${w.atS}回`});
+  }
   r.push({i:'■',t:`スコア: ${w.score.toFixed(1)}  prominence ×${pk.prom.toFixed(1)}`});
   return r;
 }
 
 // Build peak-like objects for every window that contains keyword hits
-function buildKwPeaks(wins,kws,maxHL){
+function buildKwPeaks(wins,kws,maxHL,attnWords){
   return wins
     .filter(w=>w.kwS>0)
     .map(w=>{
@@ -1244,7 +1247,10 @@ function buildKwPeaks(wins,kws,maxHL){
         {i:'◆',t:`キーワード: ${hits.join(', ')}`},
         {i:'▲',t:`コメント件数: ${w.cnt}件 / 5秒`},
       ];
-      if(w.atS>0)reasons.push({i:'→',t:`反応ワード: ${w.atS}回`});
+      if(w.atS>0){
+        const label=(attnWords&&attnWords.length)?attnWords.slice(0,4).join('/'):'反応ワード';
+        reasons.push({i:'→',t:`反応ワード (${label}): ${w.atS}回`});
+      }
       return{i:w.i,score:w.kwS,prom:1,w,reasons};
     })
     .slice(0,maxHL);
@@ -1679,11 +1685,11 @@ async function run(){
     showOv('ピークを検出中...');await tick();
     let peaks;
     if(S.kws.length>0){
-      peaks=buildKwPeaks(wins,S.kws,maxHL);
+      peaks=buildKwPeaks(wins,S.kws,maxHL,S.attnWords);
       if(!peaks.length) addMsg('キーワードに一致するコメントが見つかりませんでした。','warning');
     }else{
       const rawPeaks=detectPeaks(wins,{minP,gap:6,max:maxHL});
-      peaks=rawPeaks.map(pk=>({...pk,reasons:makeReasons(pk,[])}));
+      peaks=rawPeaks.map(pk=>({...pk,reasons:makeReasons(pk,[],S.attnWords)}));
       if(!peaks.length) addMsg('ハイライトが検出されませんでした。詳細設定の「ピーク判定の厳しさ」を下げてください。','warning');
     }
     S.lastPeaks=peaks;
@@ -3268,11 +3274,11 @@ async function runFromLoaded(){
     showOv('ピークを検出中...');await tick();
     let peaks;
     if(S.kws.length>0){
-      peaks=buildKwPeaks(wins,S.kws,maxHL);
+      peaks=buildKwPeaks(wins,S.kws,maxHL,S.attnWords);
       if(!peaks.length) addMsg('キーワードに一致するコメントが見つかりませんでした。','warning');
     }else{
       const rawPeaks=detectPeaks(wins,{minP,gap:6,max:maxHL});
-      peaks=rawPeaks.map(pk=>({...pk,reasons:makeReasons(pk,[])}));
+      peaks=rawPeaks.map(pk=>({...pk,reasons:makeReasons(pk,[],S.attnWords)}));
       if(!peaks.length) addMsg('ハイライトが検出されませんでした。詳細設定の「ピーク判定の厳しさ」を下げてください。','warning');
     }
     S.lastPeaks=peaks;
