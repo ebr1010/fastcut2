@@ -538,7 +538,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.8.3</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.8.4</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -1333,28 +1333,17 @@ function buildMarkerList(peaks,ep,fps){
 }
 
 function buildMarkerTxt(peaks, ep, attnWords, presetName) {
-  const now = new Date();
   const pad = n => String(n).padStart(2,'0');
-  const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
   const lines = [];
-  lines.push('FASTCUT マーカーリスト' + (ep ? ' — ' + ep : ''));
-  lines.push('作成: ' + dateStr);
-  if (presetName) lines.push('プリセット: ' + presetName);
-  lines.push('');
-  lines.push('■ 反応ワード設定');
-  lines.push('  ' + (attnWords && attnWords.length ? attnWords.join(' / ') : '（なし）'));
-  lines.push('');
-  lines.push('═'.repeat(48));
-  lines.push('');
   peaks.forEach((pk, i) => {
     const w = pk.w;
-    const time = fmtSec(w.s0);
-    lines.push(`  ${pad(i+1)}  ${time}`);
-    lines.push(`      Highlight ${pad(i+1)}` + (ep ? ' [' + ep + ']' : ''));
-    pk.reasons.forEach(r => {
-      lines.push('      ' + r.i + ' ' + r.t);
-    });
-    lines.push('');
+    lines.push(`  ${pad(i+1)}  ${fmtSec(w.s0)}`);
+    const attnR = pk.reasons.find(r => r.i === '→');
+    if (attnR) {
+      const label = (attnWords && attnWords.length) ? attnWords.slice(0,4).join('/') : '反応ワード';
+      const cnt = attnR.t.match(/(\d+)回/);
+      lines.push(`${label}: ${cnt ? cnt[1] : '?'}回`);
+    }
   });
   return lines.join('\n');
 }
@@ -4741,8 +4730,8 @@ document.addEventListener('DOMContentLoaded',()=>{
       const txt=buildMarkerTxt(S.lastPeaks,ep,S.attnWords,preset);
       const parts=[];
       if(ep)parts.push(ep);
-      if(preset)parts.push(preset);
       parts.push('markers');
+      if(preset)parts.push(preset);
       const fname=parts.join('_')+'.txt';
       dl(txt,fname,'text/plain;charset=utf-8');
       toast(fname+' をダウンロードしました','ok');
