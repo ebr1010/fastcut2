@@ -397,6 +397,12 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 /* slider & field descriptions */
 .sl-desc{font-size:10px;color:var(--t2);line-height:1.4;margin-top:2px}
 .fi-desc{font-size:10px;color:var(--t2);line-height:1.4;margin-top:2px}
+.attn-preset-bar{display:flex;align-items:center;gap:5px;margin-top:6px;flex-wrap:wrap}
+.attn-preset-bar select{flex:1;min-width:100px;max-width:180px;background:var(--b2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:3px 6px;font-size:11px;cursor:pointer}
+.attn-preset-bar input{flex:1;min-width:80px;max-width:130px;background:var(--b2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:3px 6px;font-size:11px;outline:none}
+.attn-preset-bar input:focus{border-color:var(--ac)}
+.attn-preset-bar button{flex-shrink:0;background:var(--b2);border:1px solid var(--bd);color:var(--t2);border-radius:4px;padding:3px 9px;font-size:11px;cursor:pointer;white-space:nowrap}
+.attn-preset-bar button:hover{border-color:var(--ac);color:var(--ac)}
 /* ── main tag pill on card ─────────────────────────────────────────────────── */
 .mtag{display:inline-flex;align-items:center;gap:3px;padding:2px 9px;border-radius:10px;font-size:10px;font-weight:700;border:1px solid transparent;line-height:1.5;cursor:default}
 .mtag-x{cursor:pointer;opacity:0.5;font-size:11px;margin-left:2px}
@@ -532,7 +538,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.7.0</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.8.0</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -570,15 +576,15 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     </div>
 
     <div class="fi-group">
-      <div class="fi-lbl">配信開始時刻 (ISO 8601)</div>
-      <input class="fi" type="text" id="fi-start" list="start-hist" placeholder="2026-01-01T21:00:00" value="2026-01-01T00:00:00">
-      <datalist id="start-hist"></datalist>
-    </div>
-
-    <div class="fi-group">
       <div class="fi-lbl">YouTube URL</div>
       <input class="fi" type="text" id="fi-url" list="url-hist" placeholder="https://www.youtube.com/watch?v=...">
       <datalist id="url-hist"></datalist>
+    </div>
+
+    <div class="fi-group">
+      <div class="fi-lbl">配信開始時刻 (ISO 8601)</div>
+      <input class="fi" type="text" id="fi-start" list="start-hist" placeholder="2026-01-01T21:00:00" value="2026-01-01T00:00:00">
+      <datalist id="start-hist"></datalist>
     </div>
 
     <div class="fi-group">
@@ -605,6 +611,13 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
         <input type="text" id="attn-in" class="tag-in" placeholder="反応ワードを追加...">
       </div>
       <div class="fi-desc">草・www・笑 など視聴者の盛り上がりを示す言葉。コメントに含まれる回数が下の「反応ワードの感度」でスコアに加算されます。</div>
+      <div class="attn-preset-bar">
+        <select id="attn-preset-sel" title="保存済みプリセットを選択して読み込む"></select>
+        <button id="attn-preset-load" title="選択したプリセットを読み込む">読込</button>
+        <button id="attn-preset-del" title="選択したプリセットを削除">削除</button>
+        <input type="text" id="attn-preset-name" placeholder="プリセット名" maxlength="30">
+        <button id="attn-preset-save" title="現在の反応ワードをプリセットとして保存">保存</button>
+      </div>
     </div>
 
     <div class="acc">
@@ -663,6 +676,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
           <button id="reg-btn">＋ データ登録</button>
           <button id="exp-btn">↓ CSV</button>
           <button id="jsx-btn">↓ マーカーリスト</button>
+          <button id="jsx-txt-btn">↓ TXT</button>
         </div>
         <div class="hl-list" id="hl-list"></div>
       </div>
@@ -1307,6 +1321,32 @@ function buildMarkerList(peaks,ep,fps){
     +'<\/script><\/body><\/html>';
 }
 
+function buildMarkerTxt(peaks, ep, fps, attnWords) {
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const lines = [];
+  lines.push('FASTCUT マーカーリスト' + (ep ? ' — ' + ep : ''));
+  lines.push('作成: ' + dateStr);
+  lines.push('');
+  lines.push('■ 反応ワード設定');
+  lines.push('  ' + (attnWords && attnWords.length ? attnWords.join(' / ') : '（なし）'));
+  lines.push('');
+  lines.push('═'.repeat(48));
+  lines.push('');
+  peaks.forEach((pk, i) => {
+    const w = pk.w;
+    const tc = toTC(w.s0, fps);
+    lines.push(`  ${pad(i+1)}  ${tc}`);
+    lines.push(`      Highlight ${pad(i+1)}` + (ep ? ' [' + ep + ']' : ''));
+    pk.reasons.forEach(r => {
+      lines.push('      ' + r.i + ' ' + r.t);
+    });
+    lines.push('');
+  });
+  return lines.join('\n');
+}
+
 // ─── §12 CHARTS ───────────────────────────────────────────────────────────────
 const MIN_STEPS=12; // 12 × 5sec = 60sec per minute bucket
 
@@ -1837,6 +1877,59 @@ function setupAttnTags(){
   inp.addEventListener('blur',()=>{if(inp.value.trim()){addW(inp.value);inp.value='';}});
 
   render();
+  setupAttnPresets(render);
+}
+
+function setupAttnPresets(renderTags){
+  const STORE='fc_attn_presets';
+  const sel=document.getElementById('attn-preset-sel');
+  const nameIn=document.getElementById('attn-preset-name');
+
+  function loadPresets(){return(()=>{try{return JSON.parse(localStorage.getItem(STORE)||'{}');}catch{return{};}})();}
+  function savePresets(p){try{localStorage.setItem(STORE,JSON.stringify(p));}catch{}}
+
+  function renderSel(){
+    const p=loadPresets();
+    const keys=Object.keys(p);
+    sel.innerHTML='<option value="">-- プリセット --</option>'+keys.map(k=>`<option value="${esc(k)}">${esc(k)}</option>`).join('');
+  }
+
+  renderSel();
+
+  document.getElementById('attn-preset-save').addEventListener('click',()=>{
+    const name=(nameIn.value||'').trim();
+    if(!name){toast('プリセット名を入力してください','wrn');nameIn.focus();return;}
+    if(!S.attnWords.length){toast('反応ワードが空です','wrn');return;}
+    const p=loadPresets();
+    p[name]=[...S.attnWords];
+    savePresets(p);
+    renderSel();
+    sel.value=name;
+    nameIn.value='';
+    toast('プリセット「'+name+'」を保存しました','ok');
+  });
+
+  document.getElementById('attn-preset-load').addEventListener('click',()=>{
+    const name=sel.value;
+    if(!name){toast('プリセットを選択してください','wrn');return;}
+    const p=loadPresets();
+    if(!p[name]){toast('プリセットが見つかりません','wrn');return;}
+    S.attnWords=[...p[name]];
+    try{localStorage.setItem('fc_attn',JSON.stringify(S.attnWords));}catch{}
+    renderTags();
+    toast('「'+name+'」を読み込みました','ok');
+  });
+
+  document.getElementById('attn-preset-del').addEventListener('click',()=>{
+    const name=sel.value;
+    if(!name){toast('プリセットを選択してください','wrn');return;}
+    if(!confirm('プリセット「'+name+'」を削除しますか？'))return;
+    const p=loadPresets();
+    delete p[name];
+    savePresets(p);
+    renderSel();
+    toast('「'+name+'」を削除しました','ok');
+  });
 }
 
 // ─── §18 ACCORDION & SLIDERS ──────────────────────────────────────────────────
@@ -4601,6 +4694,18 @@ document.addEventListener('DOMContentLoaded',()=>{
       const a=Object.assign(document.createElement('a'),{href:url,download:fname});
       document.body.appendChild(a);a.click();
       document.body.removeChild(a);URL.revokeObjectURL(url);
+      toast(fname+' をダウンロードしました','ok');
+    });
+  });
+
+  safe('jsx-txt-btn',()=>{
+    document.getElementById('jsx-txt-btn').addEventListener('click',()=>{
+      if(!S.lastPeaks.length){toast('ハイライトがありません','wrn');return;}
+      const ep=document.getElementById('fi-ep').value.trim();
+      const fps=parseInt(document.getElementById('sr-fps').value)||30;
+      const txt=buildMarkerTxt(S.lastPeaks,ep,fps,S.attnWords);
+      const fname=(ep?ep+'_':'')+'markers.txt';
+      dl(txt,fname,'text/plain;charset=utf-8');
       toast(fname+' をダウンロードしました','ok');
     });
   });
