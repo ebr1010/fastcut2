@@ -489,6 +489,22 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .rank-table th{text-align:left;color:var(--t1);font-size:11px;padding:6px 10px;border-bottom:1px solid var(--r3);font-family:var(--hf);font-weight:500;letter-spacing:1px;text-transform:uppercase}
 .rank-table td{padding:7px 10px;border-bottom:1px solid rgba(185,24,40,0.08);vertical-align:middle}
 .rank-table tr:hover td{background:rgba(255,255,255,0.025)}
+.va-tag-section{margin-bottom:24px}
+.va-tag-hd{font-size:13px;font-weight:700;color:var(--t0);padding:6px 10px;background:var(--bg2);border-left:3px solid var(--r1);border-radius:3px;margin-bottom:8px}
+.va-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}
+.va-card{background:var(--bg2);border:1px solid var(--bd);border-radius:6px;padding:10px 12px;font-size:12px}
+.va-name{font-weight:700;color:var(--t0);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.va-stats{color:var(--t2);font-size:11px;margin-bottom:5px}
+.va-badges{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:5px}
+.va-badge{font-size:10px;padding:1px 6px;border-radius:10px;border:1px solid;white-space:nowrap}
+.va-badge.草系{color:#4caf50;border-color:#4caf5044}
+.va-badge.質問多め{color:#5eddff;border-color:#5eddff44}
+.va-badge.叫び系{color:#ff7043;border-color:#ff704344}
+.va-badge.長文系{color:#e8a030;border-color:#e8a03044}
+.va-badge.短文系{color:#aaa;border-color:#aaa4}
+.va-badge.常連{color:#e040fb;border-color:#e040fb44}
+.va-badge.寄付者{color:#ffd700;border-color:#ffd70044}
+.va-words{color:var(--t2);font-size:10px;line-height:1.6}
 .rank-num{color:var(--t2);width:50px;font-family:'D-DIN','DIN Condensed','Barlow Condensed',sans-serif;font-size:11px;text-align:center}
 .rank-name{font-family:var(--mf);color:var(--t0)}
 .rank-cnt{font-family:'D-DIN','DIN Condensed','Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:var(--r1);text-align:right;width:100px}
@@ -538,7 +554,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.8.5</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.8.6</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -762,6 +778,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
   <div class="rank-bar">
     <button id="rank-mode-acct" class="rank-mode-btn active" onclick="setRankMode('acct')">👤 アカウント</button>
     <button id="rank-mode-word" class="rank-mode-btn" onclick="setRankMode('word')">📊 頻出ワード(音声)</button>
+    <button id="rank-mode-viewer" class="rank-mode-btn" onclick="setRankMode('viewer')">👥 視聴者分析</button>
     <input class="rank-q" id="rank-q" placeholder="@アカウント名で検索..." oninput="renderRanking()">
     <select class="rank-tag-sel" id="rank-tag" onchange="_rankTagChanged()">
       <option value="">すべてのタグ</option>
@@ -816,6 +833,18 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     </tr></thead>
     <tbody id="rank-word-tbody"><tr><td colspan="4" style="color:var(--t2);text-align:center;padding:40px">データベースタブで動画を読み込むとランキングが表示されます</td></tr></tbody>
   </table>
+  <div id="rank-viewer-area" style="display:none">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <select id="viewer-tag-sel" class="rank-tag-sel" onchange="renderViewerAnalysis()">
+        <option value="">すべてのタグ</option>
+      </select>
+      <input type="number" id="viewer-min-msgs" value="3" min="1" max="999" style="width:52px;background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:3px 6px;font-size:11px" title="最低コメント数">
+      <span style="font-size:11px;color:var(--t2)">コメント以上の視聴者のみ</span>
+      <button class="rank-mode-btn" onclick="renderViewerAnalysis()" style="padding:4px 10px;font-size:11px">🔄 更新</button>
+      <span id="viewer-info" style="font-size:11px;color:var(--t2)"></span>
+    </div>
+    <div id="viewer-result"></div>
+  </div>
 </div>
 
 <script>
@@ -4411,12 +4440,123 @@ function setRankMode(mode){
   _rankMode=mode;
   document.getElementById('rank-mode-acct').classList.toggle('active',mode==='acct');
   document.getElementById('rank-mode-word').classList.toggle('active',mode==='word');
+  document.getElementById('rank-mode-viewer').classList.toggle('active',mode==='viewer');
   document.getElementById('rank-q').style.display=mode==='acct'?'':'none';
+  document.getElementById('rank-tag').style.display=mode!=='viewer'?'':'none';
   document.getElementById('rank-acct-table').style.display=mode==='acct'?'':'none';
   document.getElementById('rank-word-table').style.display=mode==='word'?'':'none';
+  document.getElementById('rank-viewer-area').style.display=mode==='viewer'?'':'none';
   const wc=document.getElementById('rank-word-ctrls');
   if(wc)wc.style.display=mode==='word'?'flex':'none';
-  if(mode==='word')renderWordRanking();else renderRanking();
+  if(mode==='word')renderWordRanking();
+  else if(mode==='viewer'){_syncViewerTagSel();renderViewerAnalysis();}
+  else renderRanking();
+}
+
+function _syncViewerTagSel(){
+  const sel=document.getElementById('viewer-tag-sel');
+  if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">すべてのタグ</option>'
+    +_mainTags.map(t=>`<option value="${esc(t.name)}">${esc(t.name)}</option>`).join('');
+  if(cur)sel.value=cur;
+}
+
+function renderViewerAnalysis(){
+  const tagFilter=document.getElementById('viewer-tag-sel')?.value||'';
+  const minMsgs=parseInt(document.getElementById('viewer-min-msgs')?.value)||3;
+  const recs=tagFilter?_dbCache.filter(r=>r.mainTag===tagFilter):_dbCache;
+
+  // mainTag別にchatDataを集計
+  const byTag=new Map();
+  for(const rec of recs){
+    const tag=rec.mainTag||'（タグなし）';
+    if(!byTag.has(tag))byTag.set(tag,{color:'#888',recs:[]});
+    const td=_mainTags.find(t=>t.name===tag);
+    if(td)byTag.get(tag).color=td.color||'#888';
+    byTag.get(tag).recs.push(rec);
+  }
+
+  // タグごとにユーザー解析
+  const tagResults=[];
+  for(const[tag,{color,recs:tagRecs}]of byTag){
+    const byUser=new Map();
+    for(const rec of tagRecs){
+      for(const c of(rec.chatData||[])){
+        if(!c.username)continue;
+        if(!byUser.has(c.username))byUser.set(c.username,{msgs:[],vids:new Set(),donated:false});
+        const u=byUser.get(c.username);
+        u.msgs.push(c.message||'');
+        u.vids.add(rec.id);
+        if(c.donated)u.donated=true;
+      }
+    }
+    const users=[];
+    for(const[name,data]of byUser){
+      if(data.msgs.length<minMsgs)continue;
+      users.push(_analyzeViewer(name,data.msgs,data.vids.size,data.donated));
+    }
+    users.sort((a,b)=>b.count-a.count);
+    tagResults.push({tag,color,users:users.slice(0,60)});
+  }
+  tagResults.sort((a,b)=>b.users.length-a.users.length);
+
+  const totalUsers=tagResults.reduce((s,t)=>s+t.users.length,0);
+  const info=document.getElementById('viewer-info');
+  if(info)info.textContent=`${tagResults.length}タグ / ${totalUsers}人`;
+
+  const out=document.getElementById('viewer-result');
+  if(!out)return;
+  if(!tagResults.length){out.innerHTML='<div style="color:var(--t2);padding:40px;text-align:center">データがありません</div>';return;}
+
+  out.innerHTML=tagResults.map(({tag,color,users})=>{
+    const cards=users.map(u=>{
+      const badges=u.badges.map(b=>`<span class="va-badge ${esc(b)}">${esc(b)}</span>`).join('');
+      const words=u.topWords.length?`<div class="va-words">頻出: ${u.topWords.map(esc).join(' / ')}</div>`:'';
+      return `<div class="va-card">
+        <div class="va-name" title="${esc(u.name)}">@${esc(u.name)}</div>
+        <div class="va-stats">${u.count}件 · ${u.vidCount}動画 · 平均${u.avgLen}文字</div>
+        <div class="va-badges">${badges}</div>
+        ${words}
+      </div>`;
+    }).join('');
+    return `<div class="va-tag-section">
+      <div class="va-tag-hd" style="border-color:${esc(color)}">${esc(tag)} <span style="font-weight:400;font-size:11px;color:var(--t2)">(${users.length}人)</span></div>
+      <div class="va-grid">${cards}</div>
+    </div>`;
+  }).join('');
+}
+
+function _analyzeViewer(name,msgs,vidCount,donated){
+  const count=msgs.length;
+  const avgLen=Math.round(msgs.reduce((s,m)=>s+m.length,0)/count);
+  const ATTN=/草|ｗ+|w{2,}|笑|lol|lmao|kusa/i;
+  const QUESTION=/[?？]/;
+  const EXCL=/[!！]{2,}|！/;
+  const attnRate=msgs.filter(m=>ATTN.test(m)).length/count;
+  const qRate=msgs.filter(m=>QUESTION.test(m)).length/count;
+  const exclRate=msgs.filter(m=>EXCL.test(m)).length/count;
+  const badges=[];
+  if(attnRate>0.18)badges.push('草系');
+  if(qRate>0.18)badges.push('質問多め');
+  if(exclRate>0.15)badges.push('叫び系');
+  if(avgLen>22)badges.push('長文系');
+  else if(avgLen<6)badges.push('短文系');
+  if(vidCount>=5)badges.push('常連');
+  if(donated)badges.push('寄付者');
+
+  // 頻出フレーズ（2〜4文字CJKのみ）
+  const wmap=new Map();
+  for(const m of msgs){
+    for(let n=2;n<=4;n++){
+      for(let i=0;i<=m.length-n;i++){
+        const g=m.slice(i,i+n);
+        if([...g].every(_isCJK)){wmap.set(g,(wmap.get(g)||0)+1);}
+      }
+    }
+  }
+  const topWords=[...wmap.entries()].filter(([,c])=>c>=2).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([w])=>w);
+  return{name,count,vidCount,avgLen,badges,topWords};
 }
 
 // CJK・かな・カナのみ判定
