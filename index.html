@@ -555,7 +555,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.8.7</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.8.8</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -4527,7 +4527,7 @@ function renderViewerAnalysis(){
       const allBadges=[...new Set([...u.badges,...(prof.personality||[])])];
       const badges=allBadges.map(b=>`<span class="va-badge ${esc(b)}">${esc(b)}</span>`).join('');
       const words=u.topWords.length?`<div class="va-words">頻出: ${u.topWords.map(esc).join(' / ')}</div>`:'';
-      const analysis=prof.analysis?`<div class="va-words" style="margin-top:4px;color:var(--t1);font-size:11px;line-height:1.5">${esc(prof.analysis)}</div>`:'';
+      const analysis=prof.analysis?`<div class="va-words" style="margin-top:4px;color:var(--t1);font-size:11px;line-height:1.5;white-space:pre-wrap">${esc(prof.analysis)}</div>`:'';
       return `<div class="va-card${prof.analysis?' va-card-analyzed':''}">
         <div class="va-name" title="${esc(u.name)}">@${esc(u.name)}</div>
         <div class="va-stats">${u.count}件 · ${u.vidCount}動画 · 平均${u.avgLen}文字</div>
