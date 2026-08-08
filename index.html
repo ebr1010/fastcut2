@@ -601,7 +601,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.9.2</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.9.3</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -888,6 +888,10 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
       <input type="number" id="viewer-min-msgs" value="3" min="1" max="999" style="width:52px;background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:3px 6px;font-size:11px" title="最低コメント数">
       <span style="font-size:11px;color:var(--t2)">コメント以上の視聴者のみ</span>
       <button class="rank-mode-btn" onclick="renderViewerAnalysis()" style="padding:4px 10px;font-size:11px">🔄 更新</button>
+      <span style="font-size:10px;color:var(--t1);margin-left:4px">期間:</span>
+      <input type="date" id="viewer-date-from" style="background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:3px 5px;font-size:11px;outline:none" title="開始日（空欄=全期間）">
+      <span style="font-size:10px;color:var(--t1)">〜</span>
+      <input type="date" id="viewer-date-to" style="background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:3px 5px;font-size:11px;outline:none" title="終了日（空欄=全期間）">
       <button class="rank-mode-btn" onclick="exportViewerJson()" style="padding:4px 10px;font-size:11px;border-color:#e8a030;color:#e8a030">📤 Claude用JSON出力</button>
       <select id="viewer-sort-sel" class="rank-tag-sel" onchange="renderViewerAnalysis()" title="ソート順">
         <option value="">コメント数順</option>
@@ -4625,7 +4629,7 @@ function renderViewerAnalysis(){
           <div class="va-rank-badge">#${displayRank}</div>
           <div class="va-header-info">
             <div class="va-name" title="${esc(u.name)}">@${esc(u.name)}</div>
-            <div class="va-stats">${u.count}件 · ${u.vidCount}動画 · 平均${u.avgLen}文字</div>
+            <div class="va-stats">${u.count}件 · ${u.vidCount}動画 · 平均${u.avgLen}文字${prof.sampleCount!=null?' · サンプル'+prof.sampleCount+'件':''}</div>
             <div class="va-badges">${badges}</div>
           </div>
         </div>
@@ -4666,7 +4670,7 @@ function openViewerDetail(name,tag){
     </div>`;
   }).join('');
   const rank=uData?`#${uData.rank}`:'';
-  const stats=uData?`${uData.count}件 · ${uData.vidCount}動画 · 平均${uData.avgLen}文字`:'';
+  const stats=uData?`${uData.count}件 · ${uData.vidCount}動画 · 平均${uData.avgLen}文字${prof.sampleCount!=null?' · 解析サンプル '+prof.sampleCount+'件':''}`:'';
   const words=uData&&uData.topWords.length?`<div style="margin-top:12px"><div class="va-modal-section-label" style="margin-bottom:6px">💬 頻出ワード</div><div style="font-size:11px;color:var(--t1);line-height:1.8">${uData.topWords.map(esc).join(' · ')}</div></div>`:'';
   const analysisHtml=prof.analysis
     ?`<div class="va-modal-section"><div class="va-modal-section-label">📋 詳細分析</div><div class="va-modal-analysis">${esc(prof.analysis)}</div></div>`
@@ -4702,7 +4706,13 @@ function openViewerDetail(name,tag){
 function exportViewerJson(){
   const tagFilter=document.getElementById('viewer-tag-sel')?.value||'';
   const minMsgs=parseInt(document.getElementById('viewer-min-msgs')?.value)||3;
-  const recs=tagFilter?_dbCache.filter(r=>r.mainTag===tagFilter):_dbCache;
+  const dateFrom=document.getElementById('viewer-date-from')?.value||'';
+  const dateTo=document.getElementById('viewer-date-to')?.value||'';
+
+  let recs=tagFilter?_dbCache.filter(r=>r.mainTag===tagFilter):_dbCache;
+  // 期間フィルター
+  if(dateFrom)recs=recs.filter(r=>r.registeredAt&&r.registeredAt>=dateFrom);
+  if(dateTo)recs=recs.filter(r=>r.registeredAt&&r.registeredAt<=(dateTo+'T23:59:59'));
 
   const byTag=new Map();
   for(const rec of recs){
@@ -4711,9 +4721,12 @@ function exportViewerJson(){
     byTag.get(tag).push(rec);
   }
 
+  const dateRangeLabel=(dateFrom||dateTo)?`${dateFrom||'開始'}〜${dateTo||'現在'}`:'全期間';
   const output={
     exportedAt:new Date().toISOString(),
-    instruction:'各viewerについて、sampleMessagesや統計情報をもとに性格・発言傾向・面白い特徴を日本語で解析してください。返答はJSON配列で、各要素に username/tag/analysis(150字以内)/personality(バッジ配列) を含めてください。',
+    dateRange:dateRangeLabel,
+    videoCount:recs.length,
+    instruction:'各viewerについて、sampleMessagesや統計情報をもとに性格・発言傾向・面白い特徴を日本語で解析してください。返答はJSON配列で、各要素に username/tag/analysis/deepAnalysis/personality(バッジ配列)/scores({ラベル:0-100}) を含めてください。',
     tags:[]
   };
 
@@ -4733,10 +4746,14 @@ function exportViewerJson(){
     for(const[name,data]of byUser){
       if(data.msgs.length<minMsgs)continue;
       const av=_analyzeViewer(name,data.msgs,data.vids.size,data.donated);
-      const sample=data.msgs.filter((m,i,a)=>a.indexOf(m)===i).slice(0,30);
+      // 重複除去してサンプル抽出（最大60件）
+      const deduped=data.msgs.filter((m,i,a)=>m.trim()&&a.indexOf(m)===i);
+      const sample=deduped.slice(0,60);
       users.push({
-        rank:0,username:name,
+        rank:0,
+        username:name,
         totalMessages:av.count,
+        sampleCount:sample.length,
         appearedInVideos:av.vidCount,
         avgMessageLength:av.avgLen,
         autoBadges:av.badges,
@@ -4750,8 +4767,9 @@ function exportViewerJson(){
   }
 
   const json=JSON.stringify(output,null,2);
-  dl(json,(tagFilter?tagFilter+'_':'')+'viewer_analysis.json','application/json;charset=utf-8');
-  toast('JSONを出力しました','ok');
+  const prefix=(tagFilter?tagFilter+'_':'')+(dateFrom?dateFrom+'_':'');
+  dl(json,prefix+'viewer_analysis.json','application/json;charset=utf-8');
+  toast(`JSONを出力しました（${dateRangeLabel} · ${recs.length}動画）`,'ok');
 }
 
 function importViewerAnalysis(){
@@ -4774,6 +4792,7 @@ function importViewerAnalysis(){
     if(item.deepAnalysis)profiles[key].deepAnalysis=item.deepAnalysis;
     if(item.personality)profiles[key].personality=item.personality;
     if(item.scores)profiles[key].scores=item.scores;
+    if(item.sampleCount!=null)profiles[key].sampleCount=item.sampleCount;
     profiles[key].updatedAt=new Date().toISOString();
     count++;
   }
