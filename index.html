@@ -601,7 +601,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.9.3</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.9.4</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -892,6 +892,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
       <input type="date" id="viewer-date-from" style="background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:3px 5px;font-size:11px;outline:none" title="開始日（空欄=全期間）">
       <span style="font-size:10px;color:var(--t1)">〜</span>
       <input type="date" id="viewer-date-to" style="background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:3px 5px;font-size:11px;outline:none" title="終了日（空欄=全期間）">
+      <input type="text" id="viewer-single-user" placeholder="1人に絞る（空=全員）" style="background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:3px 7px;font-size:11px;width:160px;outline:none" title="アカウント名を入力すると、そのユーザーのみ全サンプルを使って解析用JSONを出力します">
       <button class="rank-mode-btn" onclick="exportViewerJson()" style="padding:4px 10px;font-size:11px;border-color:#e8a030;color:#e8a030">📤 Claude用JSON出力</button>
       <select id="viewer-sort-sel" class="rank-tag-sel" onchange="renderViewerAnalysis()" title="ソート順">
         <option value="">コメント数順</option>
@@ -4708,9 +4709,9 @@ function exportViewerJson(){
   const minMsgs=parseInt(document.getElementById('viewer-min-msgs')?.value)||3;
   const dateFrom=document.getElementById('viewer-date-from')?.value||'';
   const dateTo=document.getElementById('viewer-date-to')?.value||'';
+  const singleUser=(document.getElementById('viewer-single-user')?.value||'').trim();
 
   let recs=tagFilter?_dbCache.filter(r=>r.mainTag===tagFilter):_dbCache;
-  // 期間フィルター
   if(dateFrom)recs=recs.filter(r=>r.registeredAt&&r.registeredAt>=dateFrom);
   if(dateTo)recs=recs.filter(r=>r.registeredAt&&r.registeredAt<=(dateTo+'T23:59:59'));
 
@@ -4722,6 +4723,55 @@ function exportViewerJson(){
   }
 
   const dateRangeLabel=(dateFrom||dateTo)?`${dateFrom||'開始'}〜${dateTo||'現在'}`:'全期間';
+
+  if(singleUser){
+    // 1人集中モード：全サンプル最大限
+    const userData=new Map(); // tag -> {msgs,vids,donated}
+    for(const rec of recs){
+      const tag=rec.mainTag||'（タグなし）';
+      for(const c of(rec.chatData||[])){
+        if(c.username!==singleUser)continue;
+        if(!userData.has(tag))userData.set(tag,{msgs:[],vids:new Set(),donated:false});
+        const u=userData.get(tag);
+        u.msgs.push(c.message||'');
+        u.vids.add(rec.id);
+        if(c.donated)u.donated=true;
+      }
+    }
+    if(!userData.size){toast(`「${singleUser}」のコメントが見つかりません`,'err');return;}
+    const output={
+      exportedAt:new Date().toISOString(),
+      dateRange:dateRangeLabel,
+      videoCount:recs.length,
+      targetUser:singleUser,
+      mode:'single_user_full_sample',
+      instruction:`「${singleUser}」について、sampleMessagesや統計情報をもとに性格・発言傾向・深層心理・面白い特徴を日本語で最大限詳細に解析してください。サンプル数が多いので、時系列の変化や発言パターンの多様性まで分析してください。返答はJSON配列で、各要素に username/tag/analysis/deepAnalysis/personality(バッジ配列)/scores({ラベル:0-100}) を含めてください。`,
+      tags:[]
+    };
+    for(const[tag,data]of userData){
+      const av=_analyzeViewer(singleUser,data.msgs,data.vids.size,data.donated);
+      // 重複除去・空除去のみ、件数上限なし
+      const deduped=data.msgs.filter((m,i,a)=>m.trim()&&a.indexOf(m)===i);
+      output.tags.push({tag,viewers:[{
+        rank:1,
+        username:singleUser,
+        totalMessages:av.count,
+        sampleCount:deduped.length,
+        appearedInVideos:av.vidCount,
+        avgMessageLength:av.avgLen,
+        autoBadges:av.badges,
+        topPhrases:av.topWords,
+        sampleMessages:deduped
+      }]});
+    }
+    const json=JSON.stringify(output,null,2);
+    dl(json,`${singleUser}_full_analysis.json`,'application/json;charset=utf-8');
+    const totalSamples=output.tags.reduce((s,t)=>s+t.viewers[0].sampleCount,0);
+    toast(`「${singleUser}」全サンプル ${totalSamples}件 を出力しました`,'ok');
+    return;
+  }
+
+  // 通常モード：全員・最大60件サンプル
   const output={
     exportedAt:new Date().toISOString(),
     dateRange:dateRangeLabel,
@@ -4746,7 +4796,6 @@ function exportViewerJson(){
     for(const[name,data]of byUser){
       if(data.msgs.length<minMsgs)continue;
       const av=_analyzeViewer(name,data.msgs,data.vids.size,data.donated);
-      // 重複除去してサンプル抽出（最大60件）
       const deduped=data.msgs.filter((m,i,a)=>m.trim()&&a.indexOf(m)===i);
       const sample=deduped.slice(0,60);
       users.push({
