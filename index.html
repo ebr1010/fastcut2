@@ -552,6 +552,30 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .va-modal-section-label{font-size:10px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#7dd3fc}
 .va-modal-analysis{font-size:12px;color:var(--t0);line-height:1.85;white-space:pre-wrap}
 .va-modal-deep{font-size:11.5px;color:var(--t1);line-height:1.8;white-space:pre-wrap}
+/* Streamer Profile Card */
+.sp-card{background:linear-gradient(135deg,color-mix(in srgb,var(--bg1) 82%,#7c3aed 18%),var(--bg1));border:1px solid #7c3aed55;border-radius:12px;padding:16px;margin-bottom:16px}
+.sp-card-hd{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--bd)}
+.sp-icon{font-size:22px;line-height:1}
+.sp-title{font-size:14px;font-weight:800;color:var(--t0)}
+.sp-subtitle{font-size:10px;color:var(--t2);margin-top:2px}
+.sp-badges{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}
+.sp-badge{font-size:9px;padding:2px 8px;border-radius:8px;border:1px solid #a78bfa66;background:#a78bfa22;color:#c4b5fd;font-weight:600}
+.sp-body{display:flex;gap:14px}
+.sp-scores{display:flex;flex-direction:column;gap:6px;width:175px;min-width:175px}
+.sp-score-row{display:flex;align-items:center;gap:6px}
+.sp-score-label{font-size:10px;color:var(--t0);width:50px;flex-shrink:0;font-weight:600}
+.sp-score-track{flex:1;height:5px;background:rgba(255,255,255,.12);border-radius:3px;overflow:hidden}
+.sp-score-fill{height:100%;border-radius:3px}
+.sp-score-val{font-size:11px;font-weight:700;min-width:22px;text-align:right;font-family:'D-DIN',sans-serif}
+.sp-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px}
+.sp-section-label{font-size:9px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#a78bfa;margin-bottom:3px}
+.sp-analysis{font-size:11px;color:var(--t0);line-height:1.75;white-space:pre-wrap;overflow-y:auto;max-height:130px}
+.sp-analysis::-webkit-scrollbar{width:3px}
+.sp-analysis::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);border-radius:2px}
+.sp-deep{font-size:10.5px;color:var(--t1);line-height:1.65;white-space:pre-wrap;overflow-y:auto;max-height:90px}
+.sp-deep::-webkit-scrollbar{width:3px}
+.sp-deep::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:2px}
+.sp-updated{font-size:9px;color:var(--t2);margin-top:8px;text-align:right;opacity:.6}
 .rank-num{color:var(--t2);width:50px;font-family:'D-DIN','DIN Condensed','Barlow Condensed',sans-serif;font-size:11px;text-align:center}
 .rank-name{font-family:var(--mf);color:var(--t0)}
 .rank-cnt{font-family:'D-DIN','DIN Condensed','Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:var(--r1);text-align:right;width:100px}
@@ -601,7 +625,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.9.4</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.9.5</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -893,7 +917,8 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
       <span style="font-size:10px;color:var(--t1)">〜</span>
       <input type="date" id="viewer-date-to" style="background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:3px 5px;font-size:11px;outline:none" title="終了日（空欄=全期間）">
       <input type="text" id="viewer-single-user" placeholder="1人に絞る（空=全員）" style="background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:3px 7px;font-size:11px;width:160px;outline:none" title="アカウント名を入力すると、そのユーザーのみ全サンプルを使って解析用JSONを出力します">
-      <button class="rank-mode-btn" onclick="exportViewerJson()" style="padding:4px 10px;font-size:11px;border-color:#e8a030;color:#e8a030">📤 Claude用JSON出力</button>
+      <button class="rank-mode-btn" onclick="exportViewerJson()" style="padding:4px 10px;font-size:11px;border-color:#e8a030;color:#e8a030">📤 視聴者解析JSON</button>
+      <button class="rank-mode-btn" onclick="exportStreamerJson()" style="padding:4px 10px;font-size:11px;border-color:#a78bfa;color:#a78bfa">🎙️ 配信者解析JSON</button>
       <select id="viewer-sort-sel" class="rank-tag-sel" onchange="renderViewerAnalysis()" title="ソート順">
         <option value="">コメント数順</option>
         <option value="関与度">関与度順</option>
@@ -906,12 +931,21 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     </div>
     <div id="viewer-result"></div>
     <div id="viewer-import-area" style="margin-top:20px;border-top:1px solid var(--bd);padding-top:16px">
-      <div style="font-size:12px;color:var(--t2);margin-bottom:6px">📥 Claudeの分析結果を貼り付けて登録（JSON形式）</div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:6px">📥 Claudeの視聴者分析結果を貼り付けて登録（JSON形式）</div>
       <textarea id="viewer-import-ta" rows="6" placeholder='[{"username":"xxx","tag":"タグ名","analysis":"解析コメント","personality":["常連","草系"]}]'
         style="width:100%;background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:8px;font-size:11px;font-family:monospace;resize:vertical;outline:none"></textarea>
       <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
         <button class="rank-mode-btn" onclick="importViewerAnalysis()" style="padding:5px 14px;border-color:#4caf50;color:#4caf50">✅ 登録</button>
         <span id="viewer-import-msg" style="font-size:11px;color:var(--t2)"></span>
+      </div>
+    </div>
+    <div style="margin-top:16px;border-top:1px solid var(--bd);padding-top:16px">
+      <div style="font-size:12px;color:var(--t2);margin-bottom:6px">🎙️ Claudeの配信者分析結果を貼り付けて登録（JSON形式）</div>
+      <textarea id="streamer-import-ta" rows="5" placeholder='[{"tag":"タグ名","analysis":"性格解析...","deepAnalysis":"深層分析...","personality":["高エネルギー","話術巧み"],"scores":{"話術":90,"ユーモア":85,"親近感":80,"情報量":70,"エネルギー":95}}]'
+        style="width:100%;background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:8px;font-size:11px;font-family:monospace;resize:vertical;outline:none"></textarea>
+      <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+        <button class="rank-mode-btn" onclick="importStreamerAnalysis()" style="padding:5px 14px;border-color:#a78bfa;color:#a78bfa">✅ 登録</button>
+        <span id="streamer-import-msg" style="font-size:11px;color:var(--t2)"></span>
       </div>
     </div>
   </div>
@@ -4643,6 +4677,7 @@ function renderViewerAnalysis(){
     const sortLabel=sortScore?`（${sortScore}順）`:'';
     return `<div class="va-tag-section">
       <div class="va-tag-hd" style="border-color:${esc(color)}">${esc(tag)}<span style="font-weight:400;font-size:11px;color:var(--t1);margin-left:8px">${users.length}人${sortLabel}</span></div>
+      ${_renderStreamerCard(tag)}
       <div class="va-grid">${cards}</div>
     </div>`;
   }).join('');
@@ -4854,6 +4889,134 @@ function importViewerAnalysis(){
 
 function _loadViewerProfiles(){
   try{return JSON.parse(localStorage.getItem('fc_viewer_profiles')||'{}');}catch{return{};}
+}
+
+function _loadStreamerProfiles(){
+  try{return JSON.parse(localStorage.getItem('fc_streamer_profiles')||'{}');}catch{return{};}
+}
+
+function _renderStreamerCard(tag){
+  const prof=_loadStreamerProfiles()[tag];
+  if(!prof||!prof.analysis)return '';
+  const scores=prof.scores||{};
+  const scoreLabels=['話術','ユーモア','親近感','情報量','エネルギー'];
+  const scoreHtml=scoreLabels.filter(l=>scores[l]!=null).map(l=>{
+    const v=scores[l];
+    const c=v>=80?'#4ade80':v>=60?'#facc15':'#f87171';
+    return `<div class="sp-score-row"><div class="sp-score-label">${esc(l)}</div><div class="sp-score-track"><div class="sp-score-fill" style="width:${v}%;background:${c}"></div></div><div class="sp-score-val" style="color:${c}">${v}</div></div>`;
+  }).join('');
+  const badges=(prof.personality||[]).map(b=>`<span class="sp-badge">${esc(b)}</span>`).join('');
+  const updated=prof.updatedAt?new Date(prof.updatedAt).toLocaleDateString('ja-JP'):'';
+  return `<div class="sp-card">
+    <div class="sp-card-hd">
+      <div class="sp-icon">🎙️</div>
+      <div><div class="sp-title">配信者プロフィール — ${esc(tag)}</div><div class="sp-subtitle">音声データをもとにした性格解析</div></div>
+    </div>
+    ${badges?`<div class="sp-badges">${badges}</div>`:''}
+    <div class="sp-body">
+      ${scoreHtml?`<div class="sp-scores">${scoreHtml}</div>`:''}
+      <div class="sp-text">
+        ${prof.analysis?`<div><div class="sp-section-label">性格・特徴解析</div><div class="sp-analysis">${esc(prof.analysis)}</div></div>`:''}
+        ${prof.deepAnalysis?`<div><div class="sp-section-label">深層分析</div><div class="sp-deep">${esc(prof.deepAnalysis)}</div></div>`:''}
+      </div>
+    </div>
+    ${updated?`<div class="sp-updated">解析日: ${updated}</div>`:''}
+  </div>`;
+}
+
+function exportStreamerJson(){
+  const tagFilter=document.getElementById('viewer-tag-sel')?.value||'';
+  const dateFrom=document.getElementById('viewer-date-from')?.value||'';
+  const dateTo=document.getElementById('viewer-date-to')?.value||'';
+
+  let recs=tagFilter?_dbCache.filter(r=>r.mainTag===tagFilter):_dbCache;
+  if(dateFrom)recs=recs.filter(r=>r.registeredAt&&r.registeredAt>=dateFrom);
+  if(dateTo)recs=recs.filter(r=>r.registeredAt&&r.registeredAt<=(dateTo+'T23:59:59'));
+
+  const byTag=new Map();
+  for(const rec of recs){
+    const tag=rec.mainTag||'（タグなし）';
+    if(!byTag.has(tag))byTag.set(tag,[]);
+    byTag.get(tag).push(rec);
+  }
+  if(!byTag.size){toast('データがありません','err');return;}
+
+  // 音声データが存在するか確認
+  let hasTr=false;
+  for(const[,tagRecs]of byTag){
+    if(tagRecs.some(r=>(r.trData||[]).length>0)){hasTr=true;break;}
+  }
+  if(!hasTr){toast('音声データ（字幕）がありません。字幕つき動画を登録してください。','err');return;}
+
+  const dateRangeLabel=(dateFrom||dateTo)?`${dateFrom||'開始'}〜${dateTo||'現在'}`:'全期間';
+  const output={
+    exportedAt:new Date().toISOString(),
+    dateRange:dateRangeLabel,
+    mode:'streamer_personality_analysis',
+    instruction:'以下は配信者の音声認識データ（speechSample）です。この発言内容をもとに、配信者の性格・話し方の癖・よく使う表現・口調・ユーモアのスタイル・感情表現の特徴・よく話すトピック・視聴者との関係性・深層心理を日本語で最大限詳細に解析してください。返答はJSON配列で、各要素に tag/analysis/deepAnalysis/personality(バッジ配列)/scores({話術:0-100,ユーモア:0-100,親近感:0-100,情報量:0-100,エネルギー:0-100}) を含めてください。',
+    tags:[]
+  };
+
+  let totalSamples=0;
+  for(const[tag,tagRecs]of byTag){
+    const allSegs=[];
+    for(const rec of tagRecs){
+      for(const t of(rec.trData||[])){
+        if(t.text?.trim())allSegs.push(t.text.trim());
+      }
+    }
+    if(!allSegs.length)continue;
+    // 重複除去
+    const deduped=allSegs.filter((t,i,a)=>a.indexOf(t)===i);
+    // 全体から均等サンプリング（最大600件）
+    const CAP=600;
+    const sample=deduped.length<=CAP?deduped:
+      Array.from({length:CAP},(_,i)=>deduped[Math.floor(i*deduped.length/CAP)]);
+    const totalChat=tagRecs.reduce((s,r)=>s+(r.chatData?.length||0),0);
+    const uniqueUsers=new Set(tagRecs.flatMap(r=>(r.chatData||[]).map(c=>c.username))).size;
+    output.tags.push({
+      tag,
+      videoCount:tagRecs.length,
+      totalSpeechSegments:allSegs.length,
+      sampleCount:sample.length,
+      viewerStats:{totalMessages:totalChat,uniqueViewers:uniqueUsers},
+      speechSample:sample
+    });
+    totalSamples+=sample.length;
+  }
+
+  if(!output.tags.length){toast('音声データのあるタグが見つかりません','err');return;}
+  const json=JSON.stringify(output,null,2);
+  const prefix=(tagFilter?tagFilter+'_':'')+(dateFrom?dateFrom+'_':'');
+  dl(json,prefix+'streamer_analysis.json','application/json;charset=utf-8');
+  toast(`配信者解析JSON出力（${totalSamples}セグメント · ${recs.length}動画）`,'ok');
+}
+
+function importStreamerAnalysis(){
+  const ta=document.getElementById('streamer-import-ta');
+  const msg=document.getElementById('streamer-import-msg');
+  const raw=(ta?.value||'').trim();
+  if(!raw){msg.textContent='データを貼り付けてください';return;}
+  let data;
+  try{data=JSON.parse(raw);}catch{msg.textContent='JSONの形式が正しくありません';return;}
+  if(!Array.isArray(data)){msg.textContent='JSON配列で貼り付けてください';return;}
+  const profiles=_loadStreamerProfiles();
+  let count=0;
+  for(const item of data){
+    if(!item.tag)continue;
+    if(!profiles[item.tag])profiles[item.tag]={};
+    if(item.analysis)profiles[item.tag].analysis=item.analysis;
+    if(item.deepAnalysis)profiles[item.tag].deepAnalysis=item.deepAnalysis;
+    if(item.personality)profiles[item.tag].personality=item.personality;
+    if(item.scores)profiles[item.tag].scores=item.scores;
+    profiles[item.tag].updatedAt=new Date().toISOString();
+    count++;
+  }
+  try{localStorage.setItem('fc_streamer_profiles',JSON.stringify(profiles));}catch(e){msg.textContent='保存失敗: '+e.message;return;}
+  msg.textContent=count+'件を登録しました';
+  ta.value='';
+  renderViewerAnalysis();
+  toast('配信者プロファイル '+count+'件を登録しました','ok');
 }
 
 function _analyzeViewer(name,msgs,vidCount,donated){
