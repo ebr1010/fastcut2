@@ -493,43 +493,65 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .va-tag-section{margin-bottom:32px}
 .va-tag-hd{font-size:13px;font-weight:800;color:var(--t0);padding:9px 14px;background:linear-gradient(90deg,var(--bg2),var(--bg1));border-left:4px solid var(--r1);border-radius:4px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
 .va-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-.va-card{background:var(--bg1);border:1px solid var(--bd);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;transition:border-color .2s}
-.va-card:hover{border-color:var(--r3)}
+.va-card{background:var(--bg1);border:1px solid var(--bd);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;transition:border-color .2s;cursor:pointer}
+.va-card:hover{border-color:var(--r2);box-shadow:0 4px 20px rgba(0,0,0,.3)}
 .va-card-header{padding:10px 14px;display:flex;align-items:flex-start;gap:10px;border-bottom:1px solid var(--bd);background:var(--bg2)}
-.va-rank-badge{font-size:18px;font-weight:900;font-family:'D-DIN','DIN Condensed',sans-serif;color:var(--t2);min-width:38px;line-height:1;padding-top:2px;opacity:.5}
-.va-card-analyzed .va-rank-badge{opacity:1;color:#7dd3fc}
+.va-rank-badge{font-size:20px;font-weight:900;font-family:'D-DIN','DIN Condensed',sans-serif;color:#7dd3fc;min-width:42px;line-height:1;padding-top:2px}
 .va-header-info{flex:1;overflow:hidden}
 .va-name{font-weight:700;color:var(--t0);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px}
-.va-stats{color:var(--t2);font-size:10px;margin-bottom:5px}
+.va-stats{color:var(--t1);font-size:10px;margin-bottom:5px}
 .va-badges{display:flex;flex-wrap:wrap;gap:3px}
 .va-badge{font-size:9px;padding:2px 7px;border-radius:8px;border:1px solid;white-space:nowrap;font-weight:600}
-.va-badge.草系{color:#4ade80;border-color:#4ade8033;background:#4ade8011}
-.va-badge.質問多め{color:#38bdf8;border-color:#38bdf833;background:#38bdf811}
-.va-badge.叫び系{color:#fb923c;border-color:#fb923c33;background:#fb923c11}
-.va-badge.長文系{color:#fbbf24;border-color:#fbbf2433;background:#fbbf2411}
-.va-badge.短文系{color:#94a3b8;border-color:#94a3b833;background:#94a3b811}
-.va-badge.常連{color:#c084fc;border-color:#c084fc33;background:#c084fc11}
-.va-badge.寄付者{color:#fde68a;border-color:#fde68a33;background:#fde68a11}
+.va-badge.草系{color:#4ade80;border-color:#4ade8066;background:#4ade8022}
+.va-badge.質問多め{color:#38bdf8;border-color:#38bdf866;background:#38bdf822}
+.va-badge.叫び系{color:#fb923c;border-color:#fb923c66;background:#fb923c22}
+.va-badge.長文系{color:#fbbf24;border-color:#fbbf2466;background:#fbbf2422}
+.va-badge.短文系{color:#cbd5e1;border-color:#94a3b866;background:#94a3b822}
+.va-badge.常連{color:#c084fc;border-color:#c084fc66;background:#c084fc22}
+.va-badge.寄付者{color:#fde68a;border-color:#fde68a66;background:#fde68a22}
 .va-card-content{display:flex;flex-direction:row;flex:1;min-height:0}
 .va-card-left{width:175px;min-width:175px;padding:10px 12px;border-right:1px solid var(--bd);display:flex;flex-direction:column;gap:8px;background:var(--bg2)}
 .va-card-right{flex:1;padding:10px 14px;display:flex;flex-direction:column;gap:8px;overflow:hidden;min-width:0}
 /* Scores */
 .va-score-row{display:flex;align-items:center;gap:6px}
-.va-score-label{font-size:10px;color:var(--t2);width:52px;flex-shrink:0}
-.va-score-track{flex:1;height:5px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}
+.va-score-label{font-size:10px;color:var(--t0);width:52px;flex-shrink:0;font-weight:600}
+.va-score-track{flex:1;height:5px;background:rgba(255,255,255,.12);border-radius:3px;overflow:hidden}
 .va-score-fill{height:100%;border-radius:3px;transition:width .5s ease}
-.va-score-val{font-size:10px;font-weight:700;min-width:22px;text-align:right;font-family:'D-DIN',sans-serif}
-.va-words-row{font-size:10px;color:var(--t2);line-height:1.6;border-top:1px solid var(--bd);padding-top:6px;margin-top:auto}
+.va-score-val{font-size:11px;font-weight:700;min-width:22px;text-align:right;font-family:'D-DIN',sans-serif}
+.va-words-row{font-size:10px;color:var(--t1);line-height:1.6;border-top:1px solid var(--bd);padding-top:6px;margin-top:auto}
 /* Analysis */
-.va-section-label{font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--t2);margin-bottom:3px}
-.va-analysis{font-size:11px;color:var(--t1);line-height:1.75;white-space:pre-wrap;overflow-y:auto;max-height:130px;flex:1}
+.va-section-label{font-size:9px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#7dd3fc;margin-bottom:4px}
+.va-analysis{font-size:11px;color:var(--t0);line-height:1.75;white-space:pre-wrap;overflow-y:auto;max-height:100px;flex:1}
 .va-analysis::-webkit-scrollbar{width:3px}
-.va-analysis::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:2px}
-.va-deep{font-size:10.5px;color:#94a3b8;line-height:1.65;white-space:pre-wrap;overflow-y:auto;max-height:90px;border-top:1px solid var(--bd);padding-top:8px}
+.va-analysis::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);border-radius:2px}
+.va-deep{font-size:10.5px;color:var(--t1);line-height:1.65;white-space:pre-wrap;overflow-y:auto;max-height:80px;border-top:1px solid var(--bd);padding-top:8px}
 .va-deep::-webkit-scrollbar{width:3px}
-.va-deep::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px}
-.va-card-analyzed{border-color:#7dd3fc44}
-.va-card-analyzed .va-card-header{background:linear-gradient(90deg,color-mix(in srgb,var(--bg2) 80%,#7dd3fc 20%),var(--bg2))}
+.va-deep::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:2px}
+.va-card-analyzed{border-color:#7dd3fc55}
+.va-card-analyzed .va-card-header{background:linear-gradient(90deg,color-mix(in srgb,var(--bg2) 75%,#0369a1 25%),var(--bg2))}
+.va-tap-hint{font-size:9px;color:var(--t1);margin-top:auto;text-align:right;opacity:.6;padding-top:4px}
+/* Viewer detail modal */
+.va-modal{position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.82);display:none;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto}
+.va-modal.open{display:flex}
+.va-modal-inner{background:var(--bg1);border:1px solid var(--bd);border-radius:14px;width:100%;max-width:760px;overflow:hidden;margin:auto}
+.va-modal-hd{padding:16px 20px;background:var(--bg2);border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:12px}
+.va-modal-rank{font-size:28px;font-weight:900;font-family:'D-DIN','DIN Condensed',sans-serif;color:#7dd3fc;min-width:52px}
+.va-modal-name{font-size:16px;font-weight:700;color:var(--t0)}
+.va-modal-stats{font-size:11px;color:var(--t1);margin-top:2px}
+.va-modal-close{margin-left:auto;background:none;border:1px solid var(--bd);color:var(--t1);border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px}
+.va-modal-close:hover{border-color:var(--r2);color:var(--t0)}
+.va-modal-body{display:flex;gap:0}
+.va-modal-left{width:220px;min-width:220px;padding:16px;border-right:1px solid var(--bd);background:var(--bg2);display:flex;flex-direction:column;gap:12px}
+.va-modal-right{flex:1;padding:16px 20px;display:flex;flex-direction:column;gap:14px;overflow:hidden}
+.va-modal-score-row{display:flex;align-items:center;gap:8px}
+.va-modal-score-label{font-size:11px;color:var(--t0);font-weight:600;width:60px;flex-shrink:0}
+.va-modal-score-track{flex:1;height:7px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden}
+.va-modal-score-fill{height:100%;border-radius:4px}
+.va-modal-score-val{font-size:12px;font-weight:700;min-width:28px;text-align:right;font-family:'D-DIN',sans-serif}
+.va-modal-section{display:flex;flex-direction:column;gap:6px}
+.va-modal-section-label{font-size:10px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#7dd3fc}
+.va-modal-analysis{font-size:12px;color:var(--t0);line-height:1.85;white-space:pre-wrap}
+.va-modal-deep{font-size:11.5px;color:var(--t1);line-height:1.8;white-space:pre-wrap}
 .rank-num{color:var(--t2);width:50px;font-family:'D-DIN','DIN Condensed','Barlow Condensed',sans-serif;font-size:11px;text-align:center}
 .rank-name{font-family:var(--mf);color:var(--t0)}
 .rank-cnt{font-family:'D-DIN','DIN Condensed','Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:var(--r1);text-align:right;width:100px}
@@ -579,7 +601,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.9.0</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.9.1</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -867,7 +889,15 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
       <span style="font-size:11px;color:var(--t2)">コメント以上の視聴者のみ</span>
       <button class="rank-mode-btn" onclick="renderViewerAnalysis()" style="padding:4px 10px;font-size:11px">🔄 更新</button>
       <button class="rank-mode-btn" onclick="exportViewerJson()" style="padding:4px 10px;font-size:11px;border-color:#e8a030;color:#e8a030">📤 Claude用JSON出力</button>
-      <span id="viewer-info" style="font-size:11px;color:var(--t2)"></span>
+      <select id="viewer-sort-sel" class="rank-tag-sel" onchange="renderViewerAnalysis()" title="ソート順">
+        <option value="">コメント数順</option>
+        <option value="関与度">関与度順</option>
+        <option value="観察力">観察力順</option>
+        <option value="ユーモア">ユーモア順</option>
+        <option value="愛情深さ">愛情深さ順</option>
+        <option value="毒舌度">毒舌度順</option>
+      </select>
+      <span id="viewer-info" style="font-size:11px;color:var(--t1)"></span>
     </div>
     <div id="viewer-result"></div>
     <div id="viewer-import-area" style="margin-top:20px;border-top:1px solid var(--bd);padding-top:16px">
@@ -4546,48 +4576,129 @@ function renderViewerAnalysis(){
   if(!tagResults.length){out.innerHTML='<div style="color:var(--t2);padding:40px;text-align:center">データがありません</div>';return;}
 
   const profiles=_loadViewerProfiles();
+  const sortScore=document.getElementById('viewer-sort-sel')?.value||'';
+  // グローバルにプロファイルとユーザーデータを保持（モーダル用）
+  window._vaProfiles=profiles;
+  window._vaTagResults=tagResults;
+
   out.innerHTML=tagResults.map(({tag,color,users})=>{
-    const cards=users.map(u=>{
+    // スコアソート: スコアがある人を先頭に、その中でスコア値降順
+    let sortedUsers=[...users];
+    if(sortScore){
+      sortedUsers.sort((a,b)=>{
+        const pa=profiles[a.name+'___'+tag]||{};
+        const pb=profiles[b.name+'___'+tag]||{};
+        const sa=(pa.scores&&pa.scores[sortScore]!=null)?pa.scores[sortScore]:-1;
+        const sb=(pb.scores&&pb.scores[sortScore]!=null)?pb.scores[sortScore]:-1;
+        return sb-sa;
+      });
+    }
+    // スコアソート時のランク付け直し
+    sortedUsers.forEach((u,i)=>u.scoreRank=i+1);
+
+    const cards=sortedUsers.map(u=>{
       const profKey=u.name+'___'+tag;
-      const prof=profiles[profKey]||profiles[u.name]||{};
+      const prof=profiles[profKey]||{};  // タグ固有のみ。他タグのデータは絶対に使わない
       const allBadges=[...new Set([...u.badges,...(prof.personality||[])])];
       const badges=allBadges.map(b=>`<span class="va-badge ${esc(b)}">${esc(b)}</span>`).join('');
-      // scores
       const scoreColors=v=>v>=80?'#4ade80':v>=60?'#facc15':'#f87171';
       const scores=prof.scores||{};
       const scoreRows=Object.entries(scores).map(([label,val])=>{
         const c=scoreColors(val);
-        return `<div class="va-score-row"><span class="va-score-label">${esc(label)}</span><div class="va-score-track"><div class="va-score-fill" style="width:${val}%;background:${c}"></div></div><span class="va-score-val" style="color:${c}">${val}</span></div>`;
+        const isActive=label===sortScore;
+        return `<div class="va-score-row"><span class="va-score-label" style="${isActive?'color:#7dd3fc':''}">${esc(label)}</span><div class="va-score-track"><div class="va-score-fill" style="width:${val}%;background:${c}"></div></div><span class="va-score-val" style="color:${c}">${val}</span></div>`;
       }).join('');
       const scoresHtml=scoreRows?`<div>${scoreRows}</div>`:'';
       const wordsHtml=u.topWords.length?`<div class="va-words-row">💬 ${u.topWords.map(esc).join(' · ')}</div>`:'';
-      // analysis
+      const displayRank=sortScore?u.scoreRank:u.rank;
+      // カード右欄: 先頭100文字だけ表示（クリックで全文モーダル）
+      const shortAnalysis=prof.analysis?(prof.analysis.length>120?prof.analysis.slice(0,120)+'…':prof.analysis):'';
       const analysisHtml=prof.analysis
-        ?`<div><div class="va-section-label">📋 分析</div><div class="va-analysis">${esc(prof.analysis)}</div></div>`
-        :`<div class="va-analysis" style="color:var(--t2);font-style:italic;font-size:11px">未分析 — JSONをインポートしてください</div>`;
+        ?`<div><div class="va-section-label">📋 分析</div><div class="va-analysis">${esc(shortAnalysis)}</div></div>`
+        :`<div class="va-analysis" style="color:var(--t1);font-style:italic;font-size:10px">未分析 — クリックして詳細 / JSONインポートで追加</div>`;
+      const deepShort=prof.deepAnalysis?(prof.deepAnalysis.length>80?prof.deepAnalysis.slice(0,80)+'…':prof.deepAnalysis):'';
       const deepHtml=prof.deepAnalysis
-        ?`<div><div class="va-section-label">🧠 深層心理</div><div class="va-deep">${esc(prof.deepAnalysis)}</div></div>`
+        ?`<div><div class="va-section-label">🧠 深層</div><div class="va-deep">${esc(deepShort)}</div></div>`
         :'';
-      return `<div class="va-card${prof.analysis?' va-card-analyzed':''}">
+      const nameJson=JSON.stringify(u.name);
+      const tagJson=JSON.stringify(tag);
+      return `<div class="va-card${prof.analysis?' va-card-analyzed':''}" onclick="openViewerDetail(${nameJson},${tagJson})">
         <div class="va-card-header">
-          <div class="va-rank-badge">#${u.rank}</div>
+          <div class="va-rank-badge">#${displayRank}</div>
           <div class="va-header-info">
             <div class="va-name" title="${esc(u.name)}">@${esc(u.name)}</div>
-            <div class="va-stats">${u.count}件 &middot; ${u.vidCount}動画 &middot; 平均${u.avgLen}文字</div>
+            <div class="va-stats">${u.count}件 · ${u.vidCount}動画 · 平均${u.avgLen}文字</div>
             <div class="va-badges">${badges}</div>
           </div>
         </div>
         <div class="va-card-content">
           <div class="va-card-left">${scoresHtml}${wordsHtml}</div>
-          <div class="va-card-right">${analysisHtml}${deepHtml}</div>
+          <div class="va-card-right">${analysisHtml}${deepHtml}<div class="va-tap-hint">タップで詳細 ▶</div></div>
         </div>
       </div>`;
     }).join('');
+    const sortLabel=sortScore?`（${sortScore}順）`:'';
     return `<div class="va-tag-section">
-      <div class="va-tag-hd" style="border-color:${esc(color)}">${esc(tag)}<span style="font-weight:400;font-size:11px;color:var(--t2);margin-left:8px">${users.length}人</span></div>
+      <div class="va-tag-hd" style="border-color:${esc(color)}">${esc(tag)}<span style="font-weight:400;font-size:11px;color:var(--t1);margin-left:8px">${users.length}人${sortLabel}</span></div>
       <div class="va-grid">${cards}</div>
     </div>`;
   }).join('');
+}
+
+function openViewerDetail(name,tag){
+  const profiles=window._vaProfiles||_loadViewerProfiles();
+  const tagResults=window._vaTagResults||[];
+  const profKey=name+'___'+tag;
+  const prof=profiles[profKey]||{};
+  // ユーザー統計を取得
+  let uData=null;
+  for(const t of tagResults){
+    if(t.tag===tag){uData=t.users.find(u=>u.name===name);break;}
+  }
+  const scoreColors=v=>v>=80?'#4ade80':v>=60?'#facc15':'#f87171';
+  const allBadges=uData?[...new Set([...uData.badges,...(prof.personality||[])])]:(prof.personality||[]);
+  const badges=allBadges.map(b=>`<span class="va-badge ${esc(b)}">${esc(b)}</span>`).join('');
+  const scores=prof.scores||{};
+  const scoreRows=Object.entries(scores).map(([label,val])=>{
+    const c=scoreColors(val);
+    return `<div class="va-modal-score-row">
+      <span class="va-modal-score-label">${esc(label)}</span>
+      <div class="va-modal-score-track"><div class="va-modal-score-fill" style="width:${val}%;background:${c}"></div></div>
+      <span class="va-modal-score-val" style="color:${c}">${val}</span>
+    </div>`;
+  }).join('');
+  const rank=uData?`#${uData.rank}`:'';
+  const stats=uData?`${uData.count}件 · ${uData.vidCount}動画 · 平均${uData.avgLen}文字`:'';
+  const words=uData&&uData.topWords.length?`<div style="margin-top:12px"><div class="va-modal-section-label" style="margin-bottom:6px">💬 頻出ワード</div><div style="font-size:11px;color:var(--t1);line-height:1.8">${uData.topWords.map(esc).join(' · ')}</div></div>`:'';
+  const analysisHtml=prof.analysis
+    ?`<div class="va-modal-section"><div class="va-modal-section-label">📋 詳細分析</div><div class="va-modal-analysis">${esc(prof.analysis)}</div></div>`
+    :`<div class="va-modal-section"><div class="va-modal-section-label">📋 詳細分析</div><div style="color:var(--t1);font-style:italic;font-size:12px">未分析 — JSONをインポートしてください</div></div>`;
+  const deepHtml=prof.deepAnalysis
+    ?`<div class="va-modal-section"><div class="va-modal-section-label">🧠 深層心理分析</div><div class="va-modal-deep">${esc(prof.deepAnalysis)}</div></div>`
+    :'';
+  const tagLabel=`<div style="font-size:10px;color:#7dd3fc;font-weight:700;margin-top:2px">メインタグ: ${esc(tag)}</div>`;
+  document.getElementById('va-modal-content').innerHTML=`
+    <div class="va-modal-hd">
+      <div class="va-modal-rank">${rank}</div>
+      <div>
+        <div class="va-modal-name">@${esc(name)}</div>
+        <div class="va-modal-stats">${stats}</div>
+        ${tagLabel}
+        <div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:6px">${badges}</div>
+      </div>
+      <button class="va-modal-close" onclick="document.getElementById('va-modal').classList.remove('open')">✕ 閉じる</button>
+    </div>
+    <div class="va-modal-body">
+      <div class="va-modal-left">
+        ${scoreRows?`<div><div class="va-modal-section-label" style="margin-bottom:8px">📊 スコア</div>${scoreRows}</div>`:'<div style="color:var(--t1);font-size:11px">スコアデータなし</div>'}
+        ${words}
+      </div>
+      <div class="va-modal-right">
+        ${analysisHtml}
+        ${deepHtml}
+      </div>
+    </div>`;
+  document.getElementById('va-modal').classList.add('open');
 }
 
 function exportViewerJson(){
@@ -5232,6 +5343,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   });
 });
 </script>
+
+<div class="va-modal" id="va-modal" onclick="this.classList.remove('open')">
+  <div class="va-modal-inner" onclick="event.stopPropagation()" id="va-modal-content"></div>
+</div>
 
 <div class="gh-modal" id="gh-modal">
   <div class="gh-inner" onclick="event.stopPropagation()">
