@@ -553,7 +553,32 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .va-modal-analysis{font-size:12px;color:var(--t0);line-height:1.85;white-space:pre-wrap}
 .va-modal-deep{font-size:11.5px;color:var(--t1);line-height:1.8;white-space:pre-wrap}
 /* Streamer Profile Card */
-.sp-card{background:linear-gradient(135deg,color-mix(in srgb,var(--bg1) 82%,#7c3aed 18%),var(--bg1));border:1px solid #7c3aed55;border-radius:12px;padding:16px;margin-bottom:16px}
+/* Streamer modal */
+.sp-modal{position:fixed;inset:0;z-index:601;background:rgba(0,0,0,.85);display:none;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto}
+.sp-modal.open{display:flex}
+.sp-modal-inner{background:var(--bg1);border:1px solid #7c3aed55;border-radius:14px;width:100%;max-width:780px;overflow:hidden;margin:auto}
+.sp-modal-hd{padding:16px 20px;background:linear-gradient(90deg,color-mix(in srgb,var(--bg2) 75%,#4c1d95 25%),var(--bg2));border-bottom:1px solid #7c3aed44;display:flex;align-items:center;gap:12px}
+.sp-modal-icon{font-size:26px}
+.sp-modal-title{font-size:16px;font-weight:800;color:var(--t0)}
+.sp-modal-sub{font-size:11px;color:var(--t2);margin-top:2px}
+.sp-modal-close{margin-left:auto;background:none;border:1px solid var(--bd);color:var(--t1);border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px}
+.sp-modal-close:hover{border-color:#a78bfa;color:#c4b5fd}
+.sp-modal-body{display:flex;gap:0}
+.sp-modal-left{width:210px;min-width:210px;padding:16px;border-right:1px solid var(--bd);background:var(--bg2);display:flex;flex-direction:column;gap:14px}
+.sp-modal-right{flex:1;padding:18px 22px;display:flex;flex-direction:column;gap:16px;overflow:hidden}
+.sp-modal-score-row{display:flex;align-items:center;gap:8px}
+.sp-modal-score-label{font-size:11px;color:var(--t0);font-weight:600;width:58px;flex-shrink:0}
+.sp-modal-score-track{flex:1;height:7px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden}
+.sp-modal-score-fill{height:100%;border-radius:4px}
+.sp-modal-score-val{font-size:12px;font-weight:700;min-width:28px;text-align:right;font-family:'D-DIN',sans-serif}
+.sp-modal-section{display:flex;flex-direction:column;gap:6px}
+.sp-modal-section-label{font-size:10px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#a78bfa}
+.sp-modal-analysis{font-size:12px;color:var(--t0);line-height:1.85;white-space:pre-wrap}
+.sp-modal-deep{font-size:11.5px;color:var(--t1);line-height:1.8;white-space:pre-wrap}
+.sp-modal-badges{display:flex;flex-wrap:wrap;gap:5px}
+/* Streamer Profile Card */
+.sp-card{background:linear-gradient(135deg,color-mix(in srgb,var(--bg1) 82%,#7c3aed 18%),var(--bg1));border:1px solid #7c3aed55;border-radius:12px;padding:16px;margin-bottom:16px;cursor:pointer;transition:border-color .2s,box-shadow .2s}
+.sp-card:hover{border-color:#a78bfa88;box-shadow:0 4px 20px rgba(124,58,237,.2)}
 .sp-card-hd{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--bd)}
 .sp-icon{font-size:22px;line-height:1}
 .sp-title{font-size:14px;font-weight:800;color:var(--t0)}
@@ -625,7 +650,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.9.5</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.9.6</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -4907,21 +4932,59 @@ function _renderStreamerCard(tag){
   }).join('');
   const badges=(prof.personality||[]).map(b=>`<span class="sp-badge">${esc(b)}</span>`).join('');
   const updated=prof.updatedAt?new Date(prof.updatedAt).toLocaleDateString('ja-JP'):'';
-  return `<div class="sp-card">
+  const shortAnalysis=prof.analysis?(prof.analysis.length>160?prof.analysis.slice(0,160)+'…':prof.analysis):prof.analysis;
+  const shortDeep=prof.deepAnalysis?(prof.deepAnalysis.length>100?prof.deepAnalysis.slice(0,100)+'…':prof.deepAnalysis):prof.deepAnalysis;
+  return `<div class="sp-card" onclick="openStreamerDetail('${esc(tag)}')" style="cursor:pointer">
     <div class="sp-card-hd">
       <div class="sp-icon">🎙️</div>
       <div><div class="sp-title">配信者プロフィール — ${esc(tag)}</div><div class="sp-subtitle">音声データをもとにした性格解析</div></div>
+      <span style="margin-left:auto;font-size:10px;color:#a78bfa;font-weight:700;white-space:nowrap">タップで詳細 ▶</span>
     </div>
     ${badges?`<div class="sp-badges">${badges}</div>`:''}
     <div class="sp-body">
       ${scoreHtml?`<div class="sp-scores">${scoreHtml}</div>`:''}
       <div class="sp-text">
-        ${prof.analysis?`<div><div class="sp-section-label">性格・特徴解析</div><div class="sp-analysis">${esc(prof.analysis)}</div></div>`:''}
-        ${prof.deepAnalysis?`<div><div class="sp-section-label">深層分析</div><div class="sp-deep">${esc(prof.deepAnalysis)}</div></div>`:''}
+        ${shortAnalysis?`<div><div class="sp-section-label">性格・特徴解析</div><div class="sp-analysis">${esc(shortAnalysis)}</div></div>`:''}
+        ${shortDeep?`<div><div class="sp-section-label">深層分析</div><div class="sp-deep">${esc(shortDeep)}</div></div>`:''}
       </div>
     </div>
     ${updated?`<div class="sp-updated">解析日: ${updated}</div>`:''}
   </div>`;
+}
+
+function openStreamerDetail(tag){
+  const prof=_loadStreamerProfiles()[tag];
+  if(!prof)return;
+  const scoreColors=v=>v>=80?'#4ade80':v>=60?'#facc15':'#f87171';
+  const scores=prof.scores||{};
+  const scoreLabels=['話術','ユーモア','親近感','情報量','エネルギー'];
+  const scoreRows=scoreLabels.filter(l=>scores[l]!=null).map(l=>{
+    const v=scores[l];const c=scoreColors(v);
+    return `<div class="sp-modal-score-row">
+      <span class="sp-modal-score-label">${esc(l)}</span>
+      <div class="sp-modal-score-track"><div class="sp-modal-score-fill" style="width:${v}%;background:${c}"></div></div>
+      <span class="sp-modal-score-val" style="color:${c}">${v}</span>
+    </div>`;
+  }).join('');
+  const badges=(prof.personality||[]).map(b=>`<span class="sp-badge">${esc(b)}</span>`).join('');
+  const updated=prof.updatedAt?new Date(prof.updatedAt).toLocaleDateString('ja-JP'):'';
+  const html=`<div class="sp-modal-hd">
+    <div class="sp-modal-icon">🎙️</div>
+    <div><div class="sp-modal-title">配信者プロフィール — ${esc(tag)}</div><div class="sp-modal-sub">音声データをもとにした性格解析${updated?' · 解析日: '+updated:''}</div></div>
+    <button class="sp-modal-close" onclick="document.getElementById('sp-modal').classList.remove('open')">✕ 閉じる</button>
+  </div>
+  <div class="sp-modal-body">
+    <div class="sp-modal-left">
+      ${scoreRows?`<div>${scoreRows}</div>`:''}
+      ${badges?`<div><div class="sp-modal-section-label">🏷️ 特徴タグ</div><div class="sp-modal-badges">${badges}</div></div>`:''}
+    </div>
+    <div class="sp-modal-right">
+      ${prof.analysis?`<div class="sp-modal-section"><div class="sp-modal-section-label">📋 性格・特徴解析</div><div class="sp-modal-analysis">${esc(prof.analysis)}</div></div>`:''}
+      ${prof.deepAnalysis?`<div class="sp-modal-section"><div class="sp-modal-section-label">🧠 深層分析</div><div class="sp-modal-deep">${esc(prof.deepAnalysis)}</div></div>`:''}
+    </div>
+  </div>`;
+  document.getElementById('sp-modal-content').innerHTML=html;
+  document.getElementById('sp-modal').classList.add('open');
 }
 
 function exportStreamerJson(){
@@ -5575,6 +5638,10 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 <div class="va-modal" id="va-modal" onclick="this.classList.remove('open')">
   <div class="va-modal-inner" onclick="event.stopPropagation()" id="va-modal-content"></div>
+</div>
+
+<div class="sp-modal" id="sp-modal" onclick="this.classList.remove('open')">
+  <div class="sp-modal-inner" onclick="event.stopPropagation()" id="sp-modal-content"></div>
 </div>
 
 <div class="gh-modal" id="gh-modal">
