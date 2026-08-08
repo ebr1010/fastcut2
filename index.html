@@ -4620,9 +4620,7 @@ function renderViewerAnalysis(){
       const deepHtml=prof.deepAnalysis
         ?`<div><div class="va-section-label">🧠 深層</div><div class="va-deep">${esc(deepShort)}</div></div>`
         :'';
-      const nameJson=JSON.stringify(u.name);
-      const tagJson=JSON.stringify(tag);
-      return `<div class="va-card${prof.analysis?' va-card-analyzed':''}" onclick="openViewerDetail(${nameJson},${tagJson})">
+      return `<div class="va-card${prof.analysis?' va-card-analyzed':''}" data-va-name="${esc(u.name)}" data-va-tag="${esc(tag)}" onclick="openViewerDetail(this.dataset.vaName,this.dataset.vaTag)">
         <div class="va-card-header">
           <div class="va-rank-badge">#${displayRank}</div>
           <div class="va-header-info">
