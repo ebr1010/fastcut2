@@ -505,6 +505,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 .va-badge.常連{color:#e040fb;border-color:#e040fb44}
 .va-badge.寄付者{color:#ffd700;border-color:#ffd70044}
 .va-words{color:var(--t2);font-size:10px;line-height:1.6}
+.va-card-analyzed{border-color:#e8a03055;background:color-mix(in srgb,var(--bg2) 90%,#e8a030 10%)}
 .rank-num{color:var(--t2);width:50px;font-family:'D-DIN','DIN Condensed','Barlow Condensed',sans-serif;font-size:11px;text-align:center}
 .rank-name{font-family:var(--mf);color:var(--t0)}
 .rank-cnt{font-family:'D-DIN','DIN Condensed','Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:var(--r1);text-align:right;width:100px}
@@ -554,7 +555,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.8.6</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.8.7</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -841,9 +842,19 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
       <input type="number" id="viewer-min-msgs" value="3" min="1" max="999" style="width:52px;background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:3px 6px;font-size:11px" title="最低コメント数">
       <span style="font-size:11px;color:var(--t2)">コメント以上の視聴者のみ</span>
       <button class="rank-mode-btn" onclick="renderViewerAnalysis()" style="padding:4px 10px;font-size:11px">🔄 更新</button>
+      <button class="rank-mode-btn" onclick="exportViewerJson()" style="padding:4px 10px;font-size:11px;border-color:#e8a030;color:#e8a030">📤 Claude用JSON出力</button>
       <span id="viewer-info" style="font-size:11px;color:var(--t2)"></span>
     </div>
     <div id="viewer-result"></div>
+    <div id="viewer-import-area" style="margin-top:20px;border-top:1px solid var(--bd);padding-top:16px">
+      <div style="font-size:12px;color:var(--t2);margin-bottom:6px">📥 Claudeの分析結果を貼り付けて登録（JSON形式）</div>
+      <textarea id="viewer-import-ta" rows="6" placeholder='[{"username":"xxx","tag":"タグ名","analysis":"解析コメント","personality":["常連","草系"]}]'
+        style="width:100%;background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:8px;font-size:11px;font-family:monospace;resize:vertical;outline:none"></textarea>
+      <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+        <button class="rank-mode-btn" onclick="importViewerAnalysis()" style="padding:5px 14px;border-color:#4caf50;color:#4caf50">✅ 登録</button>
+        <span id="viewer-import-msg" style="font-size:11px;color:var(--t2)"></span>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -4509,15 +4520,19 @@ function renderViewerAnalysis(){
   if(!out)return;
   if(!tagResults.length){out.innerHTML='<div style="color:var(--t2);padding:40px;text-align:center">データがありません</div>';return;}
 
+  const profiles=_loadViewerProfiles();
   out.innerHTML=tagResults.map(({tag,color,users})=>{
     const cards=users.map(u=>{
-      const badges=u.badges.map(b=>`<span class="va-badge ${esc(b)}">${esc(b)}</span>`).join('');
+      const prof=profiles[u.name]||{};
+      const allBadges=[...new Set([...u.badges,...(prof.personality||[])])];
+      const badges=allBadges.map(b=>`<span class="va-badge ${esc(b)}">${esc(b)}</span>`).join('');
       const words=u.topWords.length?`<div class="va-words">頻出: ${u.topWords.map(esc).join(' / ')}</div>`:'';
-      return `<div class="va-card">
+      const analysis=prof.analysis?`<div class="va-words" style="margin-top:4px;color:var(--t1);font-size:11px;line-height:1.5">${esc(prof.analysis)}</div>`:'';
+      return `<div class="va-card${prof.analysis?' va-card-analyzed':''}">
         <div class="va-name" title="${esc(u.name)}">@${esc(u.name)}</div>
         <div class="va-stats">${u.count}件 · ${u.vidCount}動画 · 平均${u.avgLen}文字</div>
         <div class="va-badges">${badges}</div>
-        ${words}
+        ${words}${analysis}
       </div>`;
     }).join('');
     return `<div class="va-tag-section">
@@ -4525,6 +4540,93 @@ function renderViewerAnalysis(){
       <div class="va-grid">${cards}</div>
     </div>`;
   }).join('');
+}
+
+function exportViewerJson(){
+  const tagFilter=document.getElementById('viewer-tag-sel')?.value||'';
+  const minMsgs=parseInt(document.getElementById('viewer-min-msgs')?.value)||3;
+  const recs=tagFilter?_dbCache.filter(r=>r.mainTag===tagFilter):_dbCache;
+
+  const byTag=new Map();
+  for(const rec of recs){
+    const tag=rec.mainTag||'（タグなし）';
+    if(!byTag.has(tag))byTag.set(tag,[]);
+    byTag.get(tag).push(rec);
+  }
+
+  const output={
+    exportedAt:new Date().toISOString(),
+    instruction:'各viewerについて、sampleMessagesや統計情報をもとに性格・発言傾向・面白い特徴を日本語で解析してください。返答はJSON配列で、各要素に username/tag/analysis(150字以内)/personality(バッジ配列) を含めてください。',
+    tags:[]
+  };
+
+  for(const[tag,tagRecs]of byTag){
+    const byUser=new Map();
+    for(const rec of tagRecs){
+      for(const c of(rec.chatData||[])){
+        if(!c.username)continue;
+        if(!byUser.has(c.username))byUser.set(c.username,{msgs:[],vids:new Set(),donated:false});
+        const u=byUser.get(c.username);
+        u.msgs.push(c.message||'');
+        u.vids.add(rec.id);
+        if(c.donated)u.donated=true;
+      }
+    }
+    const users=[];
+    for(const[name,data]of byUser){
+      if(data.msgs.length<minMsgs)continue;
+      const av=_analyzeViewer(name,data.msgs,data.vids.size,data.donated);
+      const sample=data.msgs.filter((m,i,a)=>a.indexOf(m)===i).slice(0,30);
+      users.push({
+        rank:0,username:name,
+        totalMessages:av.count,
+        appearedInVideos:av.vidCount,
+        avgMessageLength:av.avgLen,
+        autoBadges:av.badges,
+        topPhrases:av.topWords,
+        sampleMessages:sample
+      });
+    }
+    users.sort((a,b)=>b.totalMessages-a.totalMessages);
+    users.forEach((u,i)=>u.rank=i+1);
+    output.tags.push({tag,viewers:users.slice(0,100)});
+  }
+
+  const json=JSON.stringify(output,null,2);
+  dl(json,(tagFilter?tagFilter+'_':'')+'viewer_analysis.json','application/json;charset=utf-8');
+  toast('JSONを出力しました','ok');
+}
+
+function importViewerAnalysis(){
+  const ta=document.getElementById('viewer-import-ta');
+  const msg=document.getElementById('viewer-import-msg');
+  const raw=(ta?.value||'').trim();
+  if(!raw){msg.textContent='データを貼り付けてください';return;}
+  let data;
+  try{data=JSON.parse(raw);}catch{msg.textContent='JSONの形式が正しくありません';return;}
+  if(!Array.isArray(data)){msg.textContent='JSON配列で貼り付けてください';return;}
+
+  const profiles=(()=>{try{return JSON.parse(localStorage.getItem('fc_viewer_profiles')||'{}');}catch{return{};}})();
+  let count=0;
+  for(const item of data){
+    if(!item.username)continue;
+    const key=item.username;
+    if(!profiles[key])profiles[key]={};
+    if(item.tag)profiles[key].tag=item.tag;
+    if(item.analysis)profiles[key].analysis=item.analysis;
+    if(item.personality)profiles[key].personality=item.personality;
+    profiles[key].updatedAt=new Date().toISOString();
+    count++;
+  }
+  try{localStorage.setItem('fc_viewer_profiles',JSON.stringify(profiles));}catch(e){msg.textContent='保存失敗: '+e.message;return;}
+  msg.textContent=count+'件を登録しました';
+  ta.value='';
+  renderViewerAnalysis();
+  toast('視聴者プロファイル '+count+'件を登録しました','ok');
+}
+
+function _loadViewerProfiles(){
+  try{return JSON.parse(localStorage.getItem('fc_viewer_profiles')||'{}');}catch{return{};}
 }
 
 function _analyzeViewer(name,msgs,vidCount,donated){
