@@ -654,7 +654,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.10.6</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.10.7</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -5124,8 +5124,7 @@ function _renderStreamerCard(tag){
   const prof=_loadStreamerProfiles()[tag];
   if(!prof||!prof.analysis)return '';
   const scores=prof.scores||{};
-  const scoreLabels=['話術','ユーモア','親近感','情報量','エネルギー'];
-  const cardScores=Object.fromEntries(scoreLabels.filter(l=>scores[l]!=null).map(l=>[l,scores[l]]));
+  const cardScores=scores;
   const cardRadar=Object.keys(cardScores).length?_radarChart(cardScores,'#a78bfa',130):'';
   const badges=(prof.personality||[]).map(b=>`<span class="sp-badge">${esc(b)}</span>`).join('');
   const updated=prof.updatedAt?new Date(prof.updatedAt).toLocaleDateString('ja-JP'):'';
@@ -5165,11 +5164,12 @@ function openStreamerDetail(tag){
     ?`<div class="va-period-tabs" style="margin-top:6px">${periods.map(p=>`<button class="va-period-tab${p===activePeriod?' active':''}" onclick="switchStreamerPeriod('${esc(tag)}','${esc(p)}')">${esc(p)}</button>`).join('')}</div>`
     :(periods.length===1&&periods[0]!=='全期間'?`<div style="font-size:10px;color:#94a3b8;margin-top:4px">📅 ${esc(periods[0])}</div>`:'');
   const scores=prof.scores||{};
-  const scoreLabels=['話術','ユーモア','親近感','情報量','エネルギー'];
-  const scoreEntries=Object.fromEntries(scoreLabels.filter(l=>scores[l]!=null).map(l=>[l,scores[l]]));
-  const radarSvg=Object.keys(scoreEntries).length?_radarChart(scoreEntries,'#a78bfa',180):'';
+  const radarSvg=Object.keys(scores).length?_radarChart(scores,'#a78bfa',200):'';
   const badges=(prof.personality||[]).map(b=>`<span class="sp-badge">${esc(b)}</span>`).join('');
   const updated=prof.updatedAt?new Date(prof.updatedAt).toLocaleDateString('ja-JP'):'';
+  const _arrBlock=(icon,label,arr)=>arr&&arr.length
+    ?`<div class="sp-modal-section"><div class="sp-modal-section-label">${icon} ${label}</div><ul style="margin:6px 0 0 16px;padding:0;display:flex;flex-direction:column;gap:4px">${arr.map(s=>`<li style="font-size:12px;color:var(--t0);line-height:1.5">${esc(s)}</li>`).join('')}</ul></div>`
+    :'';
   const html=`<div class="sp-modal-hd">
     <div class="sp-modal-icon">🎙️</div>
     <div style="flex:1;min-width:0"><div class="sp-modal-title">配信者プロフィール — ${esc(tag)}</div><div class="sp-modal-sub">音声データをもとにした性格解析${updated?' · 解析日: '+updated:''}</div>${periodTabsHtml}</div>
@@ -5179,10 +5179,20 @@ function openStreamerDetail(tag){
     <div class="sp-modal-left">
       ${radarSvg?`<div style="display:flex;justify-content:center;padding:4px 0">${radarSvg}</div>`:''}
       ${badges?`<div><div class="sp-modal-section-label">🏷️ 特徴タグ</div><div class="sp-modal-badges">${badges}</div></div>`:''}
+      ${prof.area?`<div style="margin-top:10px"><div class="sp-modal-section-label">📍 推定エリア</div><div style="font-size:12px;color:#e2e8f0;margin-top:4px;line-height:1.5">${esc(prof.area)}</div></div>`:''}
+      ${prof.hobbies&&prof.hobbies.length?`<div style="margin-top:10px"><div class="sp-modal-section-label">🎮 趣味・関心</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">${prof.hobbies.map(h=>`<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.4);color:#c4b5fd">${esc(h)}</span>`).join('')}</div></div>`:''}
+      ${prof.likes&&prof.likes.length?`<div style="margin-top:10px"><div class="sp-modal-section-label">❤️ 好きなもの</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">${prof.likes.map(h=>`<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(244,114,182,.12);border:1px solid rgba(244,114,182,.35);color:#f9a8d4">${esc(h)}</span>`).join('')}</div></div>`:''}
+      ${prof.dislikes&&prof.dislikes.length?`<div style="margin-top:10px"><div class="sp-modal-section-label">🚫 苦手なもの</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">${prof.dislikes.map(h=>`<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:#fca5a5">${esc(h)}</span>`).join('')}</div></div>`:''}
     </div>
     <div class="sp-modal-right">
+      ${prof.personalityDetail?`<div class="sp-modal-section"><div class="sp-modal-section-label">🎭 性格詳細</div><div class="sp-modal-deep">${esc(prof.personalityDetail)}</div></div>`:''}
       ${prof.analysis?`<div class="sp-modal-section"><div class="sp-modal-section-label">📋 性格・特徴解析</div><div class="sp-modal-analysis">${esc(prof.analysis)}</div></div>`:''}
       ${prof.deepAnalysis?`<div class="sp-modal-section"><div class="sp-modal-section-label">🧠 深層分析</div><div class="sp-modal-deep">${esc(prof.deepAnalysis)}</div></div>`:''}
+      ${_arrBlock('💚','好きなタイプ・人柄',prof.likedPersonalityTypes)}
+      ${_arrBlock('❌','苦手なタイプ・人柄',prof.dislikedPersonalityTypes)}
+      ${_arrBlock('💬','好まれるコメントの方向性',prof.likedCommentStyles)}
+      ${_arrBlock('🔇','苦手なコメントの方向性',prof.dislikedCommentStyles)}
+      ${_arrBlock('🚀','ヒットするためのアドバイス',prof.vtuberAdvice)}
     </div>
   </div>`;
   document.getElementById('sp-modal-content').innerHTML=html;
@@ -5234,7 +5244,7 @@ function exportStreamerJson(){
     exportedAt:new Date().toISOString(),
     dateRange:dateRangeLabel,
     mode:'streamer_personality_analysis',
-    instruction:'以下は配信者の音声認識データ（speechSample）です。この発言内容をもとに、配信者の性格・話し方の癖・よく使う表現・口調・ユーモアのスタイル・感情表現の特徴・よく話すトピック・視聴者との関係性・深層心理を日本語で最大限詳細に解析してください。返答はJSON配列で、各要素に tag/analysis/deepAnalysis/personality(バッジ配列)/scores({話術:0-100,ユーモア:0-100,親近感:0-100,情報量:0-100,エネルギー:0-100}) を含めてください。',
+    instruction:'以下は配信者の音声認識データ（speechSample）です。この発言内容をもとに、配信者の性格・話し方の癖・よく使う表現・口調・ユーモアのスタイル・感情表現の特徴・よく話すトピック・視聴者との関係性・深層心理を日本語で最大限詳細に解析してください。返答はJSON配列で、各要素に tag/analysis(最大限長く)/deepAnalysis(最大限長く)/personalityDetail(最大限長く)/personality(バッジ配列)/scores(話術・ユーモア・親近感・情報量・エネルギー・感情表現力・視聴者記憶力・コンテンツ多様性・長期継続力・即興対応力・コミュニティ形成力・自己開示度・コラボ適性・新規獲得力・ブランド確立度・配信安定性・声質表現力・ゲーム実況力・テンポ感・視聴者対応力・誠実さ・予測不能性・感情起伏の豊かさ・コンテンツ設計力・外部展開力 など複数:0-100)/area(推定居住エリア)/hobbies(配列)/likes(好きなもの配列)/dislikes(苦手なもの配列)/likedPersonalityTypes(好きなタイプ・人柄 配列)/dislikedPersonalityTypes(嫌いなタイプ・人柄 配列)/likedCommentStyles(好まれるコメント方向性 配列)/dislikedCommentStyles(苦手なコメント方向性 配列)/vtuberAdvice(ヒットするためのアドバイス 配列) を含めてください。',
     tags:[]
   };
 
@@ -5296,8 +5306,18 @@ function importStreamerAnalysis(){
     const p=profiles[item.tag][period];
     if(item.analysis)p.analysis=item.analysis;
     if(item.deepAnalysis)p.deepAnalysis=item.deepAnalysis;
+    if(item.personalityDetail)p.personalityDetail=item.personalityDetail;
     if(item.personality)p.personality=item.personality;
     if(item.scores)p.scores=item.scores;
+    if(item.area)p.area=item.area;
+    if(item.hobbies)p.hobbies=item.hobbies;
+    if(item.likes)p.likes=item.likes;
+    if(item.dislikes)p.dislikes=item.dislikes;
+    if(item.likedPersonalityTypes)p.likedPersonalityTypes=item.likedPersonalityTypes;
+    if(item.dislikedPersonalityTypes)p.dislikedPersonalityTypes=item.dislikedPersonalityTypes;
+    if(item.likedCommentStyles)p.likedCommentStyles=item.likedCommentStyles;
+    if(item.dislikedCommentStyles)p.dislikedCommentStyles=item.dislikedCommentStyles;
+    if(item.vtuberAdvice)p.vtuberAdvice=item.vtuberAdvice;
     p.updatedAt=new Date().toISOString();
     if(!profiles[item.tag]._active)profiles[item.tag]._active=period;
     count++;
