@@ -654,7 +654,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.10.3</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.10.4</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -4740,7 +4740,7 @@ function openViewerDetail(name,tag){
   }
   const activePeriod=rawEntry._active||periods[0]||'全期間';
   const periodTabsHtml=periods.length>1
-    ?`<div class="va-period-tabs">${periods.map(p=>`<button class="va-period-tab${p===activePeriod?' active':''}" onclick="switchViewerPeriod(${JSON.stringify(name)},${JSON.stringify(tag)},${JSON.stringify(p)})">${esc(p)}</button>`).join('')}</div>`
+    ?`<div class="va-period-tabs">${periods.map(p=>`<button class="va-period-tab${p===activePeriod?' active':''}" onclick="switchViewerPeriod('${esc(name)}','${esc(tag)}','${esc(p)}')">${esc(p)}</button>`).join('')}</div>`
     :(periods.length===1&&periods[0]!=='全期間'?`<div style="font-size:10px;color:#94a3b8;margin-top:4px">📅 ${esc(periods[0])}</div>`:'');
 
   // ユーザー統計を取得
