@@ -675,7 +675,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.11.2</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.11.3</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -5414,58 +5414,112 @@ function exportWordReactionJson(){
 
   let recs=tag?_dbCache.filter(r=>r.mainTag===tag):_dbCache;
 
-  // 動画ごとにタイムスタンプつきセグメント配列を構築
   const videoGroups=[];
   for(const rec of recs){
     const segs=(rec.trData||[]).filter(t=>t.text?.trim());
-    if(segs.length)videoGroups.push(segs);
+    if(segs.length)videoGroups.push({id:rec.id||rec.videoId||'',title:rec.title||'',segs});
   }
   if(!videoGroups.length){msgEl.textContent='音声データがありません。字幕つき動画を登録してください。';return;}
 
-  const WINDOW_SEC=90; // 前後約1分30秒
+  const WINDOW_SEC=90;
   const contexts=[];
+  const seen=new Set();
+  const matchesPerKeyword={};
+  keywords.forEach(kw=>{matchesPerKeyword[kw]=0;});
+  const uniqueVideoIds=new Set();
 
-  for(const segs of videoGroups){
+  for(const {id,title,segs} of videoGroups){
     for(let i=0;i<segs.length;i++){
       const seg=segs[i];
       for(const kw of keywords){
-        if(seg.text.includes(kw)){
-          const matchSec=seg.sec??null;
-          let windowTexts;
-          if(matchSec!==null){
-            // タイムスタンプベースで前後60秒以内のセグメントを収集
-            windowTexts=segs
-              .filter(s=>s.sec!=null&&s.sec>=matchSec-WINDOW_SEC&&s.sec<=matchSec+WINDOW_SEC)
-              .map(s=>s.text.trim());
-          } else {
-            // タイムスタンプ無し時はセグメント数で代替（前後15件≒約1分）
-            const FALLBACK=15;
-            windowTexts=segs.slice(Math.max(0,i-FALLBACK),i+FALLBACK+1).map(s=>s.text.trim());
-          }
-          contexts.push({keyword:kw,matchedText:seg.text.trim(),matchSec,context:windowTexts});
-          break;
+        if(!seg.text.includes(kw))continue;
+        const matchSec=seg.sec??null;
+        const dedupeKey=kw+'|'+id+'|'+(matchSec!==null?matchSec:i);
+        if(seen.has(dedupeKey))continue;
+
+        let windowSegs;
+        if(matchSec!==null){
+          windowSegs=segs.filter(s=>s.sec!=null&&s.sec>=matchSec-WINDOW_SEC&&s.sec<=matchSec+WINDOW_SEC);
+        } else {
+          const FALLBACK=15;
+          windowSegs=segs.slice(Math.max(0,i-FALLBACK),i+FALLBACK+1);
         }
+
+        // 複数キーワード指定時：ウィンドウ内に他キーワードも含まれる場合のみ有効
+        // →「クソ」単独で「クソでか」等に引っかかる混入を防止
+        if(keywords.length>1){
+          const windowText=windowSegs.map(s=>s.text).join('');
+          const otherKws=keywords.filter(k=>k!==kw);
+          if(!otherKws.some(ok=>windowText.includes(ok)))continue;
+        }
+
+        seen.add(dedupeKey);
+        matchesPerKeyword[kw]=(matchesPerKeyword[kw]||0)+1;
+        if(id)uniqueVideoIds.add(id);
+        contexts.push({
+          keyword:kw,
+          matchedText:seg.text.trim(),
+          matchSec,
+          videoId:id,
+          videoTitle:title,
+          context:windowSegs.map(s=>({sec:s.sec??null,text:s.text.trim()}))
+        });
       }
     }
   }
 
   if(!contexts.length){
-    msgEl.textContent=`「${keywords.join('」「')}」が含まれる発言が見つかりませんでした`;
+    msgEl.textContent=`「${keywords.join('」「')}」が含まれる発言が見つかりませんでした（複数キーワード指定時は同一ウィンドウ内に他キーワードとの共存が必要）`;
     return;
   }
   const tagName=tag||'AllTag';
   const output={
     exportedAt:new Date().toISOString(),
     mode:'word_reaction_analysis',
-    instruction:`以下は配信者「${tagName}」の音声認識データです。配信者がキーワード「${keywords.join('」「')}」（同一概念の表記ゆれ）を発言した際の前後約1分間の文脈（context）をもとに、そのキーワードに対する配信者の反応・印象・イメージを分析してください。返答はJSON配列で、各要素に keyword（代表表記）/variants（表記ゆれ一覧配列）/reaction（発言時の反応・態度・口調を最大限詳細に。ポジティブ・ネガティブ・複雑、笑い・驚き・嫌悪などの感情の質も詳述）/impression（そのキーワードに対する配信者の印象・イメージ・関連づけを最大限詳細に）/emotionTone（positive/negative/neutral/complex のいずれか1つ）/score（好意度スコア0〜100。0=強い嫌悪、50=中立、100=強い好意）/evidence（根拠となる発言抜粋を配列で）を含めてください。`,
     tag:tagName,
     keywords,
-    matchCount:contexts.length,
+    summary:{
+      totalMatches:contexts.length,
+      matchesPerKeyword,
+      uniqueVideos:uniqueVideoIds.size||videoGroups.length,
+      windowSeconds:WINDOW_SEC,
+      note:'複数キーワード指定時は同一ウィンドウ内に他キーワードとの共存を条件としてフィルタリング済み'
+    },
+    instruction:`【解析指示】以下は配信者「${tagName}」の音声認識データです。キーワード「${keywords.join('」「')}」は全て同一人物（リスナー）の名前または名前の一部の表記ゆれです。配信者がこのリスナーの名前を発言した際の前後${WINDOW_SEC}秒間のcontext（音声認識テキスト）をもとに、そのリスナーに対する配信者の反応・印象・関係性を最大限詳細に分析してください。
+
+【出力形式】JSON配列。各要素に以下フィールドを全て含めること：
+- keyword: リスナーの正式名称（代表表記）
+- variants: 検出された表記ゆれ一覧（配列）
+- reaction: 発言時の反応・態度・口調を徹底的に詳述（最低1500文字以上。感情の質・声のトーン・笑い・驚き・特別扱いの有無・習慣的な呼び方のパターン・感情変化の流れ・具体的場面ごとの反応の違いを含む）
+- impression: 配信者がこのリスナーに対して抱くイメージ・評価・関係性の位置づけを徹底的に詳述（最低1500文字以上。古参度・信頼度・コミュニティ内ポジション・配信者にとっての存在意義・影響力・精神的な意味を含む）
+- emotionTone: positive/negative/neutral/complex のいずれか1つ
+- scores: 以下の全パラメータを0〜100で数値化したオブジェクト（根拠コメント付き）
+  * 好意度（配信者のこのリスナーへの好意・好感の強さ）
+  * 信頼度（長期的な信頼感・安定感）
+  * 感謝の深さ（感謝の言葉の熱量・頻度・深さ）
+  * 来場頻度評価（毎回来てくれることへの認識・評価）
+  * スパチャ頻度評価（スーパーチャット行動への認識・評価）
+  * コンテンツ貢献度（切り抜き・X投稿等の外部活動への評価）
+  * コミュニティ内地位（コミュニティにおける存在感・ポジション）
+  * 特別扱い度（他リスナーと比べた際の特別対応の程度）
+  * 継続性評価（長期間支え続けてくれることへの感謝・評価）
+  * プレゼンス安定度（いつもいてくれる安心感・存在の安定感）
+- evidence: 根拠となる発言抜粋を最大限多く列挙（最低15件以上・配列）
+- personalityKnown: 配信者がこのリスナーのパーソナリティ・属性として言及した情報（配列）
+- relationshipType: このリスナーの配信コミュニティ上の役割・分類（文字列）
+- specialMoments: 特に印象的・感情的・重要な場面のまとめ（配列）
+- analysisNote: 分析上の注意点・音声認識ノイズの影響・解釈の不確実性など（文字列）
+
+【重要な注意事項】
+・各キーワードは同一人物の名前の表記ゆれであり、別人物として分析しないこと。
+・名前の一部（例：「クソ」）を感情強調語として独立分析しないこと。
+・他のリスナー名が文脈に含まれていても、その人物への分析は混入させないこと。
+・音声認識のノイズ（文字化け・読み誤り等）が含まれるが、文脈から意味を積極的に読み取ること。`,
     contexts
   };
   const json=JSON.stringify(output,null,2);
   dl(json,`FC_${tagName}_${keywords[0]}_word_reaction.json`,'application/json;charset=utf-8');
-  msgEl.textContent=`${contexts.length}件の発言文脈を出力しました（前後約1分30秒の文脈つき）`;
+  msgEl.textContent=`${contexts.length}件の発言文脈を出力しました（前後${WINDOW_SEC}秒・共存フィルター適用済み）`;
   toast(`単語反応解析JSON出力（${contexts.length}件マッチ）`,'ok');
 }
 
@@ -5524,27 +5578,55 @@ function renderWordReactionCards(){
   const all=_loadWordReactions();
   if(!all.length){area.innerHTML='';return;}
   const toneLabel={positive:'ポジティブ',negative:'ネガティブ',neutral:'中立',complex:'複雑'};
+  const scoreColor=v=>v>=80?'#4ade80':v>=60?'#a3e635':v>=40?'#fbbf24':v>=20?'#fb923c':'#f87171';
   const html=all.map(r=>{
     const tone=r.emotionTone||'neutral';
-    const score=Number(r.score)||50;
-    const scoreColor=score>=70?'#4ade80':score>=40?'#fbbf24':'#f87171';
     const variantsHtml=(r.variants||[]).map(v=>`<span class="wr-variant">${esc(v)}</span>`).join('');
     const evidenceHtml=(r.evidence||[]).map(e=>`<div class="wr-evidence-item">${esc(e)}</div>`).join('');
     const tagBadge=r.tag?`<span style="font-size:10px;color:#94a3b8;padding:1px 6px;border-radius:3px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)">${esc(r.tag)}</span>`:'';
     const imported=r.importedAt?new Date(r.importedAt).toLocaleDateString('ja-JP'):'';
+
+    let scoresHtml='';
+    if(r.scores&&typeof r.scores==='object'){
+      scoresHtml=Object.entries(r.scores).map(([lbl,val])=>{
+        const v=Number(val)||0;
+        const c=scoreColor(v);
+        return `<div class="wr-score-bar">
+          <span class="wr-label" style="color:#94a3b8;min-width:120px">${esc(lbl)}</span>
+          <div class="wr-score-bar-track"><div class="wr-score-bar-fill" style="width:${v}%;background:${c}"></div></div>
+          <span class="wr-score-val" style="color:${c}">${v}</span>
+        </div>`;
+      }).join('');
+    } else {
+      const score=Number(r.score)||50;
+      const c=scoreColor(score);
+      scoresHtml=`<div class="wr-score-bar">
+        <span class="wr-label" style="color:#38bdf8">好意度</span>
+        <div class="wr-score-bar-track"><div class="wr-score-bar-fill" style="width:${score}%;background:${c}"></div></div>
+        <span class="wr-score-val" style="color:${c}">${score}</span>
+      </div>`;
+    }
+
+    const personalityHtml=(r.personalityKnown||[]).length
+      ?`<div class="wr-section-lbl">既知の属性・パーソナリティ</div><div class="wr-evidence">${(r.personalityKnown||[]).map(p=>`<div class="wr-evidence-item">${esc(p)}</div>`).join('')}</div>`:'';
+    const specialHtml=(r.specialMoments||[]).length
+      ?`<div class="wr-section-lbl">特別な場面</div><div class="wr-evidence">${(r.specialMoments||[]).map(m=>`<div class="wr-evidence-item">${esc(m)}</div>`).join('')}</div>`:'';
+    const relHtml=r.relationshipType?`<div style="font-size:11px;color:#a78bfa;margin:4px 0 2px">役割: ${esc(r.relationshipType)}</div>`:'';
+
     return `<div class="wr-card">
       <div class="wr-card-kw">${esc(r.keyword)} <span class="wr-tone ${tone}">${toneLabel[tone]||tone}</span>${tagBadge}${imported?`<span style="margin-left:auto;font-size:10px;color:var(--t2)">${imported}</span>`:''}
         <button onclick="deleteWordReaction('${esc((r.tag||'')+'\x01'+(r.keyword||''))}')" style="margin-left:4px;background:none;border:none;color:var(--t2);cursor:pointer;font-size:12px;padding:0 2px" title="削除">✕</button>
       </div>
       ${variantsHtml?`<div class="wr-variants">${variantsHtml}</div>`:''}
-      <div class="wr-score-bar">
-        <span class="wr-label" style="color:#38bdf8">好意度</span>
-        <div class="wr-score-bar-track"><div class="wr-score-bar-fill" style="width:${score}%;background:${scoreColor}"></div></div>
-        <span class="wr-score-val" style="color:${scoreColor}">${score}</span>
-      </div>
+      ${relHtml}
+      <div class="wr-section-lbl" style="margin-top:6px">スコア</div>
+      ${scoresHtml}
       ${r.reaction?`<div class="wr-section-lbl">反応・態度</div><div class="wr-body">${esc(r.reaction)}</div>`:''}
       ${r.impression?`<div class="wr-section-lbl">印象・イメージ</div><div class="wr-body">${esc(r.impression)}</div>`:''}
       ${evidenceHtml?`<div class="wr-section-lbl">根拠発言</div><div class="wr-evidence">${evidenceHtml}</div>`:''}
+      ${personalityHtml}
+      ${specialHtml}
+      ${r.analysisNote?`<div style="font-size:10px;color:var(--t2);margin-top:6px;padding:4px;background:rgba(255,255,255,.04);border-radius:4px">${esc(r.analysisNote)}</div>`:''}
     </div>`;
   }).join('');
   area.innerHTML=`<div style="margin-bottom:6px;font-size:11px;color:var(--t2)">${all.length}件の単語反応データ</div>${html}`;
