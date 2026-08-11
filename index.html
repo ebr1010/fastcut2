@@ -654,7 +654,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.10.0</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.10.1</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -4750,14 +4750,7 @@ function openViewerDetail(name,tag){
   const allBadges=uData?[...new Set([...uData.badges,...(prof.personality||[])])]:(prof.personality||[]);
   const badges=allBadges.map(b=>`<span class="va-badge ${esc(b)}">${esc(b)}</span>`).join('');
   const scores=prof.scores||{};
-  const scoreRows=Object.entries(scores).map(([label,val])=>{
-    const c=scoreColors(val);
-    return `<div class="va-modal-score-row">
-      <span class="va-modal-score-label">${esc(label)}</span>
-      <div class="va-modal-score-track"><div class="va-modal-score-fill" style="width:${val}%;background:${c}"></div></div>
-      <span class="va-modal-score-val" style="color:${c}">${val}</span>
-    </div>`;
-  }).join('');
+  const radarSvg=Object.keys(scores).length?_radarChart(scores,'#7dd3fc',180):'';
   const rank=uData?`#${uData.rank}`:'';
   const stats=uData?`${uData.count}件 · ${uData.vidCount}動画 · 平均${uData.avgLen}文字${prof.sampleCount!=null?' · 解析サンプル '+prof.sampleCount+'件':''}`:'';
   const words=uData&&uData.topWords.length?`<div style="margin-top:12px"><div class="va-modal-section-label" style="margin-bottom:6px">💬 頻出ワード</div><div style="font-size:11px;color:var(--t1);line-height:1.8">${uData.topWords.map(esc).join(' · ')}</div></div>`:'';
@@ -4782,7 +4775,7 @@ function openViewerDetail(name,tag){
     </div>
     <div class="va-modal-body">
       <div class="va-modal-left">
-        ${scoreRows?`<div><div class="va-modal-section-label" style="margin-bottom:8px">📊 スコア</div>${scoreRows}</div>`:'<div style="color:var(--t1);font-size:11px">スコアデータなし</div>'}
+        ${radarSvg?`<div style="display:flex;justify-content:center;padding:4px 0">${radarSvg}</div>`:'<div style="color:var(--t1);font-size:11px">スコアデータなし</div>'}
         ${words}
       </div>
       <div class="va-modal-right">
@@ -4989,16 +4982,44 @@ function _loadStreamerProfiles(){
   try{return JSON.parse(localStorage.getItem('fc_streamer_profiles')||'{}');}catch{return{};}
 }
 
+function _radarChart(scores,strokeColor,size){
+  strokeColor=strokeColor||'#7dd3fc'; size=size||180;
+  const entries=Object.entries(scores);
+  const n=entries.length; if(!n)return '';
+  const cx=size/2, cy=size/2;
+  const R=size*.3, LR=size*.46;
+  const sa=-Math.PI/2, as=2*Math.PI/n;
+  const pt=(i,f)=>[cx+R*f*Math.cos(sa+as*i), cy+R*f*Math.sin(sa+as*i)];
+  const lp=(i)=>[cx+LR*Math.cos(sa+as*i), cy+LR*Math.sin(sa+as*i)];
+  const rings=[.25,.5,.75,1].map(f=>{
+    const p=Array.from({length:n},(_,i)=>pt(i,f).join(',')).join(' ');
+    return `<polygon points="${p}" fill="none" stroke="rgba(255,255,255,${f===1?.12:.06})" stroke-width="${f===1?1:.7}"/>`;
+  }).join('');
+  const axes=Array.from({length:n},(_,i)=>{
+    const[x,y]=pt(i,1);
+    return `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="rgba(255,255,255,.09)" stroke-width="1"/>`;
+  }).join('');
+  const dpoly=entries.map(([,v],i)=>pt(i,v/100).join(',')).join(' ');
+  const poly=`<polygon points="${dpoly}" fill="${strokeColor}22" stroke="${strokeColor}" stroke-width="1.8" stroke-linejoin="round"/>`;
+  const dots=entries.map(([,v],i)=>{const[x,y]=pt(i,v/100);return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.5" fill="${strokeColor}"/>`;}).join('');
+  const lbls=entries.map(([label,val],i)=>{
+    const a=sa+as*i;
+    const[x,y]=lp(i);
+    const anc=Math.cos(a)>.1?'start':Math.cos(a)<-.1?'end':'middle';
+    const lh=11;
+    const vc=val>=80?'#4ade80':val>=60?'#facc15':'#f87171';
+    return `<text x="${x.toFixed(1)}" y="${(y-lh*.5).toFixed(1)}" text-anchor="${anc}" dominant-baseline="middle" font-size="8" fill="rgba(255,255,255,.65)" font-family="sans-serif">${label}</text><text x="${x.toFixed(1)}" y="${(y+lh*.5).toFixed(1)}" text-anchor="${anc}" dominant-baseline="middle" font-size="10" font-weight="700" fill="${vc}" font-family="monospace">${val}</text>`;
+  }).join('');
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" overflow="visible" xmlns="http://www.w3.org/2000/svg">${rings}${axes}${poly}${dots}${lbls}</svg>`;
+}
+
 function _renderStreamerCard(tag){
   const prof=_loadStreamerProfiles()[tag];
   if(!prof||!prof.analysis)return '';
   const scores=prof.scores||{};
   const scoreLabels=['話術','ユーモア','親近感','情報量','エネルギー'];
-  const scoreHtml=scoreLabels.filter(l=>scores[l]!=null).map(l=>{
-    const v=scores[l];
-    const c=v>=80?'#4ade80':v>=60?'#facc15':'#f87171';
-    return `<div class="sp-score-row"><div class="sp-score-label">${esc(l)}</div><div class="sp-score-track"><div class="sp-score-fill" style="width:${v}%;background:${c}"></div></div><div class="sp-score-val" style="color:${c}">${v}</div></div>`;
-  }).join('');
+  const cardScores=Object.fromEntries(scoreLabels.filter(l=>scores[l]!=null).map(l=>[l,scores[l]]));
+  const cardRadar=Object.keys(cardScores).length?_radarChart(cardScores,'#a78bfa',130):'';
   const badges=(prof.personality||[]).map(b=>`<span class="sp-badge">${esc(b)}</span>`).join('');
   const updated=prof.updatedAt?new Date(prof.updatedAt).toLocaleDateString('ja-JP'):'';
   const shortAnalysis=prof.analysis?(prof.analysis.length>160?prof.analysis.slice(0,160)+'…':prof.analysis):prof.analysis;
@@ -5011,7 +5032,7 @@ function _renderStreamerCard(tag){
     </div>
     ${badges?`<div class="sp-badges">${badges}</div>`:''}
     <div class="sp-body">
-      ${scoreHtml?`<div class="sp-scores">${scoreHtml}</div>`:''}
+      ${cardRadar?`<div style="overflow:hidden;width:130px;flex-shrink:0;display:flex;align-items:center;justify-content:center">${cardRadar}</div>`:''}
       <div class="sp-text">
         ${shortAnalysis?`<div><div class="sp-section-label">性格・特徴解析</div><div class="sp-analysis">${esc(shortAnalysis)}</div></div>`:''}
         ${shortDeep?`<div><div class="sp-section-label">深層分析</div><div class="sp-deep">${esc(shortDeep)}</div></div>`:''}
@@ -5027,14 +5048,8 @@ function openStreamerDetail(tag){
   const scoreColors=v=>v>=80?'#4ade80':v>=60?'#facc15':'#f87171';
   const scores=prof.scores||{};
   const scoreLabels=['話術','ユーモア','親近感','情報量','エネルギー'];
-  const scoreRows=scoreLabels.filter(l=>scores[l]!=null).map(l=>{
-    const v=scores[l];const c=scoreColors(v);
-    return `<div class="sp-modal-score-row">
-      <span class="sp-modal-score-label">${esc(l)}</span>
-      <div class="sp-modal-score-track"><div class="sp-modal-score-fill" style="width:${v}%;background:${c}"></div></div>
-      <span class="sp-modal-score-val" style="color:${c}">${v}</span>
-    </div>`;
-  }).join('');
+  const scoreEntries=Object.fromEntries(scoreLabels.filter(l=>scores[l]!=null).map(l=>[l,scores[l]]));
+  const radarSvg=Object.keys(scoreEntries).length?_radarChart(scoreEntries,'#a78bfa',180):'';
   const badges=(prof.personality||[]).map(b=>`<span class="sp-badge">${esc(b)}</span>`).join('');
   const updated=prof.updatedAt?new Date(prof.updatedAt).toLocaleDateString('ja-JP'):'';
   const html=`<div class="sp-modal-hd">
@@ -5044,7 +5059,7 @@ function openStreamerDetail(tag){
   </div>
   <div class="sp-modal-body">
     <div class="sp-modal-left">
-      ${scoreRows?`<div>${scoreRows}</div>`:''}
+      ${radarSvg?`<div style="display:flex;justify-content:center;padding:4px 0">${radarSvg}</div>`:''}
       ${badges?`<div><div class="sp-modal-section-label">🏷️ 特徴タグ</div><div class="sp-modal-badges">${badges}</div></div>`:''}
     </div>
     <div class="sp-modal-right">
