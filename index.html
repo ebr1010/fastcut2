@@ -654,7 +654,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.10.1</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.10.2</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -4623,7 +4623,7 @@ function renderViewerAnalysis(){
     for(const rec of tagRecs){
       for(const c of(rec.chatData||[])){
         if(!c.username)continue;
-        if(singleUser&&c.username!==singleUser)continue;
+        if(singleUser&&c.username.toLowerCase()!==singleUser.toLowerCase())continue;
         if(!byUser.has(c.username))byUser.set(c.username,{msgs:[],vids:new Set(),donated:false});
         const u=byUser.get(c.username);
         u.msgs.push(c.message||'');
@@ -4636,6 +4636,7 @@ function renderViewerAnalysis(){
       if(!singleUser&&data.msgs.length<minMsgs)continue;
       users.push(_analyzeViewer(name,data.msgs,data.vids.size,data.donated));
     }
+    if(!users.length)continue;
     users.sort((a,b)=>b.count-a.count);
     users.forEach((u,i)=>u.rank=i+1);
     tagResults.push({tag,color,users:users.slice(0,60)});
@@ -4828,7 +4829,7 @@ function exportViewerJson(){
     for(const rec of recs){
       const tag=rec.mainTag||'（タグなし）';
       for(const c of(rec.chatData||[])){
-        if(c.username!==singleUser)continue;
+        if(c.username.toLowerCase()!==singleUser.toLowerCase())continue;
         if(!userData.has(tag))userData.set(tag,{msgs:[],vids:new Set(),donated:false});
         const u=userData.get(tag);
         u.msgs.push(c.message||'');
