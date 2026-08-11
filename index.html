@@ -5164,7 +5164,15 @@ function openStreamerDetail(tag){
     ?`<div class="va-period-tabs" style="margin-top:6px">${periods.map(p=>`<button class="va-period-tab${p===activePeriod?' active':''}" onclick="switchStreamerPeriod('${esc(tag)}','${esc(p)}')">${esc(p)}</button>`).join('')}</div>`
     :(periods.length===1&&periods[0]!=='全期間'?`<div style="font-size:10px;color:#94a3b8;margin-top:4px">📅 ${esc(periods[0])}</div>`:'');
   const scores=prof.scores||{};
-  const radarSvg=Object.keys(scores).length?_radarChart(scores,'#a78bfa',200):'';
+  const scoreEntries=Object.entries(scores);
+  const radarEntries=scoreEntries.slice(0,8);
+  const barEntries=scoreEntries.slice(8);
+  const radarObj=Object.fromEntries(radarEntries);
+  const radarSvg=radarEntries.length?_radarChart(radarObj,'#a78bfa',180):'';
+  const scoreColor=v=>v>=80?'#4ade80':v>=60?'#facc15':'#f87171';
+  const barHtml=barEntries.length
+    ?`<div style="margin-top:10px;display:flex;flex-direction:column;gap:5px">${barEntries.map(([lbl,val])=>`<div style="display:flex;align-items:center;gap:6px"><span style="width:88px;font-size:10px;color:#94a3b8;flex-shrink:0;text-align:right">${esc(lbl)}</span><div style="flex:1;height:5px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden"><div style="width:${val}%;height:100%;background:#a78bfa;border-radius:3px"></div></div><span style="width:22px;font-size:11px;font-weight:700;color:${scoreColor(val)};text-align:right">${val}</span></div>`).join('')}</div>`
+    :'';
   const badges=(prof.personality||[]).map(b=>`<span class="sp-badge">${esc(b)}</span>`).join('');
   const updated=prof.updatedAt?new Date(prof.updatedAt).toLocaleDateString('ja-JP'):'';
   const _arrBlock=(icon,label,arr)=>arr&&arr.length
@@ -5178,7 +5186,8 @@ function openStreamerDetail(tag){
   <div class="sp-modal-body">
     <div class="sp-modal-left">
       ${radarSvg?`<div style="display:flex;justify-content:center;padding:4px 0">${radarSvg}</div>`:''}
-      ${badges?`<div><div class="sp-modal-section-label">🏷️ 特徴タグ</div><div class="sp-modal-badges">${badges}</div></div>`:''}
+      ${barHtml}
+      ${badges?`<div style="margin-top:10px"><div class="sp-modal-section-label">🏷️ 特徴タグ</div><div class="sp-modal-badges">${badges}</div></div>`:''}
       ${prof.area?`<div style="margin-top:10px"><div class="sp-modal-section-label">📍 推定エリア</div><div style="font-size:12px;color:#e2e8f0;margin-top:4px;line-height:1.5">${esc(prof.area)}</div></div>`:''}
       ${prof.hobbies&&prof.hobbies.length?`<div style="margin-top:10px"><div class="sp-modal-section-label">🎮 趣味・関心</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">${prof.hobbies.map(h=>`<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.4);color:#c4b5fd">${esc(h)}</span>`).join('')}</div></div>`:''}
       ${prof.likes&&prof.likes.length?`<div style="margin-top:10px"><div class="sp-modal-section-label">❤️ 好きなもの</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">${prof.likes.map(h=>`<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(244,114,182,.12);border:1px solid rgba(244,114,182,.35);color:#f9a8d4">${esc(h)}</span>`).join('')}</div></div>`:''}
