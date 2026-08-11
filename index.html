@@ -675,7 +675,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.11.1</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.11.2</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -1018,7 +1018,12 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
         <button class="rank-mode-btn" onclick="exportWordReactionJson()" style="padding:5px 14px;border-color:#38bdf8;color:#38bdf8;white-space:nowrap">📤 解析JSON出力</button>
       </div>
       <div id="wr-export-msg" style="font-size:11px;color:var(--t2);margin-bottom:8px"></div>
-      <div style="font-size:12px;color:var(--t2);margin-bottom:6px">📥 Claudeの単語反応分析結果を貼り付けて登録（JSON形式）</div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:6px">📥 Claudeの単語反応分析結果を登録（CL_ファイルまたは貼り付け）</div>
+      <div style="display:flex;gap:8px;margin-bottom:6px;align-items:center">
+        <button class="rank-mode-btn" onclick="document.getElementById('wr-file-input').click()" style="padding:5px 14px;border-color:#38bdf8;color:#38bdf8;white-space:nowrap">📂 CL_ファイルから登録</button>
+        <input type="file" id="wr-file-input" accept=".json" style="display:none" onchange="importWordReactionFile(this)">
+        <span style="font-size:11px;color:var(--t2)">または↓に貼り付け</span>
+      </div>
       <textarea id="wr-import-ta" rows="4" placeholder='[{"tag":"みいる","keyword":"パイナップル","variants":["パイン","パイナップル"],"reaction":"...","impression":"...","emotionTone":"positive","score":95,"evidence":["最近めっちゃパインにはまってて"]}]'
         style="width:100%;background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:8px;font-size:11px;font-family:monospace;resize:vertical;outline:none"></textarea>
       <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
@@ -5417,7 +5422,7 @@ function exportWordReactionJson(){
   }
   if(!videoGroups.length){msgEl.textContent='音声データがありません。字幕つき動画を登録してください。';return;}
 
-  const WINDOW_SEC=60; // 前後約1分
+  const WINDOW_SEC=90; // 前後約1分30秒
   const contexts=[];
 
   for(const segs of videoGroups){
@@ -5460,7 +5465,7 @@ function exportWordReactionJson(){
   };
   const json=JSON.stringify(output,null,2);
   dl(json,`FC_${tagName}_${keywords[0]}_word_reaction.json`,'application/json;charset=utf-8');
-  msgEl.textContent=`${contexts.length}件の発言文脈を出力しました（前後約1分の文脈つき）`;
+  msgEl.textContent=`${contexts.length}件の発言文脈を出力しました（前後約1分30秒の文脈つき）`;
   toast(`単語反応解析JSON出力（${contexts.length}件マッチ）`,'ok');
 }
 
@@ -5468,14 +5473,23 @@ function _loadWordReactions(){
   try{return JSON.parse(localStorage.getItem('fc_word_reactions')||'[]');}catch{return[];}
 }
 
-function importWordReactionAnalysis(){
-  const ta=document.getElementById('wr-import-ta');
+function importWordReactionFile(input){
+  const file=input.files[0];
+  if(!file)return;
   const msg=document.getElementById('wr-import-msg');
-  const raw=(ta?.value||'').trim();
-  if(!raw){msg.textContent='データを貼り付けてください';return;}
-  let data;
-  try{data=JSON.parse(raw);}catch{msg.textContent='JSONの形式が正しくありません';return;}
-  if(!Array.isArray(data)){msg.textContent='JSON配列で貼り付けてください';return;}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const raw=(e.target.result||'').trim();
+    let data;
+    try{data=JSON.parse(raw);}catch{msg.textContent='JSONの形式が正しくありません';input.value='';return;}
+    if(!Array.isArray(data)){msg.textContent='JSON配列形式のファイルを選択してください';input.value='';return;}
+    _doImportWordReaction(data,msg);
+    input.value='';
+  };
+  reader.readAsText(file,'utf-8');
+}
+
+function _doImportWordReaction(data,msg){
   const existing=_loadWordReactions();
   let count=0;
   for(const item of data){
@@ -5488,9 +5502,20 @@ function importWordReactionAnalysis(){
   }
   try{localStorage.setItem('fc_word_reactions',JSON.stringify(existing));}catch(e){msg.textContent='保存失敗: '+e.message;return;}
   msg.textContent=count+'件を登録しました';
-  ta.value='';
   renderWordReactionCards();
   toast('単語反応 '+count+'件を登録しました','ok');
+}
+
+function importWordReactionAnalysis(){
+  const ta=document.getElementById('wr-import-ta');
+  const msg=document.getElementById('wr-import-msg');
+  const raw=(ta?.value||'').trim();
+  if(!raw){msg.textContent='データを貼り付けてください';return;}
+  let data;
+  try{data=JSON.parse(raw);}catch{msg.textContent='JSONの形式が正しくありません';return;}
+  if(!Array.isArray(data)){msg.textContent='JSON配列で貼り付けてください';return;}
+  _doImportWordReaction(data,msg);
+  ta.value='';
 }
 
 function renderWordReactionCards(){
