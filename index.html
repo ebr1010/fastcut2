@@ -675,7 +675,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.11.5</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.11.6</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -4833,7 +4833,8 @@ function renderStreamerProfileManager(){
   const raw=_loadStreamerProfilesRaw();
   const tags=Object.keys(raw);
   if(!tags.length){mgr.innerHTML='';return;}
-  const rows=tags.map(tag=>{
+  const rows=[];
+  for(const tag of tags){
     const entry=raw[tag];
     let periods;
     if('analysis' in entry||'scores' in entry){
@@ -4841,13 +4842,33 @@ function renderStreamerProfileManager(){
     } else {
       periods=Object.keys(entry).filter(k=>k!=='_active').sort();
     }
-    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--bd)">
+    for(const period of periods){
+      rows.push(`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--bd)">
         <span style="font-size:12px;color:#a78bfa;font-weight:600">${esc(tag)}</span>
-        <span style="font-size:10px;color:var(--t2)">${periods.map(esc).join(' · ')}</span>
-      <button onclick="deleteStreamerProfile('${esc(tag)}')" style="flex-shrink:0;font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid #f87171;background:transparent;color:#f87171;cursor:pointer">🗑 削除</button>
-    </div>`;
-  }).join('');
-  mgr.innerHTML=`<div style="font-size:11px;color:var(--t2);margin-bottom:4px">📋 登録済み配信者プロファイル（${tags.length}件）</div>${rows}`;
+        <span style="font-size:10px;color:var(--t2)">${esc(period)}</span>
+        <button onclick="deleteStreamerPeriod('${esc(tag)}','${esc(period)}')" style="flex-shrink:0;font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid #f87171;background:transparent;color:#f87171;cursor:pointer">🗑 削除</button>
+      </div>`);
+    }
+  }
+  mgr.innerHTML=`<div style="font-size:11px;color:var(--t2);margin-bottom:4px">📋 登録済み配信者プロファイル（${rows.length}件）</div>${rows.join('')}`;
+}
+
+function deleteStreamerPeriod(tag,period){
+  const raw=_loadStreamerProfilesRaw();
+  if(!raw[tag])return;
+  const entry=raw[tag];
+  if('analysis' in entry||'scores' in entry){
+    delete raw[tag];
+  } else {
+    delete raw[tag][period];
+    const remaining=Object.keys(raw[tag]).filter(k=>k!=='_active');
+    if(!remaining.length){delete raw[tag];}
+    else if(raw[tag]._active===period){raw[tag]._active=remaining[0];}
+  }
+  try{localStorage.setItem('fc_streamer_profiles',JSON.stringify(raw));}catch{}
+  renderStreamerProfileManager();
+  renderViewerAnalysis();
+  toast(`${tag} (${period}) を削除しました`,'ok');
 }
 
 function deleteStreamerProfile(tag){
