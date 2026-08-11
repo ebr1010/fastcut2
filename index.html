@@ -654,7 +654,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.10.10</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.10.11</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -5090,11 +5090,14 @@ function _loadStreamerProfiles(){
 }
 
 function _radarChart(scores,strokeColor,size){
-  strokeColor=strokeColor||'#7dd3fc'; size=size||180;
+  strokeColor=strokeColor||'#7dd3fc'; size=size||200;
   const entries=Object.entries(scores);
   const n=entries.length; if(!n)return '';
   const cx=size/2, cy=size/2;
-  const R=size*.3, LR=size*.46;
+  const R=size*.32, LR=size*.50;
+  const fs=Math.max(9, Math.round(size*.062));
+  const fv=Math.max(11, Math.round(size*.075));
+  const lh=fv+2;
   const sa=-Math.PI/2, as=2*Math.PI/n;
   const pt=(i,f)=>[cx+R*f*Math.cos(sa+as*i), cy+R*f*Math.sin(sa+as*i)];
   const lp=(i)=>[cx+LR*Math.cos(sa+as*i), cy+LR*Math.sin(sa+as*i)];
@@ -5113,11 +5116,10 @@ function _radarChart(scores,strokeColor,size){
     const a=sa+as*i;
     const[x,y]=lp(i);
     const anc=Math.cos(a)>.1?'start':Math.cos(a)<-.1?'end':'middle';
-    const lh=11;
     const vc=val>=80?'#4ade80':val>=60?'#facc15':'#f87171';
-    return `<text x="${x.toFixed(1)}" y="${(y-lh*.5).toFixed(1)}" text-anchor="${anc}" dominant-baseline="middle" font-size="8" fill="rgba(255,255,255,.65)" font-family="sans-serif">${label}</text><text x="${x.toFixed(1)}" y="${(y+lh*.5).toFixed(1)}" text-anchor="${anc}" dominant-baseline="middle" font-size="10" font-weight="700" fill="${vc}" font-family="monospace">${val}</text>`;
+    return `<text x="${x.toFixed(1)}" y="${(y-lh*.5).toFixed(1)}" text-anchor="${anc}" dominant-baseline="middle" font-size="${fs}" fill="rgba(255,255,255,.7)" font-family="sans-serif">${label}</text><text x="${x.toFixed(1)}" y="${(y+lh*.5).toFixed(1)}" text-anchor="${anc}" dominant-baseline="middle" font-size="${fv}" font-weight="700" fill="${vc}" font-family="monospace">${val}</text>`;
   }).join('');
-  const PAD=52;
+  const PAD=60;
   const W=size+PAD*2, H=size+PAD*2;
   return `<svg width="${W}" height="${H}" viewBox="${-PAD} ${-PAD} ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${rings}${axes}${poly}${dots}${lbls}</svg>`;
 }
