@@ -650,7 +650,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.9.7</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.9.8</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -4793,6 +4793,12 @@ function exportViewerJson(){
 
   const dateRangeLabel=(dateFrom||dateTo)?`${dateFrom||'開始'}〜${dateTo||'現在'}`:'全期間';
 
+  // ファイル名用期間文字列（無指定時はDBから実際の期間を算出）
+  let _minD='',_maxD='';
+  for(const r of recs){if(!r.registeredAt)continue;const d=r.registeredAt.substring(0,10);if(!_minD||d<_minD)_minD=d;if(!_maxD||d>_maxD)_maxD=d;}
+  const periodStr=(dateFrom||dateTo)?`${dateFrom||'開始'}〜${dateTo||'現在'}`:(_minD?`${_minD}〜${_maxD}`:'全期間');
+  const tagLabel=tagFilter||'AllTag';
+
   if(singleUser){
     // 1人集中モード：全サンプル最大限
     const userData=new Map(); // tag -> {msgs,vids,donated}
@@ -4834,7 +4840,7 @@ function exportViewerJson(){
       }]});
     }
     const json=JSON.stringify(output,null,2);
-    dl(json,`${singleUser}_full_analysis.json`,'application/json;charset=utf-8');
+    dl(json,`${singleUser}_${tagLabel}_${periodStr}_full_analysis.json`,'application/json;charset=utf-8');
     const totalSamples=output.tags.reduce((s,t)=>s+t.viewers[0].sampleCount,0);
     toast(`「${singleUser}」全サンプル ${totalSamples}件 を出力しました`,'ok');
     return;
@@ -4885,8 +4891,7 @@ function exportViewerJson(){
   }
 
   const json=JSON.stringify(output,null,2);
-  const prefix=(tagFilter?tagFilter+'_':'')+(dateFrom?dateFrom+'_':'');
-  dl(json,prefix+'viewer_analysis.json','application/json;charset=utf-8');
+  dl(json,`AllAccount_${tagLabel}_${periodStr}_viewer_analysis.json`,'application/json;charset=utf-8');
   toast(`JSONを出力しました（${dateRangeLabel} · ${recs.length}動画）`,'ok');
 }
 
@@ -5021,6 +5026,13 @@ function exportStreamerJson(){
   if(!hasTr){toast('音声データ（字幕）がありません。字幕つき動画を登録してください。','err');return;}
 
   const dateRangeLabel=(dateFrom||dateTo)?`${dateFrom||'開始'}〜${dateTo||'現在'}`:'全期間';
+
+  // ファイル名用期間文字列（無指定時はDBから実際の期間を算出）
+  let _sMinD='',_sMaxD='';
+  for(const r of recs){if(!r.registeredAt)continue;const d=r.registeredAt.substring(0,10);if(!_sMinD||d<_sMinD)_sMinD=d;if(!_sMaxD||d>_sMaxD)_sMaxD=d;}
+  const sPeriodStr=(dateFrom||dateTo)?`${dateFrom||'開始'}〜${dateTo||'現在'}`:(_sMinD?`${_sMinD}〜${_sMaxD}`:'全期間');
+  const sAccountStr=tagFilter||'AllAccount';
+
   const output={
     exportedAt:new Date().toISOString(),
     dateRange:dateRangeLabel,
@@ -5059,8 +5071,7 @@ function exportStreamerJson(){
 
   if(!output.tags.length){toast('音声データのあるタグが見つかりません','err');return;}
   const json=JSON.stringify(output,null,2);
-  const prefix=(tagFilter?tagFilter+'_':'')+(dateFrom?dateFrom+'_':'');
-  dl(json,prefix+'streamer_analysis.json','application/json;charset=utf-8');
+  dl(json,`${sAccountStr}_${sPeriodStr}_streamer_analysis.json`,'application/json;charset=utf-8');
   toast(`配信者解析JSON出力（${totalSamples}セグメント · ${recs.length}動画）`,'ok');
 }
 
