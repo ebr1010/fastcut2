@@ -675,7 +675,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.11.7</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.11.8</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -968,7 +968,9 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
       <input type="date" id="viewer-date-to" style="background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:3px 5px;font-size:11px;outline:none" title="終了日（空欄=全期間）">
       <input type="text" id="viewer-single-user" placeholder="1人に絞る（空=全員）" style="background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:3px 7px;font-size:11px;width:160px;outline:none" title="アカウント名を入力すると、そのユーザーのみ全サンプルを使って解析用JSONを出力します">
       <button class="rank-mode-btn" onclick="exportViewerJson()" style="padding:4px 10px;font-size:11px;border-color:#e8a030;color:#e8a030">📤 視聴者解析JSON</button>
+      <button class="rank-mode-btn" onclick="exportViewerJsonMonthly()" style="padding:4px 10px;font-size:11px;border-color:#fb923c;color:#fb923c" title="期間指定を月単位に分割して複数ファイル出力">📅 視聴者・月単位</button>
       <button class="rank-mode-btn" onclick="exportStreamerJson()" style="padding:4px 10px;font-size:11px;border-color:#a78bfa;color:#a78bfa">🎙️ 配信者解析JSON</button>
+      <button class="rank-mode-btn" onclick="exportStreamerJsonMonthly()" style="padding:4px 10px;font-size:11px;border-color:#c084fc;color:#c084fc" title="期間指定を月単位に分割して複数ファイル出力">📅 配信者・月単位</button>
       <select id="viewer-sort-sel" class="rank-tag-sel" onchange="renderViewerAnalysis()" title="ソート順">
         <option value="">コメント数順</option>
         <option value="関与度">関与度順</option>
@@ -5405,6 +5407,134 @@ function exportStreamerJson(){
   const json=JSON.stringify(output,null,2);
   dl(json,`FC_${sAccountStr}_${sPeriodStr}_streamer_analysis.json`,'application/json;charset=utf-8');
   toast(`配信者解析JSON出力（${totalSamples}セグメント · ${recs.length}動画）`,'ok');
+}
+
+function _genMonths(dateFrom,dateTo){
+  const months=[];
+  const s=new Date((dateFrom.length===7?dateFrom+'-01':dateFrom));
+  const e=new Date((dateTo.length===7?dateTo+'-01':dateTo));
+  let cur=new Date(s.getFullYear(),s.getMonth(),1);
+  const eYM=e.getFullYear()*12+e.getMonth();
+  while(cur.getFullYear()*12+cur.getMonth()<=eYM){
+    const y=cur.getFullYear();
+    const m=String(cur.getMonth()+1).padStart(2,'0');
+    const mFrom=`${y}-${m}-01`;
+    const lastDay=new Date(y,cur.getMonth()+1,0).getDate();
+    const mTo=`${y}-${m}-${String(lastDay).padStart(2,'0')}`;
+    months.push({from:mFrom,to:mTo,label:`${mFrom}〜${mTo}`});
+    cur=new Date(y,cur.getMonth()+1,1);
+  }
+  return months;
+}
+
+function exportViewerJsonMonthly(){
+  const tagFilter=document.getElementById('viewer-tag-sel')?.value||'';
+  const minMsgs=parseInt(document.getElementById('viewer-min-msgs')?.value)||3;
+  const dateFrom=document.getElementById('viewer-date-from')?.value||'';
+  const dateTo=document.getElementById('viewer-date-to')?.value||'';
+  const singleUser=(document.getElementById('viewer-single-user')?.value||'').trim();
+  if(!dateFrom||!dateTo){toast('月単位出力は開始日・終了日の両方を指定してください','err');return;}
+  const months=_genMonths(dateFrom,dateTo);
+  if(!months.length){toast('期間が正しくありません','err');return;}
+  const _rd2=r=>r.streamStart||r.registeredAt||'';
+  const baseRecs=tagFilter?_dbCache.filter(r=>r.mainTag===tagFilter):_dbCache;
+  const tagLabel=tagFilter||'AllTag';
+  let fileCount=0;
+  for(const {from,to,label} of months){
+    const recs=baseRecs.filter(r=>{const d=_rd2(r);return d&&d>=from&&d<=(to+'T23:59:59');});
+    if(!recs.length)continue;
+    if(singleUser){
+      const userData=new Map();
+      for(const rec of recs){
+        const tag=rec.mainTag||'（タグなし）';
+        for(const c of(rec.chatData||[])){
+          if(c.username.toLowerCase()!==singleUser.toLowerCase())continue;
+          if(!userData.has(tag))userData.set(tag,{msgs:[],vids:new Set(),donated:false});
+          const u=userData.get(tag);
+          u.msgs.push(c.message||'');
+          u.vids.add(rec.id);
+          if(c.donated)u.donated=true;
+        }
+      }
+      if(!userData.size)continue;
+      const output={exportedAt:new Date().toISOString(),dateRange:label,videoCount:recs.length,targetUser:singleUser,mode:'single_user_full_sample',
+        instruction:`「${singleUser}」について、sampleMessagesや統計情報をもとに性格・発言傾向・深層心理・面白い特徴を日本語で最大限詳細に解析してください。返答はJSON配列で、各要素に username/tag/analysis/deepAnalysis/personality(バッジ配列)/scores({ラベル:0-100}) を含めてください。`,
+        tags:[]};
+      for(const[tag,data]of userData){
+        const av=_analyzeViewer(singleUser,data.msgs,data.vids.size,data.donated);
+        const deduped=data.msgs.filter((m,i,a)=>m.trim()&&a.indexOf(m)===i);
+        output.tags.push({tag,viewers:[{rank:1,username:singleUser,totalMessages:av.count,sampleCount:deduped.length,appearedInVideos:av.vidCount,avgMessageLength:av.avgLen,autoBadges:av.badges,topPhrases:av.topWords,sampleMessages:deduped}]});
+      }
+      dl(JSON.stringify(output,null,2),`FC_${singleUser}_${tagLabel}_${label}_viewer_analysis.json`,'application/json;charset=utf-8');
+    } else {
+      const byTag=new Map();
+      for(const rec of recs){const tag=rec.mainTag||'（タグなし）';if(!byTag.has(tag))byTag.set(tag,[]);byTag.get(tag).push(rec);}
+      const output={exportedAt:new Date().toISOString(),dateRange:label,videoCount:recs.length,
+        instruction:'各viewerについて、sampleMessagesや統計情報をもとに性格・発言傾向・面白い特徴を日本語で解析してください。返答はJSON配列で、各要素に username/tag/analysis/deepAnalysis/personality(バッジ配列)/scores({ラベル:0-100}) を含めてください。',
+        tags:[]};
+      for(const[tag,tagRecs]of byTag){
+        const byUser=new Map();
+        for(const rec of tagRecs){for(const c of(rec.chatData||[])){if(!c.username)continue;if(!byUser.has(c.username))byUser.set(c.username,{msgs:[],vids:new Set(),donated:false});const u=byUser.get(c.username);u.msgs.push(c.message||'');u.vids.add(rec.id);if(c.donated)u.donated=true;}}
+        const users=[];
+        for(const[name,data]of byUser){
+          if(data.msgs.length<minMsgs)continue;
+          const av=_analyzeViewer(name,data.msgs,data.vids.size,data.donated);
+          const deduped=data.msgs.filter((m,i,a)=>m.trim()&&a.indexOf(m)===i);
+          const sample=deduped.slice(0,60);
+          users.push({rank:0,username:name,totalMessages:av.count,sampleCount:sample.length,appearedInVideos:av.vidCount,avgMessageLength:av.avgLen,autoBadges:av.badges,topPhrases:av.topWords,sampleMessages:sample});
+        }
+        users.sort((a,b)=>b.totalMessages-a.totalMessages);
+        users.forEach((u,i)=>u.rank=i+1);
+        output.tags.push({tag,viewers:users.slice(0,100)});
+      }
+      if(!output.tags.length)continue;
+      dl(JSON.stringify(output,null,2),`FC_AllAccount_${tagLabel}_${label}_viewer_analysis.json`,'application/json;charset=utf-8');
+    }
+    fileCount++;
+  }
+  if(!fileCount){toast('出力できるデータがありませんでした','err');return;}
+  toast(`月単位で ${fileCount} ファイルを出力しました（${months.length}ヶ月分）`,'ok');
+}
+
+function exportStreamerJsonMonthly(){
+  const tagFilter=document.getElementById('viewer-tag-sel')?.value||'';
+  const dateFrom=document.getElementById('viewer-date-from')?.value||'';
+  const dateTo=document.getElementById('viewer-date-to')?.value||'';
+  if(!dateFrom||!dateTo){toast('月単位出力は開始日・終了日の両方を指定してください','err');return;}
+  const months=_genMonths(dateFrom,dateTo);
+  if(!months.length){toast('期間が正しくありません','err');return;}
+  const _rd3=r=>r.streamStart||r.registeredAt||'';
+  const baseRecs=tagFilter?_dbCache.filter(r=>r.mainTag===tagFilter):_dbCache;
+  const sAccountStr=tagFilter||'AllAccount';
+  let fileCount=0;
+  for(const {from,to,label} of months){
+    const recs=baseRecs.filter(r=>{const d=_rd3(r);return d&&d>=from&&d<=(to+'T23:59:59');});
+    if(!recs.length)continue;
+    const byTag=new Map();
+    for(const rec of recs){const tag=rec.mainTag||'（タグなし）';if(!byTag.has(tag))byTag.set(tag,[]);byTag.get(tag).push(rec);}
+    const output={exportedAt:new Date().toISOString(),dateRange:label,mode:'streamer_personality_analysis',
+      instruction:'以下は配信者の音声認識データ（speechSample）です。この発言内容をもとに、配信者の性格・話し方の癖・よく使う表現・口調・ユーモアのスタイル・感情表現の特徴・よく話すトピック・視聴者との関係性・深層心理を日本語で最大限詳細に解析してください。返答はJSON配列で、各要素に tag/analysis(最大限長く)/deepAnalysis(最大限長く)/personalityDetail(最大限長く)/personality(バッジ配列)/scores(話術・ユーモア・親近感・情報量・エネルギー・感情表現力・視聴者記憶力・コンテンツ多様性・長期継続力・即興対応力・コミュニティ形成力・自己開示度・コラボ適性・新規獲得力・ブランド確立度・配信安定性・声質表現力・ゲーム実況力・テンポ感・視聴者対応力・誠実さ・予測不能性・感情起伏の豊かさ・コンテンツ設計力・外部展開力 など複数:0-100)/area(推定居住エリア)/hobbies(配列)/likes(好きなもの配列)/dislikes(苦手なもの配列)/likedPersonalityTypes(好きなタイプ・人柄 配列)/dislikedPersonalityTypes(嫌いなタイプ・人柄 配列)/likedCommentStyles(好まれるコメント方向性 配列)/dislikedCommentStyles(苦手なコメント方向性 配列)/vtuberAdvice(ヒットするためのアドバイス 配列) を含めてください。',
+      tags:[]};
+    let hasTr=false;
+    for(const[,tagRecs]of byTag){if(tagRecs.some(r=>(r.trData||[]).length>0)){hasTr=true;break;}}
+    if(!hasTr)continue;
+    for(const[tag,tagRecs]of byTag){
+      const allSegs=[];
+      for(const rec of tagRecs){for(const t of(rec.trData||[])){if(t.text?.trim())allSegs.push(t.text.trim());}}
+      if(!allSegs.length)continue;
+      const deduped=allSegs.filter((t,i,a)=>a.indexOf(t)===i);
+      const CAP=600;
+      const sample=deduped.length<=CAP?deduped:Array.from({length:CAP},(_,i)=>deduped[Math.floor(i*deduped.length/CAP)]);
+      const totalChat=tagRecs.reduce((s,r)=>s+(r.chatData?.length||0),0);
+      const uniqueUsers=new Set(tagRecs.flatMap(r=>(r.chatData||[]).map(c=>c.username))).size;
+      output.tags.push({tag,videoCount:tagRecs.length,totalSpeechSegments:allSegs.length,sampleCount:sample.length,viewerStats:{totalMessages:totalChat,uniqueViewers:uniqueUsers},speechSample:sample});
+    }
+    if(!output.tags.length)continue;
+    dl(JSON.stringify(output,null,2),`FC_${sAccountStr}_${label}_streamer_analysis.json`,'application/json;charset=utf-8');
+    fileCount++;
+  }
+  if(!fileCount){toast('出力できるデータがありませんでした','err');return;}
+  toast(`月単位で ${fileCount} ファイルを出力しました（${months.length}ヶ月分）`,'ok');
 }
 
 function importStreamerAnalysis(){
