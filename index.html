@@ -654,7 +654,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.10.9</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.10.10</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -5117,7 +5117,9 @@ function _radarChart(scores,strokeColor,size){
     const vc=val>=80?'#4ade80':val>=60?'#facc15':'#f87171';
     return `<text x="${x.toFixed(1)}" y="${(y-lh*.5).toFixed(1)}" text-anchor="${anc}" dominant-baseline="middle" font-size="8" fill="rgba(255,255,255,.65)" font-family="sans-serif">${label}</text><text x="${x.toFixed(1)}" y="${(y+lh*.5).toFixed(1)}" text-anchor="${anc}" dominant-baseline="middle" font-size="10" font-weight="700" fill="${vc}" font-family="monospace">${val}</text>`;
   }).join('');
-  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" overflow="visible" xmlns="http://www.w3.org/2000/svg">${rings}${axes}${poly}${dots}${lbls}</svg>`;
+  const PAD=52;
+  const W=size+PAD*2, H=size+PAD*2;
+  return `<svg width="${W}" height="${H}" viewBox="${-PAD} ${-PAD} ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${rings}${axes}${poly}${dots}${lbls}</svg>`;
 }
 
 function _renderStreamerCard(tag){
@@ -5138,7 +5140,7 @@ function _renderStreamerCard(tag){
     </div>
     ${badges?`<div class="sp-badges">${badges}</div>`:''}
     <div class="sp-body">
-      ${cardRadar?`<div style="overflow:hidden;width:130px;flex-shrink:0;display:flex;align-items:center;justify-content:center">${cardRadar}</div>`:''}
+      ${cardRadar?`<div style="flex-shrink:0;display:flex;align-items:center;justify-content:center">${cardRadar}</div>`:''}
       <div class="sp-text">
         ${shortAnalysis?`<div><div class="sp-section-label">性格・特徴解析</div><div class="sp-analysis">${esc(shortAnalysis)}</div></div>`:''}
         ${shortDeep?`<div><div class="sp-section-label">深層分析</div><div class="sp-deep">${esc(shortDeep)}</div></div>`:''}
