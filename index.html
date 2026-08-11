@@ -654,7 +654,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.10.5</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.10.6</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -978,6 +978,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
         <span id="streamer-import-msg" style="font-size:11px;color:var(--t2)"></span>
       </div>
     </div>
+    <div id="streamer-profile-manager" style="margin-top:12px"></div>
   </div>
 </div>
 
@@ -4723,6 +4724,7 @@ function renderViewerAnalysis(){
     </div>`;
   }).join('');
   renderViewerProfileManager();
+  renderStreamerProfileManager();
 }
 
 function renderViewerProfileManager(){
@@ -4745,7 +4747,7 @@ function renderViewerProfileManager(){
         <span style="font-size:12px;color:var(--t0);font-weight:600">@${esc(username)}</span>
         ${tag?`<span style="font-size:11px;color:#7dd3fc">${esc(tag)}</span>`:''}
         <span style="font-size:10px;color:var(--t2)">${periods.map(esc).join(' · ')}</span>
-      <button onclick="deleteViewerProfile(${JSON.stringify(key)})" style="flex-shrink:0;font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid #f87171;background:transparent;color:#f87171;cursor:pointer">🗑 削除</button>
+      <button onclick="deleteViewerProfile('${esc(key)}')" style="flex-shrink:0;font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid #f87171;background:transparent;color:#f87171;cursor:pointer">🗑 削除</button>
     </div>`;
   }).join('');
   mgr.innerHTML=`<div style="font-size:11px;color:var(--t2);margin-bottom:4px">📋 登録済みプロファイル（${keys.length}件）</div>${rows}`;
@@ -4762,6 +4764,39 @@ function deleteViewerProfile(key){
   renderViewerProfileManager();
   renderViewerAnalysis();
   toast(`@${username}${tag?' ('+tag+')':''} を削除しました`,'ok');
+}
+
+function renderStreamerProfileManager(){
+  const mgr=document.getElementById('streamer-profile-manager');
+  if(!mgr)return;
+  const raw=_loadStreamerProfilesRaw();
+  const tags=Object.keys(raw);
+  if(!tags.length){mgr.innerHTML='';return;}
+  const rows=tags.map(tag=>{
+    const entry=raw[tag];
+    let periods;
+    if('analysis' in entry||'scores' in entry){
+      periods=['全期間'];
+    } else {
+      periods=Object.keys(entry).filter(k=>k!=='_active').sort();
+    }
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--bd)">
+        <span style="font-size:12px;color:#a78bfa;font-weight:600">${esc(tag)}</span>
+        <span style="font-size:10px;color:var(--t2)">${periods.map(esc).join(' · ')}</span>
+      <button onclick="deleteStreamerProfile('${esc(tag)}')" style="flex-shrink:0;font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid #f87171;background:transparent;color:#f87171;cursor:pointer">🗑 削除</button>
+    </div>`;
+  }).join('');
+  mgr.innerHTML=`<div style="font-size:11px;color:var(--t2);margin-bottom:4px">📋 登録済み配信者プロファイル（${tags.length}件）</div>${rows}`;
+}
+
+function deleteStreamerProfile(tag){
+  const raw=_loadStreamerProfilesRaw();
+  if(!raw[tag])return;
+  delete raw[tag];
+  try{localStorage.setItem('fc_streamer_profiles',JSON.stringify(raw));}catch{}
+  renderStreamerProfileManager();
+  renderViewerAnalysis();
+  toast(`${tag} の配信者プロファイルを削除しました`,'ok');
 }
 
 function openViewerDetail(name,tag){
@@ -5037,8 +5072,21 @@ function _loadViewerProfiles(){
   }catch{return{};}
 }
 
-function _loadStreamerProfiles(){
+function _loadStreamerProfilesRaw(){
   try{return JSON.parse(localStorage.getItem('fc_streamer_profiles')||'{}');}catch{return{};}
+}
+function _loadStreamerProfiles(){
+  try{
+    const raw=JSON.parse(localStorage.getItem('fc_streamer_profiles')||'{}');
+    const flat={};
+    for(const[tag,entry]of Object.entries(raw)){
+      if(!entry||typeof entry!=='object')continue;
+      if('analysis' in entry||'scores' in entry){flat[tag]=entry;continue;}
+      const active=entry._active||Object.keys(entry).find(k=>k!=='_active')||'全期間';
+      flat[tag]=entry[active]||{};
+    }
+    return flat;
+  }catch{return{};}
 }
 
 function _radarChart(scores,strokeColor,size){
@@ -5102,9 +5150,20 @@ function _renderStreamerCard(tag){
 }
 
 function openStreamerDetail(tag){
-  const prof=_loadStreamerProfiles()[tag];
-  if(!prof)return;
-  const scoreColors=v=>v>=80?'#4ade80':v>=60?'#facc15':'#f87171';
+  const raw=_loadStreamerProfilesRaw();
+  const rawEntry=raw[tag]||{};
+  let periods=[];
+  if('analysis' in rawEntry||'scores' in rawEntry){
+    periods=['全期間'];
+  } else {
+    periods=Object.keys(rawEntry).filter(k=>k!=='_active').sort();
+  }
+  const activePeriod=rawEntry._active||periods[0]||'全期間';
+  const prof=periods.length?('analysis' in rawEntry||'scores' in rawEntry?rawEntry:rawEntry[activePeriod]||{}):{};
+  if(!prof||(!prof.analysis&&!prof.scores))return;
+  const periodTabsHtml=periods.length>1
+    ?`<div class="va-period-tabs" style="margin-top:6px">${periods.map(p=>`<button class="va-period-tab${p===activePeriod?' active':''}" onclick="switchStreamerPeriod('${esc(tag)}','${esc(p)}')">${esc(p)}</button>`).join('')}</div>`
+    :(periods.length===1&&periods[0]!=='全期間'?`<div style="font-size:10px;color:#94a3b8;margin-top:4px">📅 ${esc(periods[0])}</div>`:'');
   const scores=prof.scores||{};
   const scoreLabels=['話術','ユーモア','親近感','情報量','エネルギー'];
   const scoreEntries=Object.fromEntries(scoreLabels.filter(l=>scores[l]!=null).map(l=>[l,scores[l]]));
@@ -5113,7 +5172,7 @@ function openStreamerDetail(tag){
   const updated=prof.updatedAt?new Date(prof.updatedAt).toLocaleDateString('ja-JP'):'';
   const html=`<div class="sp-modal-hd">
     <div class="sp-modal-icon">🎙️</div>
-    <div><div class="sp-modal-title">配信者プロフィール — ${esc(tag)}</div><div class="sp-modal-sub">音声データをもとにした性格解析${updated?' · 解析日: '+updated:''}</div></div>
+    <div style="flex:1;min-width:0"><div class="sp-modal-title">配信者プロフィール — ${esc(tag)}</div><div class="sp-modal-sub">音声データをもとにした性格解析${updated?' · 解析日: '+updated:''}</div>${periodTabsHtml}</div>
     <button class="sp-modal-close" onclick="document.getElementById('sp-modal').classList.remove('open')">✕ 閉じる</button>
   </div>
   <div class="sp-modal-body">
@@ -5128,6 +5187,14 @@ function openStreamerDetail(tag){
   </div>`;
   document.getElementById('sp-modal-content').innerHTML=html;
   document.getElementById('sp-modal').classList.add('open');
+}
+
+function switchStreamerPeriod(tag,period){
+  const raw=_loadStreamerProfilesRaw();
+  if(!raw[tag])return;
+  raw[tag]._active=period;
+  try{localStorage.setItem('fc_streamer_profiles',JSON.stringify(raw));}catch{}
+  openStreamerDetail(tag);
 }
 
 function exportStreamerJson(){
@@ -5213,22 +5280,33 @@ function importStreamerAnalysis(){
   let data;
   try{data=JSON.parse(raw);}catch{msg.textContent='JSONの形式が正しくありません';return;}
   if(!Array.isArray(data)){msg.textContent='JSON配列で貼り付けてください';return;}
-  const profiles=_loadStreamerProfiles();
+  const profiles=_loadStreamerProfilesRaw();
   let count=0;
   for(const item of data){
     if(!item.tag)continue;
+    const period=item.period||'全期間';
+    // 旧フォーマット移行
+    if(profiles[item.tag]&&('analysis' in profiles[item.tag]||'scores' in profiles[item.tag])){
+      const old=Object.assign({},profiles[item.tag]);
+      delete old._active;
+      profiles[item.tag]={'全期間':old,_active:'全期間'};
+    }
     if(!profiles[item.tag])profiles[item.tag]={};
-    if(item.analysis)profiles[item.tag].analysis=item.analysis;
-    if(item.deepAnalysis)profiles[item.tag].deepAnalysis=item.deepAnalysis;
-    if(item.personality)profiles[item.tag].personality=item.personality;
-    if(item.scores)profiles[item.tag].scores=item.scores;
-    profiles[item.tag].updatedAt=new Date().toISOString();
+    if(!profiles[item.tag][period])profiles[item.tag][period]={};
+    const p=profiles[item.tag][period];
+    if(item.analysis)p.analysis=item.analysis;
+    if(item.deepAnalysis)p.deepAnalysis=item.deepAnalysis;
+    if(item.personality)p.personality=item.personality;
+    if(item.scores)p.scores=item.scores;
+    p.updatedAt=new Date().toISOString();
+    if(!profiles[item.tag]._active)profiles[item.tag]._active=period;
     count++;
   }
   try{localStorage.setItem('fc_streamer_profiles',JSON.stringify(profiles));}catch(e){msg.textContent='保存失敗: '+e.message;return;}
   msg.textContent=count+'件を登録しました';
   ta.value='';
   renderViewerAnalysis();
+  renderStreamerProfileManager();
   toast('配信者プロファイル '+count+'件を登録しました','ok');
 }
 
