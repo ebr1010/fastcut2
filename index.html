@@ -675,7 +675,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.1</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.2</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -1000,6 +1000,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
       <button onclick="_setAllPrivacy(false)" style="font-size:11px;padding:3px 10px;border-radius:4px;border:1px solid #64748b;background:transparent;color:#94a3b8;cursor:pointer">🌐 全て公開</button>
       <button onclick="_setAllPrivacy(true)" style="font-size:11px;padding:3px 10px;border-radius:4px;border:1px solid #f59e0b;background:rgba(245,158,11,.1);color:#fbbf24;cursor:pointer">🔒 全て非公開</button>
+      <button id="data-sync-btn" onclick="try{localStorage.removeItem('fc_synced_files');}catch{}; _autoSyncFromData(true);" style="font-size:11px;padding:3px 10px;border-radius:4px;border:1px solid #38bdf8;background:rgba(56,189,248,.1);color:#7dd3fc;cursor:pointer">☁ 再同期</button>
     </div>
     <div style="margin-top:16px;border-top:1px solid var(--bd);padding-top:16px">
       <div style="font-size:12px;color:var(--t2);margin-bottom:6px">🎙️ Claudeの配信者分析結果を登録（CL_ファイルまたは貼り付け）</div>
@@ -5238,6 +5239,116 @@ function importViewerAnalysis(){
   toast('視聴者プロファイル '+count+'件を登録しました','ok');
 }
 
+// ── §AUTO-SYNC ───────────────────────────────────────────────────────────────
+function _directImportViewerData(data){
+  const profiles=_loadViewerProfilesRaw();
+  let count=0;
+  for(const item of data){
+    if(!item.username)continue;
+    const key=item.tag?item.username+'___'+item.tag:item.username;
+    const period=item.period||'全期間';
+    if(profiles[key]&&('analysis' in profiles[key]||'scores' in profiles[key])){
+      const old=Object.assign({},profiles[key]);delete old._active;
+      profiles[key]={'全期間':old,_active:'全期間'};
+    }
+    if(!profiles[key])profiles[key]={};
+    if(!profiles[key][period])profiles[key][period]={};
+    const p=profiles[key][period];
+    if(item.tag)p.tag=item.tag;
+    if(item.analysis)p.analysis=item.analysis;
+    if(item.deepAnalysis)p.deepAnalysis=item.deepAnalysis;
+    if(item.personality)p.personality=item.personality;
+    if(item.personalityDetail)p.personalityDetail=item.personalityDetail;
+    if(item.area)p.area=item.area;
+    if(item.hobbies)p.hobbies=item.hobbies;
+    if(item.scores)p.scores=item.scores;
+    if(item.sampleCount!=null)p.sampleCount=item.sampleCount;
+    if(!profiles[key]._active)profiles[key]._active=period;
+    count++;
+  }
+  try{localStorage.setItem('fc_viewer_profiles',JSON.stringify(profiles));}catch{}
+  return count;
+}
+function _directImportStreamerData(data){
+  const profiles=_loadStreamerProfilesRaw();
+  let count=0;
+  for(const item of data){
+    if(!item.tag)continue;
+    const period=item.period||item.dateRange||'全期間';
+    if(profiles[item.tag]&&('analysis' in profiles[item.tag]||'scores' in profiles[item.tag])){
+      const old=Object.assign({},profiles[item.tag]);delete old._active;
+      profiles[item.tag]={'全期間':old,_active:'全期間'};
+    }
+    if(!profiles[item.tag])profiles[item.tag]={};
+    if(!profiles[item.tag][period])profiles[item.tag][period]={};
+    const p=profiles[item.tag][period];
+    if(item.analysis)p.analysis=item.analysis;
+    if(item.deepAnalysis)p.deepAnalysis=item.deepAnalysis;
+    if(item.personalityDetail)p.personalityDetail=item.personalityDetail;
+    if(item.personality)p.personality=item.personality;
+    if(item.scores)p.scores=item.scores;
+    if(item.area)p.area=item.area;
+    if(item.hobbies)p.hobbies=item.hobbies;
+    if(item.likes)p.likes=item.likes;
+    if(item.dislikes)p.dislikes=item.dislikes;
+    if(item.likedPersonalityTypes)p.likedPersonalityTypes=item.likedPersonalityTypes;
+    if(item.dislikedPersonalityTypes)p.dislikedPersonalityTypes=item.dislikedPersonalityTypes;
+    if(item.likedCommentStyles)p.likedCommentStyles=item.likedCommentStyles;
+    if(item.dislikedCommentStyles)p.dislikedCommentStyles=item.dislikedCommentStyles;
+    if(item.vtuberAdvice)p.vtuberAdvice=item.vtuberAdvice;
+    p.updatedAt=new Date().toISOString();
+    if(!profiles[item.tag]._active)profiles[item.tag]._active=period;
+    count++;
+  }
+  try{localStorage.setItem('fc_streamer_profiles',JSON.stringify(profiles));}catch{}
+  return count;
+}
+async function _autoSyncFromData(force){
+  const btn=document.getElementById('data-sync-btn');
+  if(btn){btn.disabled=true;btn.textContent='☁ 同期中...';}
+  try{
+    const base=location.href.replace(/\/[^\/]*(\?.*)?$/,'/');
+    const mResp=await fetch(base+'data/manifest.json',{cache:'no-store'});
+    if(!mResp.ok)throw new Error('manifest not found');
+    const manifest=await mResp.json();
+    const files=(manifest.files||[]).filter(f=>f!=='manifest.json');
+    const synced=(()=>{try{return new Set(JSON.parse(localStorage.getItem('fc_synced_files')||'[]'));}catch{return new Set();}})();
+    let vCount=0,sCount=0,wCount=0;
+    for(const fname of files){
+      if(!force&&synced.has(fname))continue;
+      try{
+        const r=await fetch(base+'data/'+fname,{cache:'no-store'});
+        if(!r.ok)continue;
+        const data=await r.json();
+        if(!Array.isArray(data))continue;
+        if(fname.includes('_viewer_analysis')||(fname.includes('_analysis')&&!fname.includes('_streamer_'))){
+          vCount+=_directImportViewerData(data);
+        } else if(fname.includes('_streamer_analysis')){
+          sCount+=_directImportStreamerData(data);
+        } else if(fname.includes('_word_reaction')){
+          const before=_loadWordReactions().length;
+          _doImportWordReaction(data,{textContent:''});
+          wCount+=Math.max(0,_loadWordReactions().length-before);
+        }
+        synced.add(fname);
+      }catch(e){console.warn('[sync] skip:',fname,e);}
+    }
+    try{localStorage.setItem('fc_synced_files',JSON.stringify([...synced]));}catch{}
+    const total=vCount+sCount+wCount;
+    window._vaProfiles=_loadViewerProfiles();
+    renderViewerAnalysis();
+    renderViewerProfileManager();
+    renderStreamerProfileManager();
+    renderWordReactionCards();
+    if(btn){btn.disabled=false;btn.textContent='☁ 再同期';}
+    if(total>0)toast('☁ '+total+'件のプロファイルを同期しました','ok');
+    else if(force)toast('☁ 同期済み（新規なし）','ok');
+  }catch(e){
+    if(btn){btn.disabled=false;btn.textContent='☁ 再同期';}
+  }
+}
+// ── §AUTO-SYNC END ────────────────────────────────────────────────────────────
+
 // ── §PRIVACY ─────────────────────────────────────────────────────────────────
 function _getPrivacyFlags(){
   try{return JSON.parse(localStorage.getItem('fc_privacy_flags')||'{}');}catch{return{};}
@@ -6458,6 +6569,8 @@ document.addEventListener('DOMContentLoaded',()=>{
       renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
     }
   });
+
+  safe('AutoSync',()=>_autoSyncFromData(false));
 
   openDB().then(async()=>{
     // ① 削除トゥームストーン・同期済みIDをロード
