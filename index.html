@@ -675,7 +675,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.11.8</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.11.9</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -983,7 +983,12 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     </div>
     <div id="viewer-result"></div>
     <div id="viewer-import-area" style="margin-top:20px;border-top:1px solid var(--bd);padding-top:16px">
-      <div style="font-size:12px;color:var(--t2);margin-bottom:6px">📥 Claudeの視聴者分析結果を貼り付けて登録（JSON形式）</div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:6px">📥 Claudeの視聴者分析結果を登録（CL_ファイルまたは貼り付け）</div>
+      <div style="display:flex;gap:8px;margin-bottom:6px;align-items:center">
+        <button class="rank-mode-btn" onclick="document.getElementById('viewer-file-input').click()" style="padding:5px 14px;border-color:#4caf50;color:#4caf50;white-space:nowrap">📂 CL_ファイルから登録</button>
+        <input type="file" id="viewer-file-input" accept=".json" multiple style="display:none" onchange="importViewerFile(this)">
+        <span style="font-size:11px;color:var(--t2)">または↓に貼り付け</span>
+      </div>
       <textarea id="viewer-import-ta" rows="6" placeholder='[{"username":"xxx","tag":"タグ名","analysis":"解析コメント","personality":["常連","草系"]}]'
         style="width:100%;background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:8px;font-size:11px;font-family:monospace;resize:vertical;outline:none"></textarea>
       <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
@@ -993,7 +998,12 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     </div>
     <div id="viewer-profile-manager" style="margin-top:12px"></div>
     <div style="margin-top:16px;border-top:1px solid var(--bd);padding-top:16px">
-      <div style="font-size:12px;color:var(--t2);margin-bottom:6px">🎙️ Claudeの配信者分析結果を貼り付けて登録（JSON形式）</div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:6px">🎙️ Claudeの配信者分析結果を登録（CL_ファイルまたは貼り付け）</div>
+      <div style="display:flex;gap:8px;margin-bottom:6px;align-items:center">
+        <button class="rank-mode-btn" onclick="document.getElementById('streamer-file-input').click()" style="padding:5px 14px;border-color:#a78bfa;color:#a78bfa;white-space:nowrap">📂 CL_ファイルから登録</button>
+        <input type="file" id="streamer-file-input" accept=".json" multiple style="display:none" onchange="importStreamerFile(this)">
+        <span style="font-size:11px;color:var(--t2)">または↓に貼り付け</span>
+      </div>
       <textarea id="streamer-import-ta" rows="5" placeholder='[{"tag":"タグ名","analysis":"性格解析...","deepAnalysis":"深層分析...","personality":["高エネルギー","話術巧み"],"scores":{"話術":90,"ユーモア":85,"親近感":80,"情報量":70,"エネルギー":95}}]'
         style="width:100%;background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:8px;font-size:11px;font-family:monospace;resize:vertical;outline:none"></textarea>
       <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
@@ -5121,6 +5131,54 @@ function exportViewerJson(){
   const json=JSON.stringify(output,null,2);
   dl(json,`FC_AllAccount_${tagLabel}_${periodStr}_viewer_analysis.json`,'application/json;charset=utf-8');
   toast(`JSONを出力しました（${dateRangeLabel} · ${recs.length}動画）`,'ok');
+}
+
+function importViewerFile(input){
+  const files=Array.from(input.files||[]);
+  if(!files.length)return;
+  const msg=document.getElementById('viewer-import-msg');
+  const ta=document.getElementById('viewer-import-ta');
+  let pending=files.length,allData=[];
+  files.forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const d=JSON.parse((e.target.result||'').trim());
+        if(Array.isArray(d))allData=allData.concat(d);
+      }catch{}
+      if(--pending===0){
+        if(!allData.length){msg.textContent='有効なデータがありません';input.value='';return;}
+        ta.value=JSON.stringify(allData);
+        importViewerAnalysis();
+        input.value='';
+      }
+    };
+    reader.readAsText(file,'utf-8');
+  });
+}
+
+function importStreamerFile(input){
+  const files=Array.from(input.files||[]);
+  if(!files.length)return;
+  const msg=document.getElementById('streamer-import-msg');
+  const ta=document.getElementById('streamer-import-ta');
+  let pending=files.length,allData=[];
+  files.forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const d=JSON.parse((e.target.result||'').trim());
+        if(Array.isArray(d))allData=allData.concat(d);
+      }catch{}
+      if(--pending===0){
+        if(!allData.length){msg.textContent='有効なデータがありません';input.value='';return;}
+        ta.value=JSON.stringify(allData);
+        importStreamerAnalysis();
+        input.value='';
+      }
+    };
+    reader.readAsText(file,'utf-8');
+  });
 }
 
 function importViewerAnalysis(){
