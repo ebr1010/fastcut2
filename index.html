@@ -654,7 +654,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.10.2</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.10.3</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -4603,8 +4603,9 @@ function renderViewerAnalysis(){
   const singleUser=(document.getElementById('viewer-single-user')?.value||'').trim();
 
   let recs=tagFilter?_dbCache.filter(r=>r.mainTag===tagFilter):_dbCache;
-  if(dateFrom)recs=recs.filter(r=>r.registeredAt&&r.registeredAt>=dateFrom);
-  if(dateTo)recs=recs.filter(r=>r.registeredAt&&r.registeredAt<=(dateTo+'T23:59:59'));
+  const _rd=r=>r.streamStart||r.registeredAt||'';
+  if(dateFrom)recs=recs.filter(r=>{const d=_rd(r);return d&&d>=dateFrom;});
+  if(dateTo)recs=recs.filter(r=>{const d=_rd(r);return d&&d<=(dateTo+'T23:59:59');});
 
   // mainTag別にchatDataを集計
   const byTag=new Map();
@@ -4804,9 +4805,10 @@ function exportViewerJson(){
   const dateTo=document.getElementById('viewer-date-to')?.value||'';
   const singleUser=(document.getElementById('viewer-single-user')?.value||'').trim();
 
+  const _rd2=r=>r.streamStart||r.registeredAt||'';
   let recs=tagFilter?_dbCache.filter(r=>r.mainTag===tagFilter):_dbCache;
-  if(dateFrom)recs=recs.filter(r=>r.registeredAt&&r.registeredAt>=dateFrom);
-  if(dateTo)recs=recs.filter(r=>r.registeredAt&&r.registeredAt<=(dateTo+'T23:59:59'));
+  if(dateFrom)recs=recs.filter(r=>{const d=_rd2(r);return d&&d>=dateFrom;});
+  if(dateTo)recs=recs.filter(r=>{const d=_rd2(r);return d&&d<=(dateTo+'T23:59:59');});
 
   const byTag=new Map();
   for(const rec of recs){
@@ -4817,9 +4819,9 @@ function exportViewerJson(){
 
   const dateRangeLabel=(dateFrom||dateTo)?`${dateFrom||'開始'}〜${dateTo||'現在'}`:'全期間';
 
-  // ファイル名用期間文字列（無指定時はDBから実際の期間を算出）
+  // ファイル名用期間文字列（無指定時はDBから実際の配信日期間を算出）
   let _minD='',_maxD='';
-  for(const r of recs){if(!r.registeredAt)continue;const d=r.registeredAt.substring(0,10);if(!_minD||d<_minD)_minD=d;if(!_maxD||d>_maxD)_maxD=d;}
+  for(const r of recs){const d=(_rd2(r)||'').substring(0,10);if(!d)continue;if(!_minD||d<_minD)_minD=d;if(!_maxD||d>_maxD)_maxD=d;}
   const periodStr=(dateFrom||dateTo)?`${dateFrom||'開始'}〜${dateTo||'現在'}`:(_minD?`${_minD}〜${_maxD}`:'全期間');
   const tagLabel=tagFilter||'AllTag';
 
@@ -5077,9 +5079,10 @@ function exportStreamerJson(){
   const dateFrom=document.getElementById('viewer-date-from')?.value||'';
   const dateTo=document.getElementById('viewer-date-to')?.value||'';
 
+  const _rd3=r=>r.streamStart||r.registeredAt||'';
   let recs=tagFilter?_dbCache.filter(r=>r.mainTag===tagFilter):_dbCache;
-  if(dateFrom)recs=recs.filter(r=>r.registeredAt&&r.registeredAt>=dateFrom);
-  if(dateTo)recs=recs.filter(r=>r.registeredAt&&r.registeredAt<=(dateTo+'T23:59:59'));
+  if(dateFrom)recs=recs.filter(r=>{const d=_rd3(r);return d&&d>=dateFrom;});
+  if(dateTo)recs=recs.filter(r=>{const d=_rd3(r);return d&&d<=(dateTo+'T23:59:59');});
 
   const byTag=new Map();
   for(const rec of recs){
@@ -5100,7 +5103,7 @@ function exportStreamerJson(){
 
   // ファイル名用期間文字列（無指定時はDBから実際の期間を算出）
   let _sMinD='',_sMaxD='';
-  for(const r of recs){if(!r.registeredAt)continue;const d=r.registeredAt.substring(0,10);if(!_sMinD||d<_sMinD)_sMinD=d;if(!_sMaxD||d>_sMaxD)_sMaxD=d;}
+  for(const r of recs){const d=(_rd3(r)||'').substring(0,10);if(!d)continue;if(!_sMinD||d<_sMinD)_sMinD=d;if(!_sMaxD||d>_sMaxD)_sMaxD=d;}
   const sPeriodStr=(dateFrom||dateTo)?`${dateFrom||'開始'}〜${dateTo||'現在'}`:(_sMinD?`${_sMinD}〜${_sMaxD}`:'全期間');
   const sAccountStr=tagFilter||'AllAccount';
 
