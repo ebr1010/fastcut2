@@ -650,7 +650,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.9.6</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.9.7</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -4594,7 +4594,13 @@ function _syncViewerTagSel(){
 function renderViewerAnalysis(){
   const tagFilter=document.getElementById('viewer-tag-sel')?.value||'';
   const minMsgs=parseInt(document.getElementById('viewer-min-msgs')?.value)||3;
-  const recs=tagFilter?_dbCache.filter(r=>r.mainTag===tagFilter):_dbCache;
+  const dateFrom=document.getElementById('viewer-date-from')?.value||'';
+  const dateTo=document.getElementById('viewer-date-to')?.value||'';
+  const singleUser=(document.getElementById('viewer-single-user')?.value||'').trim();
+
+  let recs=tagFilter?_dbCache.filter(r=>r.mainTag===tagFilter):_dbCache;
+  if(dateFrom)recs=recs.filter(r=>r.registeredAt&&r.registeredAt>=dateFrom);
+  if(dateTo)recs=recs.filter(r=>r.registeredAt&&r.registeredAt<=(dateTo+'T23:59:59'));
 
   // mainTag別にchatDataを集計
   const byTag=new Map();
@@ -4613,6 +4619,7 @@ function renderViewerAnalysis(){
     for(const rec of tagRecs){
       for(const c of(rec.chatData||[])){
         if(!c.username)continue;
+        if(singleUser&&c.username!==singleUser)continue;
         if(!byUser.has(c.username))byUser.set(c.username,{msgs:[],vids:new Set(),donated:false});
         const u=byUser.get(c.username);
         u.msgs.push(c.message||'');
@@ -4622,7 +4629,7 @@ function renderViewerAnalysis(){
     }
     const users=[];
     for(const[name,data]of byUser){
-      if(data.msgs.length<minMsgs)continue;
+      if(!singleUser&&data.msgs.length<minMsgs)continue;
       users.push(_analyzeViewer(name,data.msgs,data.vids.size,data.donated));
     }
     users.sort((a,b)=>b.count-a.count);
@@ -4633,7 +4640,9 @@ function renderViewerAnalysis(){
 
   const totalUsers=tagResults.reduce((s,t)=>s+t.users.length,0);
   const info=document.getElementById('viewer-info');
-  if(info)info.textContent=`${tagResults.length}タグ / ${totalUsers}人`;
+  const periodLabel=dateFrom||dateTo?` | ${dateFrom||'開始'}〜${dateTo||'現在'}`:'';
+  const userLabel=singleUser?` | 👤${singleUser}`:'';
+  if(info)info.textContent=`${tagResults.length}タグ / ${totalUsers}人${periodLabel}${userLabel}`;
 
   const out=document.getElementById('viewer-result');
   if(!out)return;
