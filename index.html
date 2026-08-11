@@ -649,12 +649,33 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 }
 /* iOS Safari: enable momentum scrolling on overflow containers */
 .left,.right,#view-db,#view-rank{-webkit-overflow-scrolling:touch}
+
+/* WORD REACTION */
+.wr-section-hd{font-size:12px;color:#38bdf8;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.wr-card{background:rgba(56,189,248,.07);border:1px solid rgba(56,189,248,.25);border-radius:5px;padding:12px 14px;margin-bottom:10px}
+.wr-card-kw{font-size:14px;font-weight:700;color:#38bdf8;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.wr-tone{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700}
+.wr-tone.positive{background:rgba(74,222,128,.18);color:#4ade80;border:1px solid rgba(74,222,128,.4)}
+.wr-tone.negative{background:rgba(248,113,113,.15);color:#f87171;border:1px solid rgba(248,113,113,.35)}
+.wr-tone.neutral{background:rgba(148,163,184,.12);color:#94a3b8;border:1px solid rgba(148,163,184,.3)}
+.wr-tone.complex{background:rgba(251,191,36,.12);color:#fbbf24;border:1px solid rgba(251,191,36,.3)}
+.wr-score-bar{display:flex;align-items:center;gap:8px;margin:6px 0}
+.wr-score-bar-track{flex:1;height:5px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}
+.wr-score-bar-fill{height:100%;background:#38bdf8;border-radius:3px;transition:width .4s}
+.wr-score-val{font-size:11px;font-weight:700;color:#38bdf8;width:24px;text-align:right}
+.wr-label{font-size:10px;color:var(--t1);width:52px;flex-shrink:0;text-align:right}
+.wr-body{font-size:11px;color:var(--t0);line-height:1.6;margin-top:6px}
+.wr-section-lbl{font-size:10px;color:#38bdf8;font-weight:700;margin-top:8px;margin-bottom:3px}
+.wr-evidence{display:flex;flex-direction:column;gap:3px;margin-top:4px}
+.wr-evidence-item{font-size:11px;color:#cbd5e1;padding:4px 8px;background:rgba(255,255,255,.04);border-left:2px solid rgba(56,189,248,.4);border-radius:0 3px 3px 0;line-height:1.4}
+.wr-variants{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px}
+.wr-variant{font-size:10px;padding:1px 6px;border-radius:3px;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.3);color:#7dd3fc}
 </style>
 </head>
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.10.11</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.11.0</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -979,6 +1000,33 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
       </div>
     </div>
     <div id="streamer-profile-manager" style="margin-top:12px"></div>
+    <div style="margin-top:16px;border-top:1px solid var(--bd);padding-top:16px">
+      <div class="wr-section-hd">🔍 単語反応解析</div>
+      <div style="font-size:11px;color:var(--t2);margin-bottom:8px">配信者が発声した特定の単語に対する反応・印象・イメージを解析します。表記ブレに対応するため同一概念の複数表記を1行ずつ入力できます。</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:6px">
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <span style="font-size:10px;color:var(--t2)">タグ</span>
+          <select id="wr-tag-sel" class="rank-tag-sel">
+            <option value="">すべてのタグ</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:180px">
+          <span style="font-size:10px;color:var(--t2)">キーワード（表記ブレを1行ずつ）</span>
+          <textarea id="wr-keywords-ta" rows="3" placeholder="パイナップル&#10;パイン&#10;パイン好き"
+            style="width:100%;background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:5px 7px;font-size:11px;font-family:monospace;resize:vertical;outline:none"></textarea>
+        </div>
+        <button class="rank-mode-btn" onclick="exportWordReactionJson()" style="padding:5px 14px;border-color:#38bdf8;color:#38bdf8;white-space:nowrap">📤 解析JSON出力</button>
+      </div>
+      <div id="wr-export-msg" style="font-size:11px;color:var(--t2);margin-bottom:8px"></div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:6px">📥 Claudeの単語反応分析結果を貼り付けて登録（JSON形式）</div>
+      <textarea id="wr-import-ta" rows="4" placeholder='[{"tag":"みいる","keyword":"パイナップル","variants":["パイン","パイナップル"],"reaction":"...","impression":"...","emotionTone":"positive","score":95,"evidence":["最近めっちゃパインにはまってて"]}]'
+        style="width:100%;background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:8px;font-size:11px;font-family:monospace;resize:vertical;outline:none"></textarea>
+      <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+        <button class="rank-mode-btn" onclick="importWordReactionAnalysis()" style="padding:5px 14px;border-color:#38bdf8;color:#38bdf8">✅ 登録</button>
+        <span id="wr-import-msg" style="font-size:11px;color:var(--t2)"></span>
+      </div>
+      <div id="wr-result-area" style="margin-top:12px"></div>
+    </div>
   </div>
 </div>
 
@@ -4590,11 +4638,19 @@ function setRankMode(mode){
 
 function _syncViewerTagSel(){
   const sel=document.getElementById('viewer-tag-sel');
-  if(!sel)return;
-  const cur=sel.value;
-  sel.innerHTML='<option value="">すべてのタグ</option>'
-    +_mainTags.map(t=>`<option value="${esc(t.name)}">${esc(t.name)}</option>`).join('');
-  if(cur)sel.value=cur;
+  if(sel){
+    const cur=sel.value;
+    sel.innerHTML='<option value="">すべてのタグ</option>'
+      +_mainTags.map(t=>`<option value="${esc(t.name)}">${esc(t.name)}</option>`).join('');
+    if(cur)sel.value=cur;
+  }
+  const wrSel=document.getElementById('wr-tag-sel');
+  if(wrSel){
+    const cur2=wrSel.value;
+    wrSel.innerHTML='<option value="">すべてのタグ</option>'
+      +_mainTags.map(t=>`<option value="${esc(t.name)}">${esc(t.name)}</option>`).join('');
+    if(cur2)wrSel.value=cur2;
+  }
 }
 
 function renderViewerAnalysis(){
@@ -5343,6 +5399,124 @@ function importStreamerAnalysis(){
   toast('配信者プロファイル '+count+'件を登録しました','ok');
 }
 
+function exportWordReactionJson(){
+  const tag=(document.getElementById('wr-tag-sel')?.value||'').trim();
+  const rawKw=(document.getElementById('wr-keywords-ta')?.value||'').trim();
+  const msgEl=document.getElementById('wr-export-msg');
+  if(!rawKw){msgEl.textContent='キーワードを入力してください';return;}
+  const keywords=rawKw.split('\n').map(s=>s.trim()).filter(Boolean);
+  if(!keywords.length){msgEl.textContent='キーワードを入力してください';return;}
+
+  let recs=tag?_dbCache.filter(r=>r.mainTag===tag):_dbCache;
+  const allSegs=[];
+  for(const rec of recs){
+    for(const t of(rec.trData||[])){
+      if(t.text?.trim())allSegs.push(t.text.trim());
+    }
+  }
+  if(!allSegs.length){msgEl.textContent='音声データがありません。字幕つき動画を登録してください。';return;}
+
+  const CONTEXT=2;
+  const contexts=[];
+  for(let i=0;i<allSegs.length;i++){
+    const seg=allSegs[i];
+    for(const kw of keywords){
+      if(seg.includes(kw)){
+        const before=allSegs.slice(Math.max(0,i-CONTEXT),i);
+        const after=allSegs.slice(i+1,i+1+CONTEXT);
+        contexts.push({keyword:kw,matchedText:seg,context:[...before,seg,...after]});
+        break;
+      }
+    }
+  }
+  if(!contexts.length){
+    msgEl.textContent=`「${keywords.join('」「')}」が含まれる発言が見つかりませんでした`;
+    return;
+  }
+  const tagName=tag||'AllTag';
+  const output={
+    exportedAt:new Date().toISOString(),
+    mode:'word_reaction_analysis',
+    instruction:`以下は配信者「${tagName}」の音声認識データです。配信者がキーワード「${keywords.join('」「')}」（同一概念の表記ゆれ）を発言した際の前後の文脈（context）をもとに、そのキーワードに対する配信者の反応・印象・イメージを分析してください。返答はJSON配列で、各要素に keyword（代表表記）/variants（表記ゆれ一覧配列）/reaction（発言時の反応・態度・口調を最大限詳細に。ポジティブ・ネガティブ・複雑、笑い・驚き・嫌悪などの感情の質も詳述）/impression（そのキーワードに対する配信者の印象・イメージ・関連づけを最大限詳細に）/emotionTone（positive/negative/neutral/complex のいずれか1つ）/score（好意度スコア0〜100。0=強い嫌悪、50=中立、100=強い好意）/evidence（根拠となる発言抜粋を配列で）を含めてください。`,
+    tag:tagName,
+    keywords,
+    matchCount:contexts.length,
+    contexts
+  };
+  const json=JSON.stringify(output,null,2);
+  dl(json,`FC_${tagName}_${keywords[0]}_word_reaction.json`,'application/json;charset=utf-8');
+  msgEl.textContent=`${contexts.length}件の発言文脈を出力しました`;
+  toast(`単語反応解析JSON出力（${contexts.length}件マッチ）`,'ok');
+}
+
+function _loadWordReactions(){
+  try{return JSON.parse(localStorage.getItem('fc_word_reactions')||'[]');}catch{return[];}
+}
+
+function importWordReactionAnalysis(){
+  const ta=document.getElementById('wr-import-ta');
+  const msg=document.getElementById('wr-import-msg');
+  const raw=(ta?.value||'').trim();
+  if(!raw){msg.textContent='データを貼り付けてください';return;}
+  let data;
+  try{data=JSON.parse(raw);}catch{msg.textContent='JSONの形式が正しくありません';return;}
+  if(!Array.isArray(data)){msg.textContent='JSON配列で貼り付けてください';return;}
+  const existing=_loadWordReactions();
+  let count=0;
+  for(const item of data){
+    if(!item.keyword)continue;
+    const idx=existing.findIndex(e=>e.tag===item.tag&&e.keyword===item.keyword);
+    const entry={...item,importedAt:new Date().toISOString()};
+    if(idx>=0)existing[idx]=entry;
+    else existing.push(entry);
+    count++;
+  }
+  try{localStorage.setItem('fc_word_reactions',JSON.stringify(existing));}catch(e){msg.textContent='保存失敗: '+e.message;return;}
+  msg.textContent=count+'件を登録しました';
+  ta.value='';
+  renderWordReactionCards();
+  toast('単語反応 '+count+'件を登録しました','ok');
+}
+
+function renderWordReactionCards(){
+  const area=document.getElementById('wr-result-area');
+  if(!area)return;
+  const all=_loadWordReactions();
+  if(!all.length){area.innerHTML='';return;}
+  const toneLabel={positive:'ポジティブ',negative:'ネガティブ',neutral:'中立',complex:'複雑'};
+  const html=all.map(r=>{
+    const tone=r.emotionTone||'neutral';
+    const score=Number(r.score)||50;
+    const scoreColor=score>=70?'#4ade80':score>=40?'#fbbf24':'#f87171';
+    const variantsHtml=(r.variants||[]).map(v=>`<span class="wr-variant">${esc(v)}</span>`).join('');
+    const evidenceHtml=(r.evidence||[]).map(e=>`<div class="wr-evidence-item">${esc(e)}</div>`).join('');
+    const tagBadge=r.tag?`<span style="font-size:10px;color:#94a3b8;padding:1px 6px;border-radius:3px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)">${esc(r.tag)}</span>`:'';
+    const imported=r.importedAt?new Date(r.importedAt).toLocaleDateString('ja-JP'):'';
+    return `<div class="wr-card">
+      <div class="wr-card-kw">${esc(r.keyword)} <span class="wr-tone ${tone}">${toneLabel[tone]||tone}</span>${tagBadge}${imported?`<span style="margin-left:auto;font-size:10px;color:var(--t2)">${imported}</span>`:''}
+        <button onclick="deleteWordReaction('${esc((r.tag||'')+'\x01'+(r.keyword||''))}')" style="margin-left:4px;background:none;border:none;color:var(--t2);cursor:pointer;font-size:12px;padding:0 2px" title="削除">✕</button>
+      </div>
+      ${variantsHtml?`<div class="wr-variants">${variantsHtml}</div>`:''}
+      <div class="wr-score-bar">
+        <span class="wr-label" style="color:#38bdf8">好意度</span>
+        <div class="wr-score-bar-track"><div class="wr-score-bar-fill" style="width:${score}%;background:${scoreColor}"></div></div>
+        <span class="wr-score-val" style="color:${scoreColor}">${score}</span>
+      </div>
+      ${r.reaction?`<div class="wr-section-lbl">反応・態度</div><div class="wr-body">${esc(r.reaction)}</div>`:''}
+      ${r.impression?`<div class="wr-section-lbl">印象・イメージ</div><div class="wr-body">${esc(r.impression)}</div>`:''}
+      ${evidenceHtml?`<div class="wr-section-lbl">根拠発言</div><div class="wr-evidence">${evidenceHtml}</div>`:''}
+    </div>`;
+  }).join('');
+  area.innerHTML=`<div style="margin-bottom:6px;font-size:11px;color:var(--t2)">${all.length}件の単語反応データ</div>${html}`;
+}
+
+function deleteWordReaction(key){
+  const[tag,keyword]=key.split('\x01');
+  const all=_loadWordReactions().filter(r=>!(r.tag===tag&&r.keyword===keyword));
+  try{localStorage.setItem('fc_word_reactions',JSON.stringify(all));}catch{}
+  renderWordReactionCards();
+}
+
 function _analyzeViewer(name,msgs,vidCount,donated){
   const count=msgs.length;
   const avgLen=Math.round(msgs.reduce((s,m)=>s+m.length,0)/count);
@@ -5864,6 +6038,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.addEventListener('visibilitychange',()=>{
     if(!document.hidden&&_currentTab==='db'&&ghEnabled())ghPull();
   });
+
+  safe('WordReactions',renderWordReactionCards);
 
   loadGhCfg();
   updateGhUi();
