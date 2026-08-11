@@ -675,7 +675,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.11.9</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.0</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -997,6 +997,10 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
       </div>
     </div>
     <div id="viewer-profile-manager" style="margin-top:12px"></div>
+    <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+      <button onclick="_setAllPrivacy(false)" style="font-size:11px;padding:3px 10px;border-radius:4px;border:1px solid #64748b;background:transparent;color:#94a3b8;cursor:pointer">🌐 全て公開</button>
+      <button onclick="_setAllPrivacy(true)" style="font-size:11px;padding:3px 10px;border-radius:4px;border:1px solid #f59e0b;background:rgba(245,158,11,.1);color:#fbbf24;cursor:pointer">🔒 全て非公開</button>
+    </div>
     <div style="margin-top:16px;border-top:1px solid var(--bd);padding-top:16px">
       <div style="font-size:12px;color:var(--t2);margin-bottom:6px">🎙️ Claudeの配信者分析結果を登録（CL_ファイルまたは貼り付け）</div>
       <div style="display:flex;gap:8px;margin-bottom:6px;align-items:center">
@@ -4817,11 +4821,14 @@ function renderViewerProfileManager(){
     } else {
       periods=Object.keys(entry).filter(k=>k!=='_active').sort();
     }
+    const privKey='v_'+key;
+    const priv=_isPrivate(privKey);
     for(const period of periods){
       rows.push(`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--bd)">
         <span style="font-size:12px;color:var(--t0);font-weight:600">@${esc(username)}</span>
         ${tag?`<span style="font-size:11px;color:#7dd3fc">${esc(tag)}</span>`:''}
         <span style="font-size:10px;color:var(--t2)">${esc(period)}</span>
+        <button onclick="_togglePrivacy('${esc(privKey)}');renderViewerProfileManager();" title="${priv?'公開に変更':'非公開に変更'}" style="flex-shrink:0;font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid ${priv?'#f59e0b':'#64748b'};background:${priv?'rgba(245,158,11,.15)':'transparent'};color:${priv?'#fbbf24':'#64748b'};cursor:pointer">${priv?'🔒 非公開':'🌐 公開'}</button>
         <button onclick="deleteViewerPeriod('${esc(key)}','${esc(period)}')" style="flex-shrink:0;font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid #f87171;background:transparent;color:#f87171;cursor:pointer">🗑 削除</button>
       </div>`);
     }
@@ -4878,10 +4885,13 @@ function renderStreamerProfileManager(){
     } else {
       periods=Object.keys(entry).filter(k=>k!=='_active').sort();
     }
+    const privKey='s_'+tag;
+    const priv=_isPrivate(privKey);
     for(const period of periods){
       rows.push(`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--bd)">
         <span style="font-size:12px;color:#a78bfa;font-weight:600">${esc(tag)}</span>
         <span style="font-size:10px;color:var(--t2)">${esc(period)}</span>
+        <button onclick="_togglePrivacy('${esc(privKey)}');renderStreamerProfileManager();" title="${priv?'公開に変更':'非公開に変更'}" style="flex-shrink:0;font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid ${priv?'#f59e0b':'#64748b'};background:${priv?'rgba(245,158,11,.15)':'transparent'};color:${priv?'#fbbf24':'#64748b'};cursor:pointer">${priv?'🔒 非公開':'🌐 公開'}</button>
         <button onclick="deleteStreamerPeriod('${esc(tag)}','${esc(period)}')" style="flex-shrink:0;font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid #f87171;background:transparent;color:#f87171;cursor:pointer">🗑 削除</button>
       </div>`);
     }
@@ -4955,15 +4965,18 @@ function openViewerDetail(name,tag){
   const rank=uData?`#${uData.rank}`:'';
   const stats=uData?`${uData.count}件 · ${uData.vidCount}動画 · 平均${uData.avgLen}文字${prof.sampleCount!=null?' · 解析サンプル '+prof.sampleCount+'件':''}`:'';
   const words=uData&&uData.topWords.length?`<div style="margin-top:12px"><div class="va-modal-section-label" style="margin-bottom:6px">💬 頻出ワード</div><div style="font-size:11px;color:var(--t1);line-height:1.8">${uData.topWords.map(esc).join(' · ')}</div></div>`:'';
-  const analysisHtml=prof.analysis
+  const profKey_priv='v_'+name+'___'+tag;
+  const isPriv=_isPrivate(profKey_priv);
+  const privPlaceholder=`<div style="padding:14px;text-align:center;font-size:12px;color:#f59e0b;border:1px dashed rgba(245,158,11,.4);border-radius:6px;background:rgba(245,158,11,.06)">🔒 このプロファイルは非公開に設定されています<br><span style="font-size:11px;color:#94a3b8">プロファイル管理タブで公開/非公開を切り替えられます</span></div>`;
+  const analysisHtml=isPriv?privPlaceholder:(prof.analysis
     ?`<div class="va-modal-section"><div class="va-modal-section-label">📋 詳細分析</div><div class="va-modal-analysis">${esc(prof.analysis)}</div></div>`
-    :`<div class="va-modal-section"><div class="va-modal-section-label">📋 詳細分析</div><div style="color:var(--t1);font-style:italic;font-size:12px">未分析 — JSONをインポートしてください</div></div>`;
-  const deepHtml=prof.deepAnalysis
+    :`<div class="va-modal-section"><div class="va-modal-section-label">📋 詳細分析</div><div style="color:var(--t1);font-style:italic;font-size:12px">未分析 — JSONをインポートしてください</div></div>`);
+  const deepHtml=isPriv?'':(prof.deepAnalysis
     ?`<div class="va-modal-section"><div class="va-modal-section-label">🧠 深層心理分析</div><div class="va-modal-deep">${esc(prof.deepAnalysis)}</div></div>`
-    :'';
-  const personalityDetailHtml=prof.personalityDetail
+    :'');
+  const personalityDetailHtml=isPriv?'':(prof.personalityDetail
     ?`<div class="va-modal-section"><div class="va-modal-section-label">🎭 性格詳細</div><div class="va-modal-deep">${esc(prof.personalityDetail)}</div></div>`
-    :'';
+    :'');
   const areaHtml=prof.area
     ?`<div style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px"><span style="color:#94a3b8">📍 推定エリア</span><span style="color:#e2e8f0;font-weight:600">${esc(prof.area)}</span></div>`
     :'';
@@ -5225,6 +5238,37 @@ function importViewerAnalysis(){
   toast('視聴者プロファイル '+count+'件を登録しました','ok');
 }
 
+// ── §PRIVACY ─────────────────────────────────────────────────────────────────
+function _getPrivacyFlags(){
+  try{return JSON.parse(localStorage.getItem('fc_privacy_flags')||'{}');}catch{return{};}
+}
+function _savePrivacyFlags(flags){
+  try{localStorage.setItem('fc_privacy_flags',JSON.stringify(flags));}catch{}
+}
+function _isPrivate(key){
+  const flags=_getPrivacyFlags();
+  return !!flags[key];
+}
+function _togglePrivacy(key){
+  const flags=_getPrivacyFlags();
+  flags[key]=!flags[key];
+  _savePrivacyFlags(flags);
+}
+function _setAllPrivacy(isPrivate){
+  const flags=_getPrivacyFlags();
+  // viewer profiles
+  const vr=_loadViewerProfilesRaw();
+  for(const k of Object.keys(vr)) flags['v_'+k]=isPrivate;
+  // streamer profiles
+  const sr=_loadStreamerProfilesRaw();
+  for(const k of Object.keys(sr)) flags['s_'+k]=isPrivate;
+  _savePrivacyFlags(flags);
+  renderViewerProfileManager();
+  renderStreamerProfileManager();
+  toast(isPrivate?'全プロファイルを非公開に設定しました':'全プロファイルを公開に設定しました','ok');
+}
+// ── §PRIVACY END ──────────────────────────────────────────────────────────────
+
 function _loadViewerProfilesRaw(){
   try{return JSON.parse(localStorage.getItem('fc_viewer_profiles')||'{}');}catch{return{};}
 }
@@ -5354,6 +5398,8 @@ function openStreamerDetail(tag){
   const _arrBlock=(icon,label,arr)=>arr&&arr.length
     ?`<div class="sp-modal-section"><div class="sp-modal-section-label">${icon} ${label}</div><ul style="margin:6px 0 0 16px;padding:0;display:flex;flex-direction:column;gap:4px">${arr.map(s=>`<li style="font-size:12px;color:var(--t0);line-height:1.5">${esc(s)}</li>`).join('')}</ul></div>`
     :'';
+  const isPrivS=_isPrivate('s_'+tag);
+  const privPlaceholderS=`<div style="padding:14px;text-align:center;font-size:12px;color:#f59e0b;border:1px dashed rgba(245,158,11,.4);border-radius:6px;background:rgba(245,158,11,.06)">🔒 このプロファイルは非公開に設定されています<br><span style="font-size:11px;color:#94a3b8">プロファイル管理タブで公開/非公開を切り替えられます</span></div>`;
   const html=`<div class="sp-modal-hd">
     <div class="sp-modal-icon">🎙️</div>
     <div style="flex:1;min-width:0"><div class="sp-modal-title">配信者プロフィール — ${esc(tag)}</div><div class="sp-modal-sub">音声データをもとにした性格解析${updated?' · 解析日: '+updated:''}</div>${periodTabsHtml}</div>
@@ -5364,20 +5410,21 @@ function openStreamerDetail(tag){
       ${radarSvg?`<div style="display:flex;justify-content:center;padding:4px 0">${radarSvg}</div>`:''}
       ${barHtml}
       ${badges?`<div style="margin-top:10px"><div class="sp-modal-section-label">🏷️ 特徴タグ</div><div class="sp-modal-badges">${badges}</div></div>`:''}
-      ${prof.area?`<div style="margin-top:10px"><div class="sp-modal-section-label">📍 推定エリア</div><div style="font-size:12px;color:#e2e8f0;margin-top:4px;line-height:1.5">${esc(prof.area)}</div></div>`:''}
-      ${prof.hobbies&&prof.hobbies.length?`<div style="margin-top:10px"><div class="sp-modal-section-label">🎮 趣味・関心</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">${prof.hobbies.map(h=>`<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.4);color:#c4b5fd">${esc(h)}</span>`).join('')}</div></div>`:''}
-      ${prof.likes&&prof.likes.length?`<div style="margin-top:10px"><div class="sp-modal-section-label">❤️ 好きなもの</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">${prof.likes.map(h=>`<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(244,114,182,.12);border:1px solid rgba(244,114,182,.35);color:#f9a8d4">${esc(h)}</span>`).join('')}</div></div>`:''}
-      ${prof.dislikes&&prof.dislikes.length?`<div style="margin-top:10px"><div class="sp-modal-section-label">🚫 苦手なもの</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">${prof.dislikes.map(h=>`<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:#fca5a5">${esc(h)}</span>`).join('')}</div></div>`:''}
+      ${!isPrivS&&prof.area?`<div style="margin-top:10px"><div class="sp-modal-section-label">📍 推定エリア</div><div style="font-size:12px;color:#e2e8f0;margin-top:4px;line-height:1.5">${esc(prof.area)}</div></div>`:''}
+      ${!isPrivS&&prof.hobbies&&prof.hobbies.length?`<div style="margin-top:10px"><div class="sp-modal-section-label">🎮 趣味・関心</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">${prof.hobbies.map(h=>`<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.4);color:#c4b5fd">${esc(h)}</span>`).join('')}</div></div>`:''}
+      ${!isPrivS&&prof.likes&&prof.likes.length?`<div style="margin-top:10px"><div class="sp-modal-section-label">❤️ 好きなもの</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">${prof.likes.map(h=>`<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(244,114,182,.12);border:1px solid rgba(244,114,182,.35);color:#f9a8d4">${esc(h)}</span>`).join('')}</div></div>`:''}
+      ${!isPrivS&&prof.dislikes&&prof.dislikes.length?`<div style="margin-top:10px"><div class="sp-modal-section-label">🚫 苦手なもの</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">${prof.dislikes.map(h=>`<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:#fca5a5">${esc(h)}</span>`).join('')}</div></div>`:''}
     </div>
     <div class="sp-modal-right">
-      ${prof.personalityDetail?`<div class="sp-modal-section"><div class="sp-modal-section-label">🎭 性格詳細</div><div class="sp-modal-deep">${esc(prof.personalityDetail)}</div></div>`:''}
-      ${prof.analysis?`<div class="sp-modal-section"><div class="sp-modal-section-label">📋 性格・特徴解析</div><div class="sp-modal-analysis">${esc(prof.analysis)}</div></div>`:''}
-      ${prof.deepAnalysis?`<div class="sp-modal-section"><div class="sp-modal-section-label">🧠 深層分析</div><div class="sp-modal-deep">${esc(prof.deepAnalysis)}</div></div>`:''}
-      ${_arrBlock('💚','好きなタイプ・人柄',prof.likedPersonalityTypes)}
-      ${_arrBlock('❌','苦手なタイプ・人柄',prof.dislikedPersonalityTypes)}
-      ${_arrBlock('💬','好まれるコメントの方向性',prof.likedCommentStyles)}
-      ${_arrBlock('🔇','苦手なコメントの方向性',prof.dislikedCommentStyles)}
-      ${_arrBlock('🚀','ヒットするためのアドバイス',prof.vtuberAdvice)}
+      ${isPrivS?privPlaceholderS:''}
+      ${!isPrivS&&prof.personalityDetail?`<div class="sp-modal-section"><div class="sp-modal-section-label">🎭 性格詳細</div><div class="sp-modal-deep">${esc(prof.personalityDetail)}</div></div>`:''}
+      ${!isPrivS&&prof.analysis?`<div class="sp-modal-section"><div class="sp-modal-section-label">📋 性格・特徴解析</div><div class="sp-modal-analysis">${esc(prof.analysis)}</div></div>`:''}
+      ${!isPrivS&&prof.deepAnalysis?`<div class="sp-modal-section"><div class="sp-modal-section-label">🧠 深層分析</div><div class="sp-modal-deep">${esc(prof.deepAnalysis)}</div></div>`:''}
+      ${!isPrivS?_arrBlock('💚','好きなタイプ・人柄',prof.likedPersonalityTypes):''}
+      ${!isPrivS?_arrBlock('❌','苦手なタイプ・人柄',prof.dislikedPersonalityTypes):''}
+      ${!isPrivS?_arrBlock('💬','好まれるコメントの方向性',prof.likedCommentStyles):''}
+      ${!isPrivS?_arrBlock('🔇','苦手なコメントの方向性',prof.dislikedCommentStyles):''}
+      ${!isPrivS?_arrBlock('🚀','ヒットするためのアドバイス',prof.vtuberAdvice):''}
     </div>
   </div>`;
   document.getElementById('sp-modal-content').innerHTML=html;
