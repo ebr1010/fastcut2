@@ -654,7 +654,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.10.7</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.10.9</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -5124,7 +5124,7 @@ function _renderStreamerCard(tag){
   const prof=_loadStreamerProfiles()[tag];
   if(!prof||!prof.analysis)return '';
   const scores=prof.scores||{};
-  const cardScores=scores;
+  const cardScores=Object.fromEntries(Object.entries(scores).slice(0,8));
   const cardRadar=Object.keys(cardScores).length?_radarChart(cardScores,'#a78bfa',130):'';
   const badges=(prof.personality||[]).map(b=>`<span class="sp-badge">${esc(b)}</span>`).join('');
   const updated=prof.updatedAt?new Date(prof.updatedAt).toLocaleDateString('ja-JP'):'';
