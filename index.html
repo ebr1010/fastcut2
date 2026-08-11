@@ -654,7 +654,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.10.4</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.10.5</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -4762,6 +4762,15 @@ function openViewerDetail(name,tag){
   const deepHtml=prof.deepAnalysis
     ?`<div class="va-modal-section"><div class="va-modal-section-label">🧠 深層心理分析</div><div class="va-modal-deep">${esc(prof.deepAnalysis)}</div></div>`
     :'';
+  const personalityDetailHtml=prof.personalityDetail
+    ?`<div class="va-modal-section"><div class="va-modal-section-label">🎭 性格詳細</div><div class="va-modal-deep">${esc(prof.personalityDetail)}</div></div>`
+    :'';
+  const areaHtml=prof.area
+    ?`<div style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px"><span style="color:#94a3b8">📍 推定エリア</span><span style="color:#e2e8f0;font-weight:600">${esc(prof.area)}</span></div>`
+    :'';
+  const hobbiesHtml=prof.hobbies&&prof.hobbies.length
+    ?`<div style="margin-top:8px"><div style="font-size:10px;color:#94a3b8;margin-bottom:4px">🎮 推定趣味・関心</div><div style="display:flex;flex-wrap:wrap;gap:3px">${prof.hobbies.map(h=>`<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(99,102,241,.18);border:1px solid rgba(99,102,241,.4);color:#a5b4fc">${esc(h)}</span>`).join('')}</div></div>`
+    :'';
   const tagLabel=`<div style="font-size:10px;color:#7dd3fc;font-weight:700;margin-top:2px">メインタグ: ${esc(tag)}</div>`;
   document.getElementById('va-modal-content').innerHTML=`
     <div class="va-modal-hd">
@@ -4778,9 +4787,12 @@ function openViewerDetail(name,tag){
     <div class="va-modal-body">
       <div class="va-modal-left">
         ${radarSvg?`<div style="display:flex;justify-content:center;padding:4px 0">${radarSvg}</div>`:'<div style="color:var(--t1);font-size:11px">スコアデータなし</div>'}
+        ${areaHtml}
+        ${hobbiesHtml}
         ${words}
       </div>
       <div class="va-modal-right">
+        ${personalityDetailHtml}
         ${analysisHtml}
         ${deepHtml}
       </div>
@@ -4949,6 +4961,9 @@ function importViewerAnalysis(){
     if(item.analysis)p.analysis=item.analysis;
     if(item.deepAnalysis)p.deepAnalysis=item.deepAnalysis;
     if(item.personality)p.personality=item.personality;
+    if(item.personalityDetail)p.personalityDetail=item.personalityDetail;
+    if(item.area)p.area=item.area;
+    if(item.hobbies)p.hobbies=item.hobbies;
     if(item.scores)p.scores=item.scores;
     if(item.sampleCount!=null)p.sampleCount=item.sampleCount;
     p.updatedAt=new Date().toISOString();
