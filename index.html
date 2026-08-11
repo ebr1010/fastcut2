@@ -675,7 +675,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.11.0</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.11.1</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -5408,27 +5408,42 @@ function exportWordReactionJson(){
   if(!keywords.length){msgEl.textContent='キーワードを入力してください';return;}
 
   let recs=tag?_dbCache.filter(r=>r.mainTag===tag):_dbCache;
-  const allSegs=[];
-  for(const rec of recs){
-    for(const t of(rec.trData||[])){
-      if(t.text?.trim())allSegs.push(t.text.trim());
-    }
-  }
-  if(!allSegs.length){msgEl.textContent='音声データがありません。字幕つき動画を登録してください。';return;}
 
-  const CONTEXT=2;
+  // 動画ごとにタイムスタンプつきセグメント配列を構築
+  const videoGroups=[];
+  for(const rec of recs){
+    const segs=(rec.trData||[]).filter(t=>t.text?.trim());
+    if(segs.length)videoGroups.push(segs);
+  }
+  if(!videoGroups.length){msgEl.textContent='音声データがありません。字幕つき動画を登録してください。';return;}
+
+  const WINDOW_SEC=60; // 前後約1分
   const contexts=[];
-  for(let i=0;i<allSegs.length;i++){
-    const seg=allSegs[i];
-    for(const kw of keywords){
-      if(seg.includes(kw)){
-        const before=allSegs.slice(Math.max(0,i-CONTEXT),i);
-        const after=allSegs.slice(i+1,i+1+CONTEXT);
-        contexts.push({keyword:kw,matchedText:seg,context:[...before,seg,...after]});
-        break;
+
+  for(const segs of videoGroups){
+    for(let i=0;i<segs.length;i++){
+      const seg=segs[i];
+      for(const kw of keywords){
+        if(seg.text.includes(kw)){
+          const matchSec=seg.sec??null;
+          let windowTexts;
+          if(matchSec!==null){
+            // タイムスタンプベースで前後60秒以内のセグメントを収集
+            windowTexts=segs
+              .filter(s=>s.sec!=null&&s.sec>=matchSec-WINDOW_SEC&&s.sec<=matchSec+WINDOW_SEC)
+              .map(s=>s.text.trim());
+          } else {
+            // タイムスタンプ無し時はセグメント数で代替（前後15件≒約1分）
+            const FALLBACK=15;
+            windowTexts=segs.slice(Math.max(0,i-FALLBACK),i+FALLBACK+1).map(s=>s.text.trim());
+          }
+          contexts.push({keyword:kw,matchedText:seg.text.trim(),matchSec,context:windowTexts});
+          break;
+        }
       }
     }
   }
+
   if(!contexts.length){
     msgEl.textContent=`「${keywords.join('」「')}」が含まれる発言が見つかりませんでした`;
     return;
@@ -5437,7 +5452,7 @@ function exportWordReactionJson(){
   const output={
     exportedAt:new Date().toISOString(),
     mode:'word_reaction_analysis',
-    instruction:`以下は配信者「${tagName}」の音声認識データです。配信者がキーワード「${keywords.join('」「')}」（同一概念の表記ゆれ）を発言した際の前後の文脈（context）をもとに、そのキーワードに対する配信者の反応・印象・イメージを分析してください。返答はJSON配列で、各要素に keyword（代表表記）/variants（表記ゆれ一覧配列）/reaction（発言時の反応・態度・口調を最大限詳細に。ポジティブ・ネガティブ・複雑、笑い・驚き・嫌悪などの感情の質も詳述）/impression（そのキーワードに対する配信者の印象・イメージ・関連づけを最大限詳細に）/emotionTone（positive/negative/neutral/complex のいずれか1つ）/score（好意度スコア0〜100。0=強い嫌悪、50=中立、100=強い好意）/evidence（根拠となる発言抜粋を配列で）を含めてください。`,
+    instruction:`以下は配信者「${tagName}」の音声認識データです。配信者がキーワード「${keywords.join('」「')}」（同一概念の表記ゆれ）を発言した際の前後約1分間の文脈（context）をもとに、そのキーワードに対する配信者の反応・印象・イメージを分析してください。返答はJSON配列で、各要素に keyword（代表表記）/variants（表記ゆれ一覧配列）/reaction（発言時の反応・態度・口調を最大限詳細に。ポジティブ・ネガティブ・複雑、笑い・驚き・嫌悪などの感情の質も詳述）/impression（そのキーワードに対する配信者の印象・イメージ・関連づけを最大限詳細に）/emotionTone（positive/negative/neutral/complex のいずれか1つ）/score（好意度スコア0〜100。0=強い嫌悪、50=中立、100=強い好意）/evidence（根拠となる発言抜粋を配列で）を含めてください。`,
     tag:tagName,
     keywords,
     matchCount:contexts.length,
@@ -5445,7 +5460,7 @@ function exportWordReactionJson(){
   };
   const json=JSON.stringify(output,null,2);
   dl(json,`FC_${tagName}_${keywords[0]}_word_reaction.json`,'application/json;charset=utf-8');
-  msgEl.textContent=`${contexts.length}件の発言文脈を出力しました`;
+  msgEl.textContent=`${contexts.length}件の発言文脈を出力しました（前後約1分の文脈つき）`;
   toast(`単語反応解析JSON出力（${contexts.length}件マッチ）`,'ok');
 }
 
