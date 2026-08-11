@@ -4742,11 +4742,9 @@ function renderViewerProfileManager(){
       periods=Object.keys(entry).filter(k=>k!=='_active').sort();
     }
     return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--bd)">
-      <div style="flex:1;min-width:0;overflow:hidden">
         <span style="font-size:12px;color:var(--t0);font-weight:600">@${esc(username)}</span>
-        ${tag?`<span style="font-size:11px;color:#7dd3fc;margin-left:6px">${esc(tag)}</span>`:''}
-        <span style="font-size:10px;color:var(--t2);margin-left:6px">${periods.map(esc).join(' · ')}</span>
-      </div>
+        ${tag?`<span style="font-size:11px;color:#7dd3fc">${esc(tag)}</span>`:''}
+        <span style="font-size:10px;color:var(--t2)">${periods.map(esc).join(' · ')}</span>
       <button onclick="deleteViewerProfile(${JSON.stringify(key)})" style="flex-shrink:0;font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid #f87171;background:transparent;color:#f87171;cursor:pointer">🗑 削除</button>
     </div>`;
   }).join('');
