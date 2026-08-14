@@ -675,7 +675,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.2</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.5</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -5158,7 +5158,11 @@ function importViewerFile(input){
     reader.onload=e=>{
       try{
         const d=JSON.parse((e.target.result||'').trim());
-        if(Array.isArray(d))allData=allData.concat(d);
+        if(Array.isArray(d)){
+          const m=file.name.match(/(\d{4}-\d{2}-\d{2}〜\d{4}-\d{2}-\d{2})/);
+          const dr=m?m[1]:null;
+          allData=allData.concat(dr?d.map(x=>x.period?x:Object.assign({},x,{dateRange:dr})):d);
+        }
       }catch{}
       if(--pending===0){
         if(!allData.length){msg.textContent='有効なデータがありません';input.value='';return;}
@@ -5209,7 +5213,7 @@ function importViewerAnalysis(){
   for(const item of data){
     if(!item.username)continue;
     const key=item.tag?item.username+'___'+item.tag:item.username;
-    const period=item.period||'全期間';
+    const period=item.period||item.dateRange||'全期間';
     // 旧フォーマット（analysis直下）を新フォーマットに移行
     if(profiles[key]&&('analysis' in profiles[key]||'scores' in profiles[key])){
       const old=Object.assign({},profiles[key]);
@@ -5240,13 +5244,15 @@ function importViewerAnalysis(){
 }
 
 // ── §AUTO-SYNC ───────────────────────────────────────────────────────────────
-function _directImportViewerData(data){
+function _directImportViewerData(data,fname){
   const profiles=_loadViewerProfilesRaw();
+  const fm=fname?fname.match(/(\d{4}-\d{2}-\d{2}〜\d{4}-\d{2}-\d{2})/):null;
+  const fileDateRange=fm?fm[1]:null;
   let count=0;
   for(const item of data){
     if(!item.username)continue;
     const key=item.tag?item.username+'___'+item.tag:item.username;
-    const period=item.period||'全期間';
+    const period=item.period||item.dateRange||fileDateRange||'全期間';
     if(profiles[key]&&('analysis' in profiles[key]||'scores' in profiles[key])){
       const old=Object.assign({},profiles[key]);delete old._active;
       profiles[key]={'全期間':old,_active:'全期間'};
@@ -5322,7 +5328,7 @@ async function _autoSyncFromData(force){
         const data=await r.json();
         if(!Array.isArray(data))continue;
         if(fname.includes('_viewer_analysis')||(fname.includes('_analysis')&&!fname.includes('_streamer_'))){
-          vCount+=_directImportViewerData(data);
+          vCount+=_directImportViewerData(data,fname);
         } else if(fname.includes('_streamer_analysis')){
           sCount+=_directImportStreamerData(data);
         } else if(fname.includes('_word_reaction')){
