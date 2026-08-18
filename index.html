@@ -101,6 +101,11 @@ header{
 .dz-ttl{font-family:var(--hf);font-size:13px;font-weight:500;color:var(--t0)}
 .dz-hint{font-size:10px;color:var(--t2)}
 .dz-name{font-size:10px;color:var(--ok);word-break:break-all;max-width:100%}
+.dz-del{position:absolute;top:4px;right:4px;background:none;border:none;
+  color:var(--t2);cursor:pointer;font-size:11px;padding:2px 5px;
+  border-radius:3px;line-height:1;display:none;z-index:1}
+.dz.ready .dz-del{display:block}
+.dz-del:hover{color:var(--r1);background:rgba(185,24,40,0.12)}
 
 /* FORM */
 .fi-lbl{font-size:11px;color:var(--t1);margin-bottom:2px}
@@ -112,6 +117,14 @@ header{
 .fi:focus{border-color:var(--r4)}
 .fi.err{border-color:var(--r1);box-shadow:var(--glow)}
 .fi-group{display:flex;flex-direction:column;gap:3px}
+.fi-row{display:flex;gap:4px;align-items:center}
+.fi-row .fi{flex:1;min-width:0;width:auto}
+.fi-btn{flex-shrink:0;background:var(--bg2);border:1px solid var(--r3);
+  border-radius:var(--rad);color:var(--t2);padding:0 7px;height:30px;
+  cursor:pointer;font-size:12px;display:flex;align-items:center;
+  transition:all 0.15s;line-height:1}
+.fi-btn:hover{color:var(--t0);border-color:var(--r4)}
+.fi-btn.del-btn:hover{color:var(--r1);border-color:var(--r1);background:rgba(185,24,40,0.08)}
 
 /* TAGS */
 .tw{
@@ -699,12 +712,14 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     <input type="file" id="fi-t" accept=".txt,.vtt,.log,.ycs" style="display:none">
     <div class="dz-row">
       <label class="dz" id="dz-c" for="fi-c">
+        <button type="button" class="dz-del" onclick="clearDZ('c',event)" title="削除">✕</button>
         <div class="dz-ico" id="dz-ico-c">📄</div>
         <div class="dz-ttl" id="dz-ttl-c">コメント</div>
         <div class="dz-hint">クリックまたはドロップ</div>
         <div class="dz-name" id="fn-c"></div>
       </label>
       <label class="dz" id="dz-t" for="fi-t">
+        <button type="button" class="dz-del" onclick="clearDZ('t',event)" title="削除">✕</button>
         <div class="dz-ico" id="dz-ico-t">📝</div>
         <div class="dz-ttl" id="dz-ttl-t">トランスクリプト</div>
         <div class="dz-hint">クリックまたはドロップ</div>
@@ -714,19 +729,32 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 
     <div class="fi-group">
       <div class="fi-lbl">YouTube URL</div>
-      <input class="fi" type="text" id="fi-url" list="url-hist" placeholder="https://www.youtube.com/watch?v=...">
-      <datalist id="url-hist"></datalist>
+      <div class="fi-row">
+        <input class="fi" type="text" id="fi-url" list="url-hist" placeholder="https://www.youtube.com/watch?v=...">
+        <datalist id="url-hist"></datalist>
+        <button type="button" class="fi-btn" onclick="pasteToField('fi-url')" title="貼り付け">📋</button>
+        <button type="button" class="fi-btn del-btn" onclick="clearField('fi-url')" title="削除">✕</button>
+      </div>
     </div>
 
     <div class="fi-group">
       <div class="fi-lbl">配信開始時刻 (ISO 8601)</div>
-      <input class="fi" type="text" id="fi-start" list="start-hist" placeholder="2026-01-01T21:00:00" value="2026-01-01T00:00:00">
-      <datalist id="start-hist"></datalist>
+      <div class="fi-row">
+        <input class="fi" type="text" id="fi-start" list="start-hist" placeholder="2026-01-01T21:00:00" value="2026-01-01T00:00:00">
+        <datalist id="start-hist"></datalist>
+        <button type="button" class="fi-btn" onclick="pasteToField('fi-start')" title="貼り付け">📋</button>
+        <button type="button" class="fi-btn del-btn" onclick="clearField('fi-start')" title="削除">✕</button>
+      </div>
     </div>
 
     <div class="fi-group">
       <div class="fi-lbl">配信番号</div>
-      <input class="fi" type="text" id="fi-ep" placeholder="例: 042">
+      <div class="fi-row">
+        <input class="fi" type="text" id="fi-ep" placeholder="例: 042">
+        <button type="button" class="fi-btn" onclick="copyField('fi-ep')" title="コピー">⎘</button>
+        <button type="button" class="fi-btn" onclick="pasteToField('fi-ep')" title="貼り付け">📋</button>
+        <button type="button" class="fi-btn del-btn" onclick="clearField('fi-ep')" title="削除">✕</button>
+      </div>
     </div>
 
     <div class="fi-group">
@@ -2018,6 +2046,31 @@ function setupDZ(zoneId,inputId,fnId,key){
     const f=e.dataTransfer.files[0];
     if(f)load(f);
   });
+}
+
+function clearDZ(sfx, e){
+  e.preventDefault(); e.stopPropagation();
+  const key=sfx==='c'?'chatRaw':'trRaw';
+  const lbl=sfx==='c'?'コメント':'トランスクリプト';
+  const ico=sfx==='c'?'📄':'📝';
+  S[key]=null;
+  const icoEl=document.getElementById('dz-ico-'+sfx);
+  const ttlEl=document.getElementById('dz-ttl-'+sfx);
+  const fnEl =document.getElementById('fn-'+sfx);
+  if(icoEl)icoEl.textContent=ico;
+  if(ttlEl)ttlEl.textContent=lbl;
+  if(fnEl) fnEl.textContent='';
+  document.getElementById('dz-'+sfx).classList.remove('ready');
+}
+function clearField(id){document.getElementById(id).value='';}
+async function pasteToField(id){
+  try{const t=await navigator.clipboard.readText();document.getElementById(id).value=t;}
+  catch{toast('クリップボードにアクセスできません','wrn');}
+}
+function copyField(id){
+  const v=document.getElementById(id).value;
+  if(!v)return;
+  navigator.clipboard.writeText(v).then(()=>toast('コピーしました','ok')).catch(()=>{});
 }
 
 // ─── §17 TAGS ─────────────────────────────────────────────────────────────────
