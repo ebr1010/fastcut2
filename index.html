@@ -688,7 +688,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.20</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.21</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -928,6 +928,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     <button id="rank-mode-acct" class="rank-mode-btn active" onclick="setRankMode('acct')">👤 アカウント</button>
     <button id="rank-mode-word" class="rank-mode-btn" onclick="setRankMode('word')">📊 頻出ワード(音声)</button>
     <button id="rank-mode-viewer" class="rank-mode-btn" onclick="setRankMode('viewer')">👥 視聴者分析</button>
+    <button id="rank-mode-pickup" class="rank-mode-btn" onclick="setRankMode('pickup')">🎤 拾われ分析</button>
     <input class="rank-q" id="rank-q" placeholder="@アカウント名で検索..." oninput="renderRanking()">
     <select class="rank-tag-sel" id="rank-tag" onchange="_rankTagChanged()">
       <option value="">すべてのタグ</option>
@@ -1077,6 +1078,21 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
       </div>
       <div id="wr-result-area" style="margin-top:12px"></div>
     </div>
+  </div>
+  <div id="rank-pickup-area" style="display:none">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <select id="pickup-tag-sel" class="rank-tag-sel" onchange="populatePickupEpisodes()">
+        <option value="">タグを選択</option>
+      </select>
+      <select id="pickup-ep-sel" class="rank-tag-sel" style="max-width:320px;min-width:160px">
+        <option value="">配信を選択</option>
+      </select>
+      <input type="number" id="pickup-window" value="180" min="10" max="600" style="width:56px;background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:3px 6px;font-size:11px" title="拾われ判定の時間窓（秒）">
+      <span style="font-size:11px;color:var(--t2)">秒以内に読み上げ</span>
+      <button class="rank-mode-btn" onclick="runPickupAnalysis()" style="padding:5px 14px;border-color:#f472b6;color:#f472b6">🎤 分析開始</button>
+      <span id="pickup-status" style="font-size:11px;color:var(--t2)"></span>
+    </div>
+    <div id="pickup-result"></div>
   </div>
 </div>
 
@@ -4699,17 +4715,128 @@ function setRankMode(mode){
   document.getElementById('rank-mode-acct').classList.toggle('active',mode==='acct');
   document.getElementById('rank-mode-word').classList.toggle('active',mode==='word');
   document.getElementById('rank-mode-viewer').classList.toggle('active',mode==='viewer');
+  document.getElementById('rank-mode-pickup').classList.toggle('active',mode==='pickup');
   document.getElementById('rank-q').style.display=mode==='acct'?'':'none';
-  document.getElementById('rank-tag').style.display=mode!=='viewer'?'':'none';
+  document.getElementById('rank-tag').style.display=(mode==='acct'||mode==='word')?'':'none';
   document.getElementById('rank-acct-table').style.display=mode==='acct'?'':'none';
   document.getElementById('rank-word-table').style.display=mode==='word'?'':'none';
   document.getElementById('rank-viewer-area').style.display=mode==='viewer'?'':'none';
+  document.getElementById('rank-pickup-area').style.display=mode==='pickup'?'':'none';
   const wc=document.getElementById('rank-word-ctrls');
   if(wc)wc.style.display=mode==='word'?'flex':'none';
   if(mode==='word')renderWordRanking();
   else if(mode==='viewer'){_syncViewerTagSel();renderViewerAnalysis();}
+  else if(mode==='pickup')_syncPickupTagSel();
   else renderRanking();
 }
+
+// ─── 拾われ分析 ─────────────────────────────────────────────────────────────
+function _syncPickupTagSel(){
+  const sel=document.getElementById('pickup-tag-sel');
+  if(!sel)return;
+  const cur=sel.value;
+  const tags=[...new Set(_dbCache.map(r=>r.mainTag).filter(Boolean))].sort();
+  sel.innerHTML='<option value="">タグを選択</option>'+tags.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
+  if(cur)sel.value=cur;
+  populatePickupEpisodes();
+}
+
+function populatePickupEpisodes(){
+  const tag=(document.getElementById('pickup-tag-sel')?.value||'').trim();
+  const recs=tag?_dbCache.filter(r=>r.mainTag===tag):_dbCache;
+  const sel=document.getElementById('pickup-ep-sel');
+  if(!sel)return;
+  const sorted=[...recs].sort((a,b)=>(b.episodeNum||0)-(a.episodeNum||0));
+  sel.innerHTML='<option value="">配信を選択</option>'
+    +sorted.map(r=>`<option value="${esc(r.id||'')}">【${esc(r.mainTag||'')}】#${r.episodeNum||'?'} ${esc((r.title||'').slice(0,38))}</option>`).join('');
+}
+
+function _pickupNorm(s){
+  return String(s)
+    .replace(/[！？!?。、…・～〜ーっッ\s　]/g,'')
+    .replace(/(.)\1{2,}/g,'$1$1')
+    .toLowerCase();
+}
+
+function _pickupBigrams(s){
+  const bg=[];
+  for(let i=0;i<s.length-1;i++)bg.push(s.slice(i,i+2));
+  return bg;
+}
+
+function _pickupMatch(comment,trTextsInWindow){
+  const c=_pickupNorm(comment);
+  if(c.length<2)return false;
+  const cmtBg=_pickupBigrams(c);
+  if(!cmtBg.length)return false;
+  for(const trText of trTextsInWindow){
+    const t=_pickupNorm(trText);
+    let m=0;
+    for(const bg of cmtBg)if(t.includes(bg))m++;
+    if(m/cmtBg.length>=0.5)return true;
+  }
+  return false;
+}
+
+function runPickupAnalysis(){
+  const recId=(document.getElementById('pickup-ep-sel')?.value||'').trim();
+  const statusEl=document.getElementById('pickup-status');
+  const resultEl=document.getElementById('pickup-result');
+  if(!recId){if(statusEl)statusEl.textContent='配信を選択してください';return;}
+  const rec=_dbCache.find(r=>r.id===recId);
+  if(!rec){if(statusEl)statusEl.textContent='配信データが見つかりません';return;}
+  if(statusEl)statusEl.textContent='分析中...';
+  if(resultEl)resultEl.innerHTML='';
+
+  const windowSec=parseInt(document.getElementById('pickup-window')?.value||'180',10)||180;
+  const chatData=rec.chatData||[];
+  const trData=rec.trData||[];
+
+  const validChats=chatData.filter(c=>{
+    if(!c||!c.username||!c.message)return false;
+    if(c.donated)return false;
+    const m=String(c.message);
+    if(m.startsWith('[SC:')||m.startsWith('[Milestone')||m.startsWith('[Member'))return false;
+    return true;
+  });
+
+  const trSorted=[...trData].sort((a,b)=>(a.sec||0)-(b.sec||0));
+
+  const userStats={};
+  for(const chat of validChats){
+    const{sec:chatSec,username,message}=chat;
+    if(!userStats[username])userStats[username]={total:0,picked:0};
+    userStats[username].total++;
+    const s=chatSec||0;
+    const trWindow=trSorted.filter(t=>(t.sec||0)>=s&&(t.sec||0)<=s+windowSec).map(t=>t.text||'');
+    if(trWindow.length&&_pickupMatch(message,trWindow))userStats[username].picked++;
+  }
+
+  const entries=Object.entries(userStats).map(([user,{total,picked}])=>({user,total,picked,rate:total>0?picked/total:0}));
+  const byCount=[...entries].filter(e=>e.picked>0).sort((a,b)=>b.picked-a.picked||b.total-a.total);
+  const byRate=[...entries].filter(e=>e.picked>0&&e.total>=3).sort((a,b)=>b.rate-a.rate||b.picked-a.picked);
+
+  if(statusEl)statusEl.textContent=`完了（${validChats.length}件解析・${byCount.length}人が1件以上拾われ）`;
+  if(!resultEl)return;
+
+  const mkTable=(rows,label)=>{
+    if(!rows.length)return `<div style="color:var(--t2);padding:16px 0">${label}: 該当なし</div>`;
+    return `<div style="font-size:13px;font-weight:600;color:var(--t1);margin:16px 0 8px">${label}</div>
+<table class="rank-table" style="margin-bottom:8px">
+<thead><tr><th style="text-align:center;width:36px">#</th><th>アカウント</th><th style="text-align:right">拾われ数</th><th style="text-align:right">コメント数</th><th style="text-align:right">拾われ率</th></tr></thead>
+<tbody>${rows.slice(0,50).map((e,i)=>`<tr>
+<td style="text-align:center;color:var(--t2)">${i+1}</td>
+<td>@${esc(e.user)}</td>
+<td style="text-align:right;color:#f472b6;font-weight:600">${e.picked}</td>
+<td style="text-align:right;color:var(--t2)">${e.total}</td>
+<td style="text-align:right;color:#fb923c">${(e.rate*100).toFixed(1)}%</td>
+</tr>`).join('')}</tbody>
+</table>`;
+  };
+
+  resultEl.innerHTML=mkTable(byCount,'🎤 拾われ回数ランキング（上位50名）')+mkTable(byRate,'📊 拾われ率ランキング（3コメ以上・上位50名）');
+}
+// ──────────────────────────────────────────────────────────────────────────────
 
 function _syncViewerTagSel(){
   const sel=document.getElementById('viewer-tag-sel');
