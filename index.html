@@ -688,7 +688,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.41</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.42</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -2843,7 +2843,9 @@ function toggleScMode(){
   _scMode=!_scMode;
   const b=document.getElementById('sm-sc');
   if(b){b.classList.toggle('active',_scMode);b.style.background=_scMode?'var(--r2)':'';b.style.color=_scMode?'var(--t0)':'var(--t1)';}
-  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
+  // SCモードONは全レコードから検索（タグフィルタを無視）
+  const recs=_scMode?sortedCache():applyTagFilter(sortedCache());
+  renderDB(recs,document.getElementById('db-q').value.trim(),getAcctSearch());
 }
 function setSearchMode(m){
   _searchMode=m;
