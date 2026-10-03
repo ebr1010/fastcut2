@@ -688,7 +688,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.24</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.25</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -4831,18 +4831,18 @@ function _pickupBigrams(s){
   return bg;
 }
 
-function _pickupMatch(comment,trTextsInWindow){
+function _pickupMatchFull(comment,trTextsInWindow){
   const c=_pickupNorm(comment);
-  if(c.length<2)return false;
+  if(c.length<2)return null;
   const cmtBg=_pickupBigrams(c);
-  if(!cmtBg.length)return false;
+  if(!cmtBg.length)return null;
   for(const trText of trTextsInWindow){
     const t=_pickupNorm(trText);
     let m=0;
     for(const bg of cmtBg)if(t.includes(bg))m++;
-    if(m/cmtBg.length>=0.5)return true;
+    if(m/cmtBg.length>=0.5)return trText;
   }
-  return false;
+  return null;
 }
 
 function _doDbPickup(rec){
@@ -4869,35 +4869,45 @@ function _doPickup(rec,statusEl,resultEl,windowSec){
   const userStats={};
   for(const chat of validChats){
     const{sec:chatSec,username,message}=chat;
-    if(!userStats[username])userStats[username]={total:0,picked:0};
+    if(!userStats[username])userStats[username]={total:0,picked:0,comments:[]};
     userStats[username].total++;
     const s=chatSec||0;
-    const trWindow=trSorted.filter(t=>(t.sec||0)>=s&&(t.sec||0)<=s+windowSec).map(t=>t.text||'');
-    if(trWindow.length&&_pickupMatch(message,trWindow))userStats[username].picked++;
+    const trWindow=trSorted.filter(t=>(t.sec||0)>=s&&(t.sec||0)<=s+windowSec);
+    const matchedTr=_pickupMatchFull(message,trWindow.map(t=>t.text||''));
+    if(matchedTr!==null){
+      userStats[username].picked++;
+      userStats[username].comments.push({sec:s,message,matchedTr});
+    }
   }
 
-  const entries=Object.entries(userStats).map(([user,{total,picked}])=>({user,total,picked,rate:total>0?picked/total:0}));
+  const entries=Object.entries(userStats).map(([user,{total,picked,comments}])=>({user,total,picked,rate:total>0?picked/total:0,comments}));
   const byCount=[...entries].filter(e=>e.picked>0).sort((a,b)=>b.picked-a.picked||b.total-a.total);
   const byRate=[...entries].filter(e=>e.picked>0&&e.total>=3).sort((a,b)=>b.rate-a.rate||b.picked-a.picked);
 
   if(statusEl)statusEl.textContent=`完了（${validChats.length}件解析・${byCount.length}人が1件以上拾われ）`;
   if(!resultEl)return;
 
-  const mkTable=(rows,label)=>{
+  const fmtSec=s=>{if(s==null)return'';const m=Math.floor(s/60),sc=s%60;return m+':'+String(sc).padStart(2,'0');};
+  const mkDetail=(e,pfx,i)=>e.comments.map(c=>`<tr style="background:rgba(244,114,182,0.05)">
+<td style="color:var(--t2);font-size:10px;white-space:nowrap;padding:3px 6px">${fmtSec(c.sec)}</td>
+<td style="font-size:11px;padding:3px 6px" colspan="2">${esc(c.message)}</td>
+<td style="font-size:10px;color:#a3e635;padding:3px 6px" colspan="2">🎤 ${esc((c.matchedTr||'').slice(0,80))}</td>
+</tr>`).join('');
+  const mkTable=(rows,label,pfx)=>{
     if(!rows.length)return `<div style="color:var(--t2);padding:12px 0">${label}: 該当なし</div>`;
     return `<div style="font-size:13px;font-weight:600;color:var(--t1);margin:16px 0 8px">${label}</div>
 <table class="rank-table" style="margin-bottom:8px">
 <thead><tr><th style="text-align:center;width:36px">#</th><th>アカウント</th><th style="text-align:right">拾われ数</th><th style="text-align:right">コメント数</th><th style="text-align:right">拾われ率</th></tr></thead>
-<tbody>${rows.slice(0,50).map((e,i)=>`<tr>
+<tbody>${rows.slice(0,50).map((e,i)=>`<tr style="cursor:pointer" onclick="(function(d){d.style.display=d.style.display===''?'none':'';})(document.getElementById('${pfx}d${i}'))">
 <td style="text-align:center;color:var(--t2)">${i+1}</td>
-<td>@${esc(e.user)}</td>
+<td>@${esc(e.user)} <span style="font-size:9px;color:var(--t2)">▼</span></td>
 <td style="text-align:right;color:#f472b6;font-weight:600">${e.picked}</td>
 <td style="text-align:right;color:var(--t2)">${e.total}</td>
 <td style="text-align:right;color:#fb923c">${(e.rate*100).toFixed(1)}%</td>
-</tr>`).join('')}</tbody>
+</tr><tr id="${pfx}d${i}" style="display:none"><td colspan="5" style="padding:0"><table style="width:100%;border-collapse:collapse">${mkDetail(e,pfx,i)}</table></td></tr>`).join('')}</tbody>
 </table>`;
   };
-  resultEl.innerHTML=mkTable(byCount,'🎤 拾われ回数ランキング（上位50名）')+mkTable(byRate,'📊 拾われ率ランキング（3コメ以上・上位50名）');
+  resultEl.innerHTML=mkTable(byCount,'🎤 拾われ回数ランキング（上位50名）','pc')+mkTable(byRate,'📊 拾われ率ランキング（3コメ以上・上位50名）','pr');
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
