@@ -688,7 +688,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.43</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.44</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -2429,6 +2429,30 @@ async function registerCurrentVideo(){
   const startISO=document.getElementById('fi-start').value.trim();
   const urlVal=document.getElementById('fi-url').value.trim();
   const epVal=document.getElementById('fi-ep').value.trim();
+
+  // 同じvideoIdが既存ならdonatedフィールドのみパッチ（旧データSC補完）
+  const existingRec=S.videoId?_dbCache.find(r=>r.videoId===S.videoId):null;
+  if(existingRec){
+    const donatedMap=new Map();
+    for(const c of S.chatConv){
+      if(c.donated!=null&&c.donated!=='')donatedMap.set(c.sec+'_'+c.username,c.donated);
+    }
+    let patched=0;
+    const newChatData=(existingRec.chatData||[]).map(c=>{
+      if((c.donated==null||c.donated==='')&&donatedMap.has(c.sec+'_'+c.username)){
+        patched++;return{...c,donated:donatedMap.get(c.sec+'_'+c.username)};
+      }
+      return c;
+    });
+    try{
+      await dbUpdate(existingRec.id,{chatData:newChatData});
+      toast('SC補完完了: '+patched+'件を更新しました','ok');
+      _dbCache=await dbAll();
+      renderDB(applyTagFilter(sortedCache()),'',getAcctSearch());
+    }catch(e){toast('SC補完失敗: '+_jpErr(e),'err');}
+    return;
+  }
+
   try{
     await dbAdd({
       episodeNum:epVal,
