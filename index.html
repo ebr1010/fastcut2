@@ -688,7 +688,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.31</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.32</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -4749,7 +4749,7 @@ function _sortPickup(key){
   const el=document.getElementById('pickup-rank-body');
   if(!el)return;
   if(!sorted.length){el.innerHTML='<div style="color:var(--t2);padding:12px 0">該当なし</div>';return;}
-  const fmtSec=s=>{if(s==null||s===undefined)return'?';const m=Math.floor(s/60),sc=Math.floor(s%60);return m+':'+String(sc).padStart(2,'0');};
+  const fmtSec=s=>{if(s==null||s===undefined)return'?';const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=Math.floor(s%60);return h>0?h+':'+String(m).padStart(2,'0')+':'+String(sc).padStart(2,'0'):m+':'+String(sc).padStart(2,'0');};
   const mkDetail=(e,i)=>e.comments.map(c=>`<tr style="background:rgba(244,114,182,0.05)">
 <td style="color:#93c5fd;font-size:10px;white-space:nowrap;padding:4px 6px">${fmtSec(c.chatSec)}</td>
 <td style="font-size:11px;padding:4px 6px;border-right:1px solid var(--bd)">${esc(c.message)}</td>
