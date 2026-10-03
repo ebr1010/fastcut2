@@ -688,7 +688,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.29</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.30</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -4918,7 +4918,8 @@ function _doPickup(rec,statusEl,resultEl,windowSec){
 
   const entries=Object.entries(userStats).map(([user,{total,picked,comments}])=>({user,total,picked,rate:total>0?picked/total:0,comments}));
   _pickupEntries=entries;
-  const statusMsg=`完了（${validChats.length}件解析・${byCount.length}人が1件以上拾われ）`;
+  const pickedCount=entries.filter(e=>e.picked>0).length;
+  const statusMsg=`完了（${validChats.length}件解析・${pickedCount}人が1件以上拾われ）`;
   if(statusEl)statusEl.textContent=statusMsg;
 
   const ra=document.getElementById('pickup-result-area');
