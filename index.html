@@ -688,7 +688,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.37</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.38</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -3151,7 +3151,7 @@ function renderDB(records,q,acct){
   }
 
   // SC/マイル判定（donated保存前の旧データはmessage内容で判定）
-  const _isSC=c=>(c.donated!=null&&c.donated!=='')||(c.message||'').startsWith('[SC:')||(c.message||'').startsWith('[Milestone')||(c.message||'').startsWith('[Member');
+  const _isSC=c=>(c.donated!=null&&c.donated!=='')||(c.message||'').startsWith('[SC:')||(c.message||'').startsWith('donated:');
   // カードレベルフィルタ（SC/マイルが1件でもある配信のみ表示）
   if(_scMode){
     const scFiltered=filtered.filter(rec=>(rec.chatData||[]).some(_isSC));
@@ -4887,7 +4887,7 @@ function _doPickup(rec,statusEl,resultEl,windowSec){
     if(!c||!c.username||!c.message)return false;
     if(c.donated)return false;
     const m=String(c.message);
-    if(m.startsWith('[SC:')||m.startsWith('[Milestone')||m.startsWith('[Member'))return false;
+    if(m.startsWith('[SC:')||m.startsWith('donated:'))return false;
     return true;
   });
 
