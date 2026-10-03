@@ -688,7 +688,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.32</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.33</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -871,6 +871,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
       <button class="sm-btn"        id="sm-tr"   onclick="setSearchMode('tr')">🎤 音声</button>
       <button class="sm-btn"        id="sm-chat" onclick="setSearchMode('chat')">💬 コメント</button>
     </div>
+    <button class="sm-btn" id="sm-sc" onclick="toggleScMode()" style="border:1px solid var(--r3);border-radius:var(--rad);padding:4px 10px;font-size:11px;background:none;color:var(--t1);cursor:pointer;font-family:var(--bf)">💎 SC/マイル</button>
     <div class="db-search-group">
       <input type="text" class="db-search" id="db-qn" placeholder="📌 ノート検索... (Enter)">
       <button class="db-bar-btn" id="db-qn-btn">🔍</button>
@@ -2831,6 +2832,13 @@ function searchDB(q){
 
 // renderDB が参照するグローバルマッチ関数（searchDB で更新）
 let _searchMode='all'; // 'all'|'tr'|'chat'
+let _scMode=false;
+function toggleScMode(){
+  _scMode=!_scMode;
+  const b=document.getElementById('sm-sc');
+  if(b){b.classList.toggle('active',_scMode);b.style.background=_scMode?'var(--r2)':'';b.style.color=_scMode?'var(--t0)':'var(--t1)';}
+  renderDB(applyTagFilter(sortedCache()),document.getElementById('db-q').value.trim(),getAcctSearch());
+}
 function setSearchMode(m){
   _searchMode=m;
   ['all','tr','chat'].forEach(id=>{
@@ -3279,7 +3287,7 @@ function renderDB(records,q,acct){
       else if(_memoHit)
         memoHtml='<div class="db-ynp-memo"><div class="db-ynp-memo-label">📝 YT NOTES</div><div class="db-tn-snippet">'+hlStr(_noteSnippet(_memo,_noteQ),_noteQ)+'</div></div>';
     }
-    const showHits=q||al||isExpanded;
+    const showHits=q||al||isExpanded||_scMode;
     let hitsHtml='';
     if(showHits){
       if(al){
@@ -3316,11 +3324,17 @@ function renderDB(records,q,acct){
         }
       }else{
         const _vid=_getVidId(rec);
-        const allRows=[
-          ...(_searchMode!=='chat'?trData.map(t=>({sec:t.sec,txt:t.text,vid:_vid})):[]),
-          ...(_searchMode!=='tr'?chatData.map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid})):[]),
-        ].sort((a,b)=>a.sec-b.sec);
-        if(allRows.length)hitsHtml='<div class="db-hits">'+allRows.map(h=>makeHitRow(h,'')).join('')+'</div>';
+        if(_scMode){
+          const _isSC=c=>(c.donated!=null)||(c.message||'').startsWith('[SC:')||(c.message||'').startsWith('[Milestone');
+          const scHits=chatData.filter(_isSC).map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid})).sort((a,b)=>a.sec-b.sec);
+          if(scHits.length)hitsHtml='<div class="db-hits">'+scHits.map(h=>makeHitRow(h,'')).join('')+'</div>';
+        }else{
+          const allRows=[
+            ...(_searchMode!=='chat'?trData.map(t=>({sec:t.sec,txt:t.text,vid:_vid})):[]),
+            ...(_searchMode!=='tr'?chatData.map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid})):[]),
+          ].sort((a,b)=>a.sec-b.sec);
+          if(allRows.length)hitsHtml='<div class="db-hits">'+allRows.map(h=>makeHitRow(h,'')).join('')+'</div>';
+        }
       }
     }
 
