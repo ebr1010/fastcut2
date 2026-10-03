@@ -688,7 +688,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.30</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.31</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -921,17 +921,6 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
   <div id="db-select-bar"></div>
   </div><!-- /db-sticky-head -->
   <div class="db-grid" id="db-grid"></div>
-  <div id="db-pickup-area" style="display:none;padding:16px 0 8px;border-top:2px solid var(--r3);margin-top:12px">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
-      <span id="db-pickup-title" style="font-size:13px;font-weight:600;color:var(--t1)">🎤 拾われ分析</span>
-      <input type="number" id="db-pickup-window" value="180" min="10" max="600" style="width:56px;background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:3px 6px;font-size:11px" title="拾われ判定の時間窓（秒）">
-      <span style="font-size:11px;color:var(--t2)">秒以内に読み上げ</span>
-      <button class="db-bar-btn" onclick="_rerunDbPickup()">🔄 再分析</button>
-      <span id="db-pickup-status" style="font-size:11px;color:var(--t2)"></span>
-      <button onclick="document.getElementById('db-pickup-area').style.display='none'" style="margin-left:auto;background:none;border:1px solid var(--r3);border-radius:4px;color:var(--t2);cursor:pointer;padding:2px 8px;font-size:12px">✕ 閉じる</button>
-    </div>
-    <div id="db-pickup-result"></div>
-  </div>
 </div>
 
 <div id="view-rank" style="display:none">
@@ -3350,7 +3339,6 @@ function renderDB(records,q,acct){
       ?'<div class="db-expand-btns">'
         +(hasData?'<button class="db-expand-btn'+(isExpanded?' active':'')+'" onclick="toggleCardExpand(event,'+rec.id+')">'+(isExpanded?'▲ コメント・音声':'▼ コメント・音声')+'</button>':'')
         +(hasNotes?'<button class="db-expand-btn'+(isTNExpanded?' active':'')+'" onclick="toggleTNExpand(event,'+rec.id+')">'+(isTNExpanded?'▲ ノート':'▼ ノート')+'</button>':'')
-        +(hasData?'<button class="db-expand-btn" onclick="event.stopPropagation();openDbPickup('+rec.id+')" style="color:#f472b6;border-color:#f472b688">🎤 拾われ分析</button>':'')
         +'</div>'
       :'';
 
@@ -4834,24 +4822,6 @@ function _rerunPickup(){
   if(rec)_doPickup(rec,document.getElementById('pickup-status'),document.getElementById('pickup-result'),parseInt(document.getElementById('pickup-window')?.value||'180',10)||180);
 }
 
-function openDbPickup(id){
-  _dbPickupCurrentId=id;
-  const rec=_dbCache.find(r=>r.id===id);
-  if(!rec)return;
-  const area=document.getElementById('db-pickup-area');
-  if(!area)return;
-  area.style.display='block';
-  const titleEl=document.getElementById('db-pickup-title');
-  if(titleEl)titleEl.textContent='🎤 拾われ分析 — #'+(rec.episodeNum||'?')+' '+((rec.title||'').slice(0,35));
-  area.scrollIntoView({behavior:'smooth',block:'start'});
-  _doDbPickup(rec);
-}
-
-function _rerunDbPickup(){
-  if(!_dbPickupCurrentId)return;
-  const rec=_dbCache.find(r=>r.id===_dbPickupCurrentId);
-  if(rec)_doDbPickup(rec);
-}
 
 function _pickupNorm(s){
   return String(s)
@@ -4881,10 +4851,6 @@ function _pickupMatchFull(comment,trItemsInWindow){
   return null;
 }
 
-function _doDbPickup(rec){
-  const windowSec=parseInt(document.getElementById('db-pickup-window')?.value||'180',10)||180;
-  _doPickup(rec,document.getElementById('db-pickup-status'),document.getElementById('db-pickup-result'),windowSec);
-}
 
 function _doPickup(rec,statusEl,resultEl,windowSec){
   if(statusEl)statusEl.textContent='分析中...';
