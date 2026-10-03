@@ -3461,7 +3461,7 @@ function startEdit(id){
   card.innerHTML='<div onclick="event.stopPropagation()">'
     +'<div class="db-edit-row"><label>タイトル</label><input class="db-edit-in" id="edi-t-'+id+'" value="'+esc(rec.title||'')+'"></div>'
     +'<div class="db-edit-row"><label>URL</label><input class="db-edit-in" id="edi-u-'+id+'" value="'+esc(rec.videoUrl||'')+'"></div>'
-    +'<div class="db-edit-row"><label>配信番号</label><input class="db-edit-in" id="edi-ep-'+id+'" value="'+esc(rec.episodeNum||'')+'"></div>'
+    +'<div class="db-edit-row"><label>配信番号</label><div style="display:flex;gap:4px"><input class="db-edit-in" id="edi-ep-'+id+'" value="'+esc(rec.episodeNum||'')+'" style="flex:1"><button type="button" class="fi-btn" onclick="navigator.clipboard.readText().then(t=>document.getElementById(\'edi-ep-'+id+'\').value=t.trim())" title="貼り付け" style="height:30px;padding:0 7px;flex-shrink:0">📋</button></div></div>'
     +'<div class="db-edit-row"><label>配信開始時刻</label><input class="db-edit-in" id="edi-s-'+id+'" value="'+esc(rec.streamStart||'')+'" placeholder="YYYY-MM-DDTHH:MM:SS"></div>'
     +'<div class="db-edit-row"><label>タグ</label><div id="edi-tags-'+id+'"></div></div>'
     +'<div class="db-edit-row"><label>サブタグ</label><div id="edi-subtags-'+id+'"></div></div>'
@@ -4945,6 +4945,7 @@ function renderStreamerProfileManager(){
       rows.push(`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--bd)">
         <span style="font-size:12px;color:#a78bfa;font-weight:600">${esc(tag)}</span>
         <span style="font-size:10px;color:var(--t2)">${esc(period)}</span>
+        <button onclick="openStreamerDetail('${esc(tag)}')" style="flex-shrink:0;font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid #a78bfa;background:rgba(167,139,250,.12);color:#a78bfa;cursor:pointer">詳細 ▶</button>
         <button onclick="_togglePrivacy('${esc(privKey)}');renderStreamerProfileManager();" title="${priv?'公開に変更':'非公開に変更'}" style="flex-shrink:0;font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid ${priv?'#f59e0b':'#64748b'};background:${priv?'rgba(245,158,11,.15)':'transparent'};color:${priv?'#fbbf24':'#64748b'};cursor:pointer">${priv?'🔒 非公開':'🌐 公開'}</button>
         <button onclick="deleteStreamerPeriod('${esc(tag)}','${esc(period)}')" style="flex-shrink:0;font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid #f87171;background:transparent;color:#f87171;cursor:pointer">🗑 削除</button>
       </div>`);
@@ -5266,7 +5267,7 @@ function importViewerAnalysis(){
   for(const item of data){
     if(!item.username)continue;
     const key=item.tag?item.username+'___'+item.tag:item.username;
-    const period=item.period||item.dateRange||'全期間';
+    const period=item.dateRange||item.period||'全期間';
     // 旧フォーマット（analysis直下）を新フォーマットに移行
     if(profiles[key]&&('analysis' in profiles[key]||'scores' in profiles[key])){
       const old=Object.assign({},profiles[key]);
@@ -5305,7 +5306,7 @@ function _directImportViewerData(data,fname){
   for(const item of data){
     if(!item.username)continue;
     const key=item.tag?item.username+'___'+item.tag:item.username;
-    const period=item.period||item.dateRange||fileDateRange||'全期間';
+    const period=item.dateRange||item.period||fileDateRange||'全期間';
     if(profiles[key]&&('analysis' in profiles[key]||'scores' in profiles[key])){
       const old=Object.assign({},profiles[key]);delete old._active;
       profiles[key]={'全期間':old,_active:'全期間'};
@@ -5333,7 +5334,7 @@ function _directImportStreamerData(data){
   let count=0;
   for(const item of data){
     if(!item.tag)continue;
-    const period=item.period||item.dateRange||'全期間';
+    const period=item.dateRange||item.period||'全期間';
     if(profiles[item.tag]&&('analysis' in profiles[item.tag]||'scores' in profiles[item.tag])){
       const old=Object.assign({},profiles[item.tag]);delete old._active;
       profiles[item.tag]={'全期間':old,_active:'全期間'};
@@ -5824,7 +5825,7 @@ function importStreamerAnalysis(){
   let count=0;
   for(const item of data){
     if(!item.tag)continue;
-    const period=item.period||item.dateRange||'全期間';
+    const period=item.dateRange||item.period||'全期間';
     // 旧フォーマット移行
     if(profiles[item.tag]&&('analysis' in profiles[item.tag]||'scores' in profiles[item.tag])){
       const old=Object.assign({},profiles[item.tag]);
@@ -6316,7 +6317,9 @@ function toggleRankDetail(row){
 }
 
 // ─── §20 TAB SWITCH ───────────────────────────────────────────────────────────
+let _currentTab='analyze';
 function switchTab(name){
+  _currentTab=name;
   const layout=document.getElementById('layout');
   const viewDb=document.getElementById('view-db');
   const viewRank=document.getElementById('view-rank');
