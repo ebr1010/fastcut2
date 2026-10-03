@@ -688,7 +688,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.34</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.35</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -3150,6 +3150,12 @@ function renderDB(records,q,acct){
     filtered=filtered.filter(rec=>(rec.chatData||[]).some(c=>matchUser(c.username)));
   }
 
+  // SC/マイルフィルタ（カードレベル）
+  const _isSC=c=>(c.donated!=null)||(c.message||'').startsWith('[SC:')||(c.message||'').startsWith('[Milestone');
+  if(_scMode){
+    filtered=filtered.filter(rec=>(rec.chatData||[]).some(_isSC));
+  }
+
   // count label
   const total=records.length;
   let cntLabel=filtered.length<total?filtered.length+' / '+total+'件':total+'件';
@@ -3299,12 +3305,11 @@ function renderDB(records,q,acct){
     const showHits=q||al||isExpanded||_scMode;
     let hitsHtml='';
     if(showHits){
+      const _vid=_getVidId(rec);
       if(al){
-        const _vid=_getVidId(rec);
-        const userHits=chatData
-          .filter(c=>matchUser(c.username))
-          .map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid}))
-          .sort((a,b)=>a.sec-b.sec);
+        let userHits=chatData.filter(c=>matchUser(c.username));
+        if(_scMode)userHits=userHits.filter(_isSC);
+        userHits=userHits.map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid})).sort((a,b)=>a.sec-b.sec);
         if(userHits.length){
           const cap=5,over=userHits.length-cap;
           hitsHtml='<div class="db-hits">'+userHits.slice(0,cap).map(h=>makeHitRow(h,'')).join('')
@@ -3313,15 +3318,13 @@ function renderDB(records,q,acct){
             +'</div>';
         }
       }else if(q){
-        const _vid=_getVidId(rec);
         const _chkQ=_dbMatchFn?_dbMatch:t=>t.toLowerCase().includes(ql);
         const chatHits=_searchMode!=='tr'
-          ?chatData.filter(c=>_chkQ(_stripStamps(c.message)))
+          ?chatData.filter(c=>_chkQ(_stripStamps(c.message))&&(!_scMode||_isSC(c)))
             .map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid}))
           :[];
-        const trHits=_searchMode!=='chat'
-          ?trData.filter(t=>_chkQ(t.text))
-            .map(t=>({sec:t.sec,txt:t.text,vid:_vid}))
+        const trHits=_searchMode!=='chat'&&!_scMode
+          ?trData.filter(t=>_chkQ(t.text)).map(t=>({sec:t.sec,txt:t.text,vid:_vid}))
           :[];
         const allHits=[...chatHits,...trHits].sort((a,b)=>a.sec-b.sec);
         if(allHits.length){
@@ -3331,19 +3334,15 @@ function renderDB(records,q,acct){
               +'<div class="db-hits-more" style="cursor:pointer" onclick="expandHits(\'hm-'+rec.id+'\',this)">▼ 他 '+over+' 件</div>':'')
             +'</div>';
         }
+      }else if(_scMode){
+        const scHits=chatData.filter(_isSC).map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid})).sort((a,b)=>a.sec-b.sec);
+        if(scHits.length)hitsHtml='<div class="db-hits">'+scHits.map(h=>makeHitRow(h,'')).join('')+'</div>';
       }else{
-        const _vid=_getVidId(rec);
-        if(_scMode){
-          const _isSC=c=>(c.donated!=null)||(c.message||'').startsWith('[SC:')||(c.message||'').startsWith('[Milestone');
-          const scHits=chatData.filter(_isSC).map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid})).sort((a,b)=>a.sec-b.sec);
-          if(scHits.length)hitsHtml='<div class="db-hits">'+scHits.map(h=>makeHitRow(h,'')).join('')+'</div>';
-        }else{
-          const allRows=[
-            ...(_searchMode!=='chat'?trData.map(t=>({sec:t.sec,txt:t.text,vid:_vid})):[]),
-            ...(_searchMode!=='tr'?chatData.map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid})):[]),
-          ].sort((a,b)=>a.sec-b.sec);
-          if(allRows.length)hitsHtml='<div class="db-hits">'+allRows.map(h=>makeHitRow(h,'')).join('')+'</div>';
-        }
+        const allRows=[
+          ...(_searchMode!=='chat'?trData.map(t=>({sec:t.sec,txt:t.text,vid:_vid})):[]),
+          ...(_searchMode!=='tr'?chatData.map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid})):[]),
+        ].sort((a,b)=>a.sec-b.sec);
+        if(allRows.length)hitsHtml='<div class="db-hits">'+allRows.map(h=>makeHitRow(h,'')).join('')+'</div>';
       }
     }
 
