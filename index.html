@@ -688,7 +688,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.35</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.36</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -2436,7 +2436,7 @@ async function registerCurrentVideo(){
       videoId:S.videoId,
       videoUrl:urlVal,
       streamStart:startISO,
-      chatData:S.chatConv.map(c=>({sec:c.sec,username:c.username,message:c.message})),
+      chatData:S.chatConv.map(c=>({sec:c.sec,username:c.username,message:c.message,donated:c.donated??null})),
       trData:S.trRecs.map(t=>({sec:t.sec,text:t.text})),
       tnotes:(document.getElementById('fi-tn')?.value||'').trim(),
       registeredAt:new Date().toISOString(),
@@ -3150,8 +3150,9 @@ function renderDB(records,q,acct){
     filtered=filtered.filter(rec=>(rec.chatData||[]).some(c=>matchUser(c.username)));
   }
 
-  // SC/マイルフィルタ（カードレベル）
-  const _isSC=c=>(c.donated!=null)||(c.message||'').startsWith('[SC:')||(c.message||'').startsWith('[Milestone');
+  // SC/マイル判定（donated保存前の旧データはmessage内容で判定）
+  const _isSC=c=>(c.donated!=null&&c.donated!=='')||(c.message||'').startsWith('[SC:')||(c.message||'').startsWith('[Milestone')||(c.message||'').startsWith('[Member');
+  // カードレベルフィルタ（SC/マイルが1件でもある配信のみ表示）
   if(_scMode){
     filtered=filtered.filter(rec=>(rec.chatData||[]).some(_isSC));
   }
@@ -3571,7 +3572,7 @@ async function loadRecordToAnalysis(id){
   // restore state
   S.videoId    = rec.videoId||null;
   S.videoTitle = rec.title||'';
-  S.chatConv   = (rec.chatData||[]).map(c=>({sec:c.sec,username:c.username,message:c.message,donated:null}));
+  S.chatConv   = (rec.chatData||[]).map(c=>({sec:c.sec,username:c.username,message:c.message,donated:c.donated??null}));
   S.trRecs     = (rec.trData||[]).map(t=>({sec:t.sec,text:t.text}));
 
   // update DZ UI to show loaded state
