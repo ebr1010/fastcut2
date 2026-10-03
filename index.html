@@ -688,7 +688,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.18</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.19</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -5566,9 +5566,12 @@ function openStreamerDetail(tag){
     :'';
   const badges=(prof.personality||[]).map(b=>`<span class="sp-badge">${esc(b)}</span>`).join('');
   const updated=prof.updatedAt?new Date(prof.updatedAt).toLocaleDateString('ja-JP'):'';
-  const _arrBlock=(icon,label,arr)=>arr&&arr.length
-    ?`<div class="sp-modal-section"><div class="sp-modal-section-label">${icon} ${label}</div><ul style="margin:6px 0 0 16px;padding:0;display:flex;flex-direction:column;gap:4px">${arr.map(s=>`<li style="font-size:12px;color:var(--t0);line-height:1.5">${esc(s)}</li>`).join('')}</ul></div>`
-    :'';
+  const _arrBlock=(icon,label,arr)=>{
+    if(!arr)return '';
+    if(typeof arr==='string')return arr?`<div class="sp-modal-section"><div class="sp-modal-section-label">${icon} ${label}</div><div style="font-size:12px;color:var(--t0);line-height:1.7;white-space:pre-wrap">${esc(arr)}</div></div>`:'';
+    if(!Array.isArray(arr)||!arr.length)return '';
+    return `<div class="sp-modal-section"><div class="sp-modal-section-label">${icon} ${label}</div><ul style="margin:6px 0 0 16px;padding:0;display:flex;flex-direction:column;gap:4px">${arr.map(s=>`<li style="font-size:12px;color:var(--t0);line-height:1.5">${esc(s)}</li>`).join('')}</ul></div>`;
+  };
   const isPrivS=_isPrivate('s_'+tag);
   const privPlaceholderS=`<div style="padding:14px;text-align:center;font-size:12px;color:#f59e0b;border:1px dashed rgba(245,158,11,.4);border-radius:6px;background:rgba(245,158,11,.06)">🔒 このプロファイルは非公開に設定されています<br><span style="font-size:11px;color:#94a3b8">プロファイル管理タブで公開/非公開を切り替えられます</span></div>`;
   const html=`<div class="sp-modal-hd">
