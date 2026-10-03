@@ -688,7 +688,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.45</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.46</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -1082,7 +1082,9 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
   </div>
   <div id="rank-pickup-area" style="display:none">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-      <select id="pickup-tag-sel" class="rank-tag-sel" onchange="renderPickupList()">
+      <button id="pkscope-single" class="rank-mode-btn active" onclick="_setPickupScope('single')" style="padding:4px 12px;font-size:11px">1配信</button>
+      <button id="pkscope-all" class="rank-mode-btn" onclick="_setPickupScope('all')" style="padding:4px 12px;font-size:11px;color:#a78bfa;border-color:#a78bfa88">📊 全配信集計</button>
+      <select id="pickup-tag-sel" class="rank-tag-sel" onchange="_onPickupTagChange()">
         <option value="">すべてのタグ</option>
       </select>
       <select id="pickup-sort-sel" class="rank-tag-sel" onchange="renderPickupList()">
@@ -1091,14 +1093,19 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
       </select>
       <input type="number" id="pickup-window" value="180" min="10" max="600" style="width:56px;background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:3px 6px;font-size:11px" title="判定時間窓（秒）">
       <span style="font-size:11px;color:var(--t2)">秒以内</span>
-      <button class="rank-mode-btn" onclick="_rerunPickup()" style="padding:4px 12px;font-size:11px">🔄 再分析</button>
+      <button id="pickup-rerun-btn" class="rank-mode-btn" onclick="_rerunPickup()" style="padding:4px 12px;font-size:11px">🔄 再分析</button>
+      <button id="pickup-all-run-btn" class="rank-mode-btn" onclick="runPickupAll()" style="padding:4px 12px;font-size:11px;display:none;color:#a78bfa;border-color:#a78bfa88">▶ 集計実行</button>
       <span id="pickup-status" style="font-size:11px;color:var(--t2)"></span>
     </div>
-    <div style="display:grid;grid-template-columns:260px 1fr;gap:14px;align-items:start">
+    <div id="pickup-single-layout" style="display:grid;grid-template-columns:260px 1fr;gap:14px;align-items:start">
       <div id="pickup-ep-grid" style="display:flex;flex-direction:column;gap:6px;max-height:70vh;overflow-y:auto"></div>
       <div id="pickup-result-area">
         <div style="color:var(--t2);font-size:12px;padding:20px 0">← 左の配信をクリックして分析</div>
       </div>
+    </div>
+    <div id="pickup-all-layout" style="display:none">
+      <div id="pickup-all-sort-bar" style="display:none;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center"></div>
+      <div id="pickup-all-rank-body"></div>
     </div>
   </div>
 </div>
@@ -4883,6 +4890,99 @@ function _rerunPickup(){
   if(!_dbPickupCurrentId)return;
   const rec=_dbCache.find(r=>r.id===_dbPickupCurrentId);
   if(rec)_doPickup(rec,document.getElementById('pickup-status'),document.getElementById('pickup-result'),parseInt(document.getElementById('pickup-window')?.value||'180',10)||180);
+}
+
+let _pickupScope='single';
+let _pickupAllEntries=[];
+
+function _setPickupScope(scope){
+  _pickupScope=scope;
+  const isSingle=scope==='single';
+  const bSingle=document.getElementById('pkscope-single');
+  const bAll=document.getElementById('pkscope-all');
+  if(bSingle){bSingle.classList.toggle('active',isSingle);bSingle.style.color=isSingle?'':'#a78bfa';bSingle.style.borderColor=isSingle?'':'#a78bfa88';}
+  if(bAll){bAll.classList.toggle('active',!isSingle);bAll.style.color=!isSingle?'#a78bfa':'';bAll.style.borderColor=!isSingle?'#a78bfa88':'';}
+  const sortSel=document.getElementById('pickup-sort-sel');
+  if(sortSel)sortSel.style.display=isSingle?'':'none';
+  const rerunBtn=document.getElementById('pickup-rerun-btn');
+  if(rerunBtn)rerunBtn.style.display=isSingle?'':'none';
+  const allRunBtn=document.getElementById('pickup-all-run-btn');
+  if(allRunBtn)allRunBtn.style.display=isSingle?'none':'';
+  document.getElementById('pickup-single-layout').style.display=isSingle?'grid':'none';
+  document.getElementById('pickup-all-layout').style.display=isSingle?'none':'';
+}
+
+function _onPickupTagChange(){
+  renderPickupList();
+  if(_pickupScope==='all')_pickupAllEntries=[];
+  document.getElementById('pickup-all-sort-bar').style.display='none';
+  document.getElementById('pickup-all-rank-body').innerHTML='';
+}
+
+function _sortPickupAll(key){
+  ['picked','total','rate','score'].forEach(k=>{
+    const b=document.getElementById('pkasort-'+k);
+    if(b){b.classList.toggle('active',k===key);b.style.color=k===key?'#a78bfa':'';b.style.borderColor=k===key?'#a78bfa88':'';}
+  });
+  const sorted=[..._pickupAllEntries].filter(e=>e.picked>0).sort((a,b)=>b[key]-a[key]||b.picked-a.picked);
+  const el=document.getElementById('pickup-all-rank-body');
+  if(!el)return;
+  if(!sorted.length){el.innerHTML='<div style="color:var(--t2);padding:12px 0">該当なし</div>';return;}
+  el.innerHTML=`<table class="rank-table">
+<thead><tr><th style="text-align:center;width:36px">#</th><th>アカウント</th><th style="text-align:right">拾われ数</th><th style="text-align:right">コメント数</th><th style="text-align:right">拾われ率</th><th style="text-align:right">スコア</th></tr></thead>
+<tbody>${sorted.slice(0,100).map((e,i)=>`<tr>
+<td style="text-align:center;color:var(--t2)">${i+1}</td>
+<td style="color:var(--t1)">@${esc(e.user)}</td>
+<td style="text-align:right;color:#f472b6;font-weight:600">${e.picked}</td>
+<td style="text-align:right;color:var(--t2)">${e.total}</td>
+<td style="text-align:right;color:#fb923c">${(e.rate*100).toFixed(1)}%</td>
+<td style="text-align:right;color:#a78bfa;font-weight:600">${e.score.toFixed(1)}</td>
+</tr>`).join('')}</tbody></table>`;
+}
+
+function runPickupAll(){
+  const tag=(document.getElementById('pickup-tag-sel')?.value||'').trim();
+  const windowSec=parseInt(document.getElementById('pickup-window')?.value||'180',10)||180;
+  const statusEl=document.getElementById('pickup-status');
+  if(statusEl)statusEl.textContent='集計中...';
+  const recs=(tag?_dbCache.filter(r=>r.mainTag===tag):_dbCache).filter(r=>(r.chatData||[]).length&&(r.trData||[]).length);
+  if(!recs.length){if(statusEl)statusEl.textContent='対象データなし';return;}
+  const userStats={};
+  for(const rec of recs){
+    const chatData=rec.chatData||[];
+    const trData=rec.trData||[];
+    const validChats=chatData.filter(c=>{
+      if(!c||!c.username||!c.message)return false;
+      if(c.donated)return false;
+      const m=String(c.message);
+      if(m.toLowerCase().startsWith('[sc:')||m.toLowerCase().startsWith('donated'))return false;
+      return true;
+    });
+    const trSorted=[...trData].sort((a,b)=>(a.sec||0)-(b.sec||0));
+    for(const chat of validChats){
+      const{sec:chatSec,username,message}=chat;
+      if(!userStats[username])userStats[username]={total:0,picked:0};
+      userStats[username].total++;
+      const s=chatSec||0;
+      const trWindow=trSorted.filter(t=>(t.sec||0)>=s&&(t.sec||0)<=s+windowSec);
+      const matched=_pickupMatchFull(message,trWindow);
+      if(matched!==null)userStats[username].picked++;
+    }
+  }
+  _pickupAllEntries=Object.entries(userStats).map(([user,{total,picked}])=>({user,total,picked,rate:total>0?picked/total:0,score:picked*Math.log2(total+1)}));
+  const pickedUsers=_pickupAllEntries.filter(e=>e.picked>0).length;
+  const totalVids=recs.length;
+  if(statusEl)statusEl.textContent=`完了（${totalVids}配信・${pickedUsers}人が1件以上拾われ）`;
+  const sortBar=document.getElementById('pickup-all-sort-bar');
+  if(sortBar){
+    sortBar.style.display='flex';
+    sortBar.innerHTML=`
+<button class="db-expand-btn" id="pkasort-picked" onclick="_sortPickupAll('picked')" style="flex:none;padding:4px 12px;font-size:11px">拾われ数順</button>
+<button class="db-expand-btn" id="pkasort-total" onclick="_sortPickupAll('total')" style="flex:none;padding:4px 12px;font-size:11px">コメント数順</button>
+<button class="db-expand-btn" id="pkasort-rate" onclick="_sortPickupAll('rate')" style="flex:none;padding:4px 12px;font-size:11px">拾われ率順</button>
+<button class="db-expand-btn active" id="pkasort-score" onclick="_sortPickupAll('score')" style="flex:none;padding:4px 12px;font-size:11px;color:#a78bfa;border-color:#a78bfa88">スコア順</button>`;
+  }
+  _sortPickupAll('score');
 }
 
 
