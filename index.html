@@ -688,7 +688,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.28</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.29</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -4750,6 +4750,44 @@ function setRankMode(mode){
 
 // ─── 拾われ分析 ─────────────────────────────────────────────────────────────
 let _dbPickupCurrentId=null;
+let _pickupEntries=[];
+
+function _sortPickup(key){
+  ['picked','total','rate'].forEach(k=>{
+    const b=document.getElementById('pksort-'+k);
+    if(b){b.classList.toggle('active',k===key);b.style.color=k===key?'#f472b6':'';b.style.borderColor=k===key?'#f472b688':'';}
+  });
+  const sorted=[..._pickupEntries].filter(e=>e.picked>0).sort((a,b)=>b[key]-a[key]||b.picked-a.picked);
+  const el=document.getElementById('pickup-rank-body');
+  if(!el)return;
+  if(!sorted.length){el.innerHTML='<div style="color:var(--t2);padding:12px 0">該当なし</div>';return;}
+  const fmtSec=s=>{if(s==null||s===undefined)return'?';const m=Math.floor(s/60),sc=Math.floor(s%60);return m+':'+String(sc).padStart(2,'0');};
+  const mkDetail=(e,i)=>e.comments.map(c=>`<tr style="background:rgba(244,114,182,0.05)">
+<td style="color:#93c5fd;font-size:10px;white-space:nowrap;padding:4px 6px">${fmtSec(c.chatSec)}</td>
+<td style="font-size:11px;padding:4px 6px;border-right:1px solid var(--bd)">${esc(c.message)}</td>
+<td style="color:#a3e635;font-size:10px;white-space:nowrap;padding:4px 6px">${fmtSec(c.trSec)}</td>
+<td style="font-size:11px;color:#d1fae5;padding:4px 6px">🎤 ${esc((c.trText||'').slice(0,80))}</td>
+</tr>`).join('');
+  el.innerHTML=`<table class="rank-table">
+<thead><tr><th style="text-align:center;width:36px">#</th><th>アカウント</th><th style="text-align:right">拾われ数</th><th style="text-align:right">コメント数</th><th style="text-align:right">拾われ率</th></tr></thead>
+<tbody>${sorted.slice(0,50).map((e,i)=>`<tr style="cursor:pointer" onclick="(function(d){d.style.display=d.style.display===''?'none':'';})(document.getElementById('pkd${i}'))">
+<td style="text-align:center;color:var(--t2)">${i+1}</td>
+<td>@${esc(e.user)} <span style="font-size:9px;color:var(--t2)">▼</span></td>
+<td style="text-align:right;color:#f472b6;font-weight:600">${e.picked}</td>
+<td style="text-align:right;color:var(--t2)">${e.total}</td>
+<td style="text-align:right;color:#fb923c">${(e.rate*100).toFixed(1)}%</td>
+</tr><tr id="pkd${i}" style="display:none"><td colspan="5" style="padding:0">
+<table style="width:100%;border-collapse:collapse">
+<thead><tr style="background:rgba(0,0,0,0.2)">
+<th style="font-size:10px;color:#93c5fd;padding:3px 6px;font-weight:500;text-align:left">コメント時間</th>
+<th style="font-size:10px;color:var(--t2);padding:3px 6px;font-weight:500;text-align:left;border-right:1px solid var(--bd)">コメント</th>
+<th style="font-size:10px;color:#a3e635;padding:3px 6px;font-weight:500;text-align:left">発声時間</th>
+<th style="font-size:10px;color:var(--t2);padding:3px 6px;font-weight:500;text-align:left">配信者の発言</th>
+</tr></thead>
+<tbody>${mkDetail(e,i)}</tbody>
+</table></td></tr>`).join('')}</tbody>
+</table>`;
+}
 
 function _syncPickupTagSel(){
   const sel=document.getElementById('pickup-tag-sel');
@@ -4879,45 +4917,21 @@ function _doPickup(rec,statusEl,resultEl,windowSec){
   }
 
   const entries=Object.entries(userStats).map(([user,{total,picked,comments}])=>({user,total,picked,rate:total>0?picked/total:0,comments}));
-  const byCount=[...entries].filter(e=>e.picked>0).sort((a,b)=>b.picked-a.picked||b.total-a.total);
-  const byRate=[...entries].filter(e=>e.picked>0&&e.total>=3).sort((a,b)=>b.rate-a.rate||b.picked-a.picked);
-
-  const fmtSec=s=>{if(s==null||s===undefined)return'?';const m=Math.floor(s/60),sc=Math.floor(s%60);return m+':'+String(sc).padStart(2,'0');};
-  const mkDetail=(e,pfx,i)=>e.comments.map(c=>`<tr style="background:rgba(244,114,182,0.05)">
-<td style="color:#93c5fd;font-size:10px;white-space:nowrap;padding:4px 6px">${fmtSec(c.chatSec)}</td>
-<td style="font-size:11px;padding:4px 6px;border-right:1px solid var(--bd)">${esc(c.message)}</td>
-<td style="color:#a3e635;font-size:10px;white-space:nowrap;padding:4px 6px">${fmtSec(c.trSec)}</td>
-<td style="font-size:11px;color:#d1fae5;padding:4px 6px">🎤 ${esc((c.trText||'').slice(0,80))}</td>
-</tr>`).join('');
-  const mkTable=(rows,label,pfx)=>{
-    if(!rows.length)return `<div style="color:var(--t2);padding:12px 0">${label}: 該当なし</div>`;
-    return `<div style="font-size:13px;font-weight:600;color:var(--t1);margin:16px 0 8px">${label}</div>
-<table class="rank-table" style="margin-bottom:8px">
-<thead><tr><th style="text-align:center;width:36px">#</th><th>アカウント</th><th style="text-align:right">拾われ数</th><th style="text-align:right">コメント数</th><th style="text-align:right">拾われ率</th></tr></thead>
-<tbody>${rows.slice(0,50).map((e,i)=>`<tr style="cursor:pointer" onclick="(function(d){d.style.display=d.style.display===''?'none':'';})(document.getElementById('${pfx}d${i}'))">
-<td style="text-align:center;color:var(--t2)">${i+1}</td>
-<td>@${esc(e.user)} <span style="font-size:9px;color:var(--t2)">▼</span></td>
-<td style="text-align:right;color:#f472b6;font-weight:600">${e.picked}</td>
-<td style="text-align:right;color:var(--t2)">${e.total}</td>
-<td style="text-align:right;color:#fb923c">${(e.rate*100).toFixed(1)}%</td>
-</tr><tr id="${pfx}d${i}" style="display:none"><td colspan="5" style="padding:0">
-<table style="width:100%;border-collapse:collapse">
-<thead><tr style="background:rgba(0,0,0,0.2)">
-<th style="font-size:10px;color:#93c5fd;padding:3px 6px;font-weight:500;text-align:left">コメント時間</th>
-<th style="font-size:10px;color:var(--t2);padding:3px 6px;font-weight:500;text-align:left;border-right:1px solid var(--bd)">コメント</th>
-<th style="font-size:10px;color:#a3e635;padding:3px 6px;font-weight:500;text-align:left">発声時間</th>
-<th style="font-size:10px;color:var(--t2);padding:3px 6px;font-weight:500;text-align:left">配信者の発言</th>
-</tr></thead>
-<tbody>${mkDetail(e,pfx,i)}</tbody>
-</table></td></tr>`).join('')}</tbody>
-</table>`;
-  };
+  _pickupEntries=entries;
+  const statusMsg=`完了（${validChats.length}件解析・${byCount.length}人が1件以上拾われ）`;
+  if(statusEl)statusEl.textContent=statusMsg;
 
   const ra=document.getElementById('pickup-result-area');
-  const title=rec?`<div style="margin-bottom:12px"><div style="font-size:13px;font-weight:600;color:#f472b6">#${rec.episodeNum||'?'} ${esc((rec.title||'').slice(0,50))}</div>${rec.videoUrl?`<a href="${esc(rec.videoUrl)}" target="_blank" style="font-size:11px;color:#38bdf8;text-decoration:none">${esc(rec.videoUrl)}</a>`:''}</div>`:'';
-  const content=mkTable(byCount,'🎤 拾われ回数ランキング（上位50名）','pc')+mkTable(byRate,'📊 拾われ率ランキング（3コメ以上・上位50名）','pr');
-  if(ra){ra.innerHTML=title+`<span id="pickup-status"></span>`+content;if(statusEl)statusEl.textContent=`完了（${validChats.length}件解析・${byCount.length}人が1件以上拾われ）`;}
-  else if(resultEl){resultEl.innerHTML=content;if(statusEl)statusEl.textContent=`完了（${validChats.length}件解析・${byCount.length}人が1件以上拾われ）`;}
+  const titleHtml=rec?`<div style="margin-bottom:10px"><div style="font-size:13px;font-weight:600;color:#f472b6">#${rec.episodeNum||'?'} ${esc((rec.title||'').slice(0,50))}</div>${rec.videoUrl?`<a href="${esc(rec.videoUrl)}" target="_blank" style="font-size:11px;color:#38bdf8;text-decoration:none">${esc(rec.videoUrl)}</a>`:''}</div>`:'';
+  const sortBtns=`<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+<button class="db-expand-btn active" id="pksort-picked" onclick="_sortPickup('picked')" style="flex:none;padding:4px 12px;font-size:11px;color:#f472b6;border-color:#f472b688">拾われ数順</button>
+<button class="db-expand-btn" id="pksort-total" onclick="_sortPickup('total')" style="flex:none;padding:4px 12px;font-size:11px">コメント数順</button>
+<button class="db-expand-btn" id="pksort-rate" onclick="_sortPickup('rate')" style="flex:none;padding:4px 12px;font-size:11px">拾われ率順</button>
+<span style="font-size:11px;color:var(--t2);line-height:28px">${statusMsg}</span>
+</div>
+<div id="pickup-rank-body"></div>`;
+  if(ra){ra.innerHTML=titleHtml+sortBtns;_sortPickup('picked');}
+  else if(resultEl){resultEl.innerHTML=sortBtns;_sortPickup('picked');}
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
