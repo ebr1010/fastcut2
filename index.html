@@ -1084,6 +1084,10 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
       <select id="pickup-tag-sel" class="rank-tag-sel" onchange="populatePickupEpisodes()">
         <option value="">タグを選択</option>
       </select>
+      <select id="pickup-sort-sel" class="rank-tag-sel" onchange="populatePickupEpisodes()">
+        <option value="desc">最新順</option>
+        <option value="asc">最古順</option>
+      </select>
       <select id="pickup-ep-sel" class="rank-tag-sel" style="max-width:320px;min-width:160px">
         <option value="">配信を選択</option>
       </select>
@@ -4746,7 +4750,8 @@ function populatePickupEpisodes(){
   const recs=tag?_dbCache.filter(r=>r.mainTag===tag):_dbCache;
   const sel=document.getElementById('pickup-ep-sel');
   if(!sel)return;
-  const sorted=[...recs].sort((a,b)=>(b.episodeNum||0)-(a.episodeNum||0));
+  const sortDir=document.getElementById('pickup-sort-sel')?.value||'desc';
+  const sorted=[...recs].sort((a,b)=>sortDir==='asc'?(a.episodeNum||0)-(b.episodeNum||0):(b.episodeNum||0)-(a.episodeNum||0));
   sel.innerHTML='<option value="">配信を選択</option>'
     +sorted.map(r=>`<option value="${esc(r.id||'')}">【${esc(r.mainTag||'')}】#${r.episodeNum||'?'} ${esc((r.title||'').slice(0,38))}</option>`).join('');
 }
