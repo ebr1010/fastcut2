@@ -688,7 +688,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.23</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.24</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -939,6 +939,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     <button id="rank-mode-acct" class="rank-mode-btn active" onclick="setRankMode('acct')">👤 アカウント</button>
     <button id="rank-mode-word" class="rank-mode-btn" onclick="setRankMode('word')">📊 頻出ワード(音声)</button>
     <button id="rank-mode-viewer" class="rank-mode-btn" onclick="setRankMode('viewer')">👥 視聴者分析</button>
+    <button id="rank-mode-pickup" class="rank-mode-btn" onclick="setRankMode('pickup')">🎤 拾われ分析</button>
     <input class="rank-q" id="rank-q" placeholder="@アカウント名で検索..." oninput="renderRanking()">
     <select class="rank-tag-sel" id="rank-tag" onchange="_rankTagChanged()">
       <option value="">すべてのタグ</option>
@@ -1087,6 +1088,29 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
         <span id="wr-import-msg" style="font-size:11px;color:var(--t2)"></span>
       </div>
       <div id="wr-result-area" style="margin-top:12px"></div>
+    </div>
+  </div>
+  <div id="rank-pickup-area" style="display:none">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <select id="pickup-tag-sel" class="rank-tag-sel" onchange="renderPickupList()">
+        <option value="">すべてのタグ</option>
+      </select>
+      <select id="pickup-sort-sel" class="rank-tag-sel" onchange="renderPickupList()">
+        <option value="desc">最新順</option>
+        <option value="asc">最古順</option>
+      </select>
+      <span style="font-size:11px;color:var(--t2)">配信をクリックして分析</span>
+    </div>
+    <div id="pickup-ep-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px;margin-bottom:16px"></div>
+    <div id="pickup-result-area" style="display:none;border-top:2px solid var(--r3);padding-top:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+        <span id="pickup-result-title" style="font-size:13px;font-weight:600;color:var(--t1)"></span>
+        <input type="number" id="pickup-window" value="180" min="10" max="600" style="width:56px;background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:3px 6px;font-size:11px" title="判定時間窓（秒）">
+        <span style="font-size:11px;color:var(--t2)">秒以内</span>
+        <button class="rank-mode-btn" onclick="_rerunPickup()" style="padding:4px 12px;font-size:11px">🔄 再分析</button>
+        <span id="pickup-status" style="font-size:11px;color:var(--t2)"></span>
+      </div>
+      <div id="pickup-result"></div>
     </div>
   </div>
 </div>
@@ -4711,20 +4735,69 @@ function setRankMode(mode){
   document.getElementById('rank-mode-acct').classList.toggle('active',mode==='acct');
   document.getElementById('rank-mode-word').classList.toggle('active',mode==='word');
   document.getElementById('rank-mode-viewer').classList.toggle('active',mode==='viewer');
+  document.getElementById('rank-mode-pickup').classList.toggle('active',mode==='pickup');
   document.getElementById('rank-q').style.display=mode==='acct'?'':'none';
-  document.getElementById('rank-tag').style.display=mode!=='viewer'?'':'none';
+  document.getElementById('rank-tag').style.display=(mode==='acct'||mode==='word')?'':'none';
   document.getElementById('rank-acct-table').style.display=mode==='acct'?'':'none';
   document.getElementById('rank-word-table').style.display=mode==='word'?'':'none';
   document.getElementById('rank-viewer-area').style.display=mode==='viewer'?'':'none';
+  document.getElementById('rank-pickup-area').style.display=mode==='pickup'?'':'none';
   const wc=document.getElementById('rank-word-ctrls');
   if(wc)wc.style.display=mode==='word'?'flex':'none';
   if(mode==='word')renderWordRanking();
   else if(mode==='viewer'){_syncViewerTagSel();renderViewerAnalysis();}
+  else if(mode==='pickup'){_syncPickupTagSel();renderPickupList();}
   else renderRanking();
 }
 
 // ─── 拾われ分析 ─────────────────────────────────────────────────────────────
 let _dbPickupCurrentId=null;
+
+function _syncPickupTagSel(){
+  const sel=document.getElementById('pickup-tag-sel');
+  if(!sel)return;
+  const cur=sel.value;
+  const tags=[...new Set(_dbCache.map(r=>r.mainTag).filter(Boolean))].sort();
+  sel.innerHTML='<option value="">すべてのタグ</option>'+tags.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
+  if(cur)sel.value=cur;
+}
+
+function renderPickupList(){
+  const grid=document.getElementById('pickup-ep-grid');
+  if(!grid)return;
+  const tag=(document.getElementById('pickup-tag-sel')?.value||'').trim();
+  const sortDir=document.getElementById('pickup-sort-sel')?.value||'desc';
+  const recs=tag?_dbCache.filter(r=>r.mainTag===tag):_dbCache;
+  const hasChatTr=recs.filter(r=>(r.chatData||[]).length&&(r.trData||[]).length);
+  const sorted=[...hasChatTr].sort((a,b)=>sortDir==='asc'?(a.episodeNum||0)-(b.episodeNum||0):(b.episodeNum||0)-(a.episodeNum||0));
+  if(!sorted.length){grid.innerHTML='<div style="color:var(--t2);font-size:12px;padding:8px">データなし（データベースタブで配信を登録してください）</div>';return;}
+  grid.innerHTML=sorted.map(r=>{
+    const isActive=r.id===_dbPickupCurrentId;
+    return `<div onclick="openPickup(${r.id})" style="cursor:pointer;padding:8px 10px;border-radius:6px;border:1px solid ${isActive?'#f472b6':'var(--bd)'};background:${isActive?'rgba(244,114,182,0.08)':'var(--bg1)'};transition:border-color .12s">
+      <div style="font-size:11px;color:var(--t2);margin-bottom:2px">${esc(r.mainTag||'')} ${r.streamStart?new Date(r.streamStart).toLocaleDateString('ja-JP'):''}</div>
+      <div style="font-size:12px;font-weight:600;color:${isActive?'#f472b6':'var(--t1)'}">#${r.episodeNum||'?'} ${esc((r.title||'').slice(0,40))}</div>
+      <div style="font-size:10px;color:var(--t2);margin-top:2px">💬${(r.chatData||[]).length} 🎤${(r.trData||[]).length}</div>
+    </div>`;
+  }).join('');
+}
+
+function openPickup(id){
+  _dbPickupCurrentId=id;
+  renderPickupList();
+  const rec=_dbCache.find(r=>r.id===id);
+  if(!rec)return;
+  const ra=document.getElementById('pickup-result-area');
+  if(ra)ra.style.display='block';
+  const titleEl=document.getElementById('pickup-result-title');
+  if(titleEl)titleEl.textContent='🎤 #'+(rec.episodeNum||'?')+' '+((rec.title||'').slice(0,35));
+  _doPickup(rec,document.getElementById('pickup-status'),document.getElementById('pickup-result'),parseInt(document.getElementById('pickup-window')?.value||'180',10)||180);
+}
+
+function _rerunPickup(){
+  if(!_dbPickupCurrentId)return;
+  const rec=_dbCache.find(r=>r.id===_dbPickupCurrentId);
+  if(rec)_doPickup(rec,document.getElementById('pickup-status'),document.getElementById('pickup-result'),parseInt(document.getElementById('pickup-window')?.value||'180',10)||180);
+}
 
 function openDbPickup(id){
   _dbPickupCurrentId=id;
@@ -4773,12 +4846,14 @@ function _pickupMatch(comment,trTextsInWindow){
 }
 
 function _doDbPickup(rec){
-  const statusEl=document.getElementById('db-pickup-status');
-  const resultEl=document.getElementById('db-pickup-result');
+  const windowSec=parseInt(document.getElementById('db-pickup-window')?.value||'180',10)||180;
+  _doPickup(rec,document.getElementById('db-pickup-status'),document.getElementById('db-pickup-result'),windowSec);
+}
+
+function _doPickup(rec,statusEl,resultEl,windowSec){
   if(statusEl)statusEl.textContent='分析中...';
   if(resultEl)resultEl.innerHTML='';
 
-  const windowSec=parseInt(document.getElementById('db-pickup-window')?.value||'180',10)||180;
   const chatData=rec.chatData||[];
   const trData=rec.trData||[];
 
