@@ -688,7 +688,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.33</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.34</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -2818,15 +2818,21 @@ function _plainHit(terms,text){
 function _fuzzyLevel(){const el=document.getElementById('db-fuzzy');return el?el.value:'off';}
 function _qTerms(q){return(q||'').trim().split(/\s+/).filter(Boolean);}
 
+let _termMatchFns=[];
 function searchDB(q){
   const terms=_qTerms(q);
   const level=_fuzzyLevel();
-  _dbMatchFn=terms.length
-    ?(text)=>{
-        if(level==='off')return _plainHit(terms,text);
-        return _fuzzyHit(terms,text,level);
-      }
-    :null;
+  if(terms.length){
+    _termMatchFns=terms.map(t=>
+      level==='off'
+        ?text=>text.toLowerCase().includes(t.toLowerCase())
+        :text=>_fuzzyHit([t],text,level)
+    );
+    _dbMatchFn=text=>_termMatchFns.some(fn=>fn(text));
+  }else{
+    _termMatchFns=[];
+    _dbMatchFn=null;
+  }
   renderDB(applyTagFilter(sortedCache()),q.trim(),getAcctSearch());
 }
 
@@ -3114,15 +3120,18 @@ function renderDB(records,q,acct){
   const kwCsvBtn=document.getElementById('db-kw-csv-btn');
   if(kwCsvBtn)kwCsvBtn.disabled=!(q||al);
 
-  // チャット・音声キーワードフィルタ（ノートは含まない・独立した検索）
+  // チャット・音声キーワードフィルタ（複数単語はAND検索）
   const _cardChk=_dbMatchFn?_dbMatch:t=>t.toLowerCase().includes(ql);
+  const _fns=_termMatchFns.length?_termMatchFns:[_cardChk];
   let filtered=q
     ?records.filter(rec=>{
         const epStr=String(rec.episodeNum||'');
-        const inChat=_searchMode!=='tr'&&(rec.chatData||[]).some(c=>_cardChk(_stripStamps(c.message)));
-        const inTr=_searchMode!=='chat'&&(rec.trData||[]).some(t=>_cardChk(t.text));
-        const inMeta=(rec.title||'').toLowerCase().includes(ql)||epStr.toLowerCase().includes(ql)||(rec.subTags||[]).some(s=>s.toLowerCase().includes(ql));
-        return inChat||inTr||inMeta;
+        return _fns.every(fn=>{
+          const inChat=_searchMode!=='tr'&&(rec.chatData||[]).some(c=>fn(_stripStamps(c.message)));
+          const inTr=_searchMode!=='chat'&&(rec.trData||[]).some(t=>fn(t.text));
+          const inMeta=fn(rec.title||'')||fn(epStr)||(rec.subTags||[]).some(s=>fn(s));
+          return inChat||inTr||inMeta;
+        });
       })
     :records;
   // ノートキーワードフィルタ（チャット・音声検索とは独立して適用）
