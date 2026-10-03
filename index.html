@@ -688,7 +688,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.22</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.23</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -921,6 +921,17 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
   <div id="db-select-bar"></div>
   </div><!-- /db-sticky-head -->
   <div class="db-grid" id="db-grid"></div>
+  <div id="db-pickup-area" style="display:none;padding:16px 0 8px;border-top:2px solid var(--r3);margin-top:12px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <span id="db-pickup-title" style="font-size:13px;font-weight:600;color:var(--t1)">🎤 拾われ分析</span>
+      <input type="number" id="db-pickup-window" value="180" min="10" max="600" style="width:56px;background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:3px 6px;font-size:11px" title="拾われ判定の時間窓（秒）">
+      <span style="font-size:11px;color:var(--t2)">秒以内に読み上げ</span>
+      <button class="db-bar-btn" onclick="_rerunDbPickup()">🔄 再分析</button>
+      <span id="db-pickup-status" style="font-size:11px;color:var(--t2)"></span>
+      <button onclick="document.getElementById('db-pickup-area').style.display='none'" style="margin-left:auto;background:none;border:1px solid var(--r3);border-radius:4px;color:var(--t2);cursor:pointer;padding:2px 8px;font-size:12px">✕ 閉じる</button>
+    </div>
+    <div id="db-pickup-result"></div>
+  </div>
 </div>
 
 <div id="view-rank" style="display:none">
@@ -928,7 +939,6 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     <button id="rank-mode-acct" class="rank-mode-btn active" onclick="setRankMode('acct')">👤 アカウント</button>
     <button id="rank-mode-word" class="rank-mode-btn" onclick="setRankMode('word')">📊 頻出ワード(音声)</button>
     <button id="rank-mode-viewer" class="rank-mode-btn" onclick="setRankMode('viewer')">👥 視聴者分析</button>
-    <button id="rank-mode-pickup" class="rank-mode-btn" onclick="setRankMode('pickup')">🎤 拾われ分析</button>
     <input class="rank-q" id="rank-q" placeholder="@アカウント名で検索..." oninput="renderRanking()">
     <select class="rank-tag-sel" id="rank-tag" onchange="_rankTagChanged()">
       <option value="">すべてのタグ</option>
@@ -1078,25 +1088,6 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
       </div>
       <div id="wr-result-area" style="margin-top:12px"></div>
     </div>
-  </div>
-  <div id="rank-pickup-area" style="display:none">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-      <select id="pickup-tag-sel" class="rank-tag-sel" onchange="populatePickupEpisodes()">
-        <option value="">タグを選択</option>
-      </select>
-      <select id="pickup-sort-sel" class="rank-tag-sel" onchange="populatePickupEpisodes()">
-        <option value="desc">最新順</option>
-        <option value="asc">最古順</option>
-      </select>
-      <select id="pickup-ep-sel" class="rank-tag-sel" style="max-width:320px;min-width:160px">
-        <option value="">配信を選択</option>
-      </select>
-      <input type="number" id="pickup-window" value="180" min="10" max="600" style="width:56px;background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:3px 6px;font-size:11px" title="拾われ判定の時間窓（秒）">
-      <span style="font-size:11px;color:var(--t2)">秒以内に読み上げ</span>
-      <button class="rank-mode-btn" onclick="runPickupAnalysis()" style="padding:5px 14px;border-color:#f472b6;color:#f472b6">🎤 分析開始</button>
-      <span id="pickup-status" style="font-size:11px;color:var(--t2)"></span>
-    </div>
-    <div id="pickup-result"></div>
   </div>
 </div>
 
@@ -3337,6 +3328,7 @@ function renderDB(records,q,acct){
       ?'<div class="db-expand-btns">'
         +(hasData?'<button class="db-expand-btn'+(isExpanded?' active':'')+'" onclick="toggleCardExpand(event,'+rec.id+')">'+(isExpanded?'▲ コメント・音声':'▼ コメント・音声')+'</button>':'')
         +(hasNotes?'<button class="db-expand-btn'+(isTNExpanded?' active':'')+'" onclick="toggleTNExpand(event,'+rec.id+')">'+(isTNExpanded?'▲ ノート':'▼ ノート')+'</button>':'')
+        +(hasData?'<button class="db-expand-btn" onclick="event.stopPropagation();openDbPickup('+rec.id+')" style="color:#f472b6;border-color:#f472b688">🎤 拾われ分析</button>':'')
         +'</div>'
       :'';
 
@@ -4719,41 +4711,38 @@ function setRankMode(mode){
   document.getElementById('rank-mode-acct').classList.toggle('active',mode==='acct');
   document.getElementById('rank-mode-word').classList.toggle('active',mode==='word');
   document.getElementById('rank-mode-viewer').classList.toggle('active',mode==='viewer');
-  document.getElementById('rank-mode-pickup').classList.toggle('active',mode==='pickup');
   document.getElementById('rank-q').style.display=mode==='acct'?'':'none';
-  document.getElementById('rank-tag').style.display=(mode==='acct'||mode==='word')?'':'none';
+  document.getElementById('rank-tag').style.display=mode!=='viewer'?'':'none';
   document.getElementById('rank-acct-table').style.display=mode==='acct'?'':'none';
   document.getElementById('rank-word-table').style.display=mode==='word'?'':'none';
   document.getElementById('rank-viewer-area').style.display=mode==='viewer'?'':'none';
-  document.getElementById('rank-pickup-area').style.display=mode==='pickup'?'':'none';
   const wc=document.getElementById('rank-word-ctrls');
   if(wc)wc.style.display=mode==='word'?'flex':'none';
   if(mode==='word')renderWordRanking();
   else if(mode==='viewer'){_syncViewerTagSel();renderViewerAnalysis();}
-  else if(mode==='pickup')_syncPickupTagSel();
   else renderRanking();
 }
 
 // ─── 拾われ分析 ─────────────────────────────────────────────────────────────
-function _syncPickupTagSel(){
-  const sel=document.getElementById('pickup-tag-sel');
-  if(!sel)return;
-  const cur=sel.value;
-  const tags=[...new Set(_dbCache.map(r=>r.mainTag).filter(Boolean))].sort();
-  sel.innerHTML='<option value="">タグを選択</option>'+tags.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
-  if(cur)sel.value=cur;
-  populatePickupEpisodes();
+let _dbPickupCurrentId=null;
+
+function openDbPickup(id){
+  _dbPickupCurrentId=id;
+  const rec=_dbCache.find(r=>r.id===id);
+  if(!rec)return;
+  const area=document.getElementById('db-pickup-area');
+  if(!area)return;
+  area.style.display='block';
+  const titleEl=document.getElementById('db-pickup-title');
+  if(titleEl)titleEl.textContent='🎤 拾われ分析 — #'+(rec.episodeNum||'?')+' '+((rec.title||'').slice(0,35));
+  area.scrollIntoView({behavior:'smooth',block:'start'});
+  _doDbPickup(rec);
 }
 
-function populatePickupEpisodes(){
-  const tag=(document.getElementById('pickup-tag-sel')?.value||'').trim();
-  const recs=tag?_dbCache.filter(r=>r.mainTag===tag):_dbCache;
-  const sel=document.getElementById('pickup-ep-sel');
-  if(!sel)return;
-  const sortDir=document.getElementById('pickup-sort-sel')?.value||'desc';
-  const sorted=[...recs].sort((a,b)=>sortDir==='asc'?(a.episodeNum||0)-(b.episodeNum||0):(b.episodeNum||0)-(a.episodeNum||0));
-  sel.innerHTML='<option value="">配信を選択</option>'
-    +sorted.map(r=>`<option value="${esc(r.id||'')}">【${esc(r.mainTag||'')}】#${r.episodeNum||'?'} ${esc((r.title||'').slice(0,38))}</option>`).join('');
+function _rerunDbPickup(){
+  if(!_dbPickupCurrentId)return;
+  const rec=_dbCache.find(r=>r.id===_dbPickupCurrentId);
+  if(rec)_doDbPickup(rec);
 }
 
 function _pickupNorm(s){
@@ -4783,17 +4772,13 @@ function _pickupMatch(comment,trTextsInWindow){
   return false;
 }
 
-function runPickupAnalysis(){
-  const recId=(document.getElementById('pickup-ep-sel')?.value||'').trim();
-  const statusEl=document.getElementById('pickup-status');
-  const resultEl=document.getElementById('pickup-result');
-  if(!recId){if(statusEl)statusEl.textContent='配信を選択してください';return;}
-  const rec=_dbCache.find(r=>r.id===recId);
-  if(!rec){if(statusEl)statusEl.textContent='配信データが見つかりません';return;}
+function _doDbPickup(rec){
+  const statusEl=document.getElementById('db-pickup-status');
+  const resultEl=document.getElementById('db-pickup-result');
   if(statusEl)statusEl.textContent='分析中...';
   if(resultEl)resultEl.innerHTML='';
 
-  const windowSec=parseInt(document.getElementById('pickup-window')?.value||'180',10)||180;
+  const windowSec=parseInt(document.getElementById('db-pickup-window')?.value||'180',10)||180;
   const chatData=rec.chatData||[];
   const trData=rec.trData||[];
 
@@ -4806,7 +4791,6 @@ function runPickupAnalysis(){
   });
 
   const trSorted=[...trData].sort((a,b)=>(a.sec||0)-(b.sec||0));
-
   const userStats={};
   for(const chat of validChats){
     const{sec:chatSec,username,message}=chat;
@@ -4825,7 +4809,7 @@ function runPickupAnalysis(){
   if(!resultEl)return;
 
   const mkTable=(rows,label)=>{
-    if(!rows.length)return `<div style="color:var(--t2);padding:16px 0">${label}: 該当なし</div>`;
+    if(!rows.length)return `<div style="color:var(--t2);padding:12px 0">${label}: 該当なし</div>`;
     return `<div style="font-size:13px;font-weight:600;color:var(--t1);margin:16px 0 8px">${label}</div>
 <table class="rank-table" style="margin-bottom:8px">
 <thead><tr><th style="text-align:center;width:36px">#</th><th>アカウント</th><th style="text-align:right">拾われ数</th><th style="text-align:right">コメント数</th><th style="text-align:right">拾われ率</th></tr></thead>
@@ -4838,7 +4822,6 @@ function runPickupAnalysis(){
 </tr>`).join('')}</tbody>
 </table>`;
   };
-
   resultEl.innerHTML=mkTable(byCount,'🎤 拾われ回数ランキング（上位50名）')+mkTable(byRate,'📊 拾われ率ランキング（3コメ以上・上位50名）');
 }
 // ──────────────────────────────────────────────────────────────────────────────
