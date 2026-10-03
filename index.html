@@ -688,7 +688,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.26</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.27</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -1099,18 +1099,16 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
         <option value="desc">最新順</option>
         <option value="asc">最古順</option>
       </select>
-      <span style="font-size:11px;color:var(--t2)">配信をクリックして分析</span>
+      <input type="number" id="pickup-window" value="180" min="10" max="600" style="width:56px;background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:3px 6px;font-size:11px" title="判定時間窓（秒）">
+      <span style="font-size:11px;color:var(--t2)">秒以内</span>
+      <button class="rank-mode-btn" onclick="_rerunPickup()" style="padding:4px 12px;font-size:11px">🔄 再分析</button>
+      <span id="pickup-status" style="font-size:11px;color:var(--t2)"></span>
     </div>
-    <div id="pickup-ep-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px;margin-bottom:16px"></div>
-    <div id="pickup-result-area" style="display:none;border-top:2px solid var(--r3);padding-top:14px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
-        <span id="pickup-result-title" style="font-size:13px;font-weight:600;color:var(--t1)"></span>
-        <input type="number" id="pickup-window" value="180" min="10" max="600" style="width:56px;background:var(--bg2);border:1px solid var(--bd);color:var(--t1);border-radius:4px;padding:3px 6px;font-size:11px" title="判定時間窓（秒）">
-        <span style="font-size:11px;color:var(--t2)">秒以内</span>
-        <button class="rank-mode-btn" onclick="_rerunPickup()" style="padding:4px 12px;font-size:11px">🔄 再分析</button>
-        <span id="pickup-status" style="font-size:11px;color:var(--t2)"></span>
+    <div style="display:grid;grid-template-columns:260px 1fr;gap:14px;align-items:start">
+      <div id="pickup-ep-grid" style="display:flex;flex-direction:column;gap:6px;max-height:70vh;overflow-y:auto"></div>
+      <div id="pickup-result-area">
+        <div style="color:var(--t2);font-size:12px;padding:20px 0">← 左の配信をクリックして分析</div>
       </div>
-      <div id="pickup-result"></div>
     </div>
   </div>
 </div>
@@ -4788,9 +4786,7 @@ function openPickup(id){
   const rec=_dbCache.find(r=>r.id===id);
   if(!rec)return;
   const ra=document.getElementById('pickup-result-area');
-  if(ra)ra.style.display='block';
-  const titleEl=document.getElementById('pickup-result-title');
-  if(titleEl)titleEl.textContent='🎤 #'+(rec.episodeNum||'?')+' '+((rec.title||'').slice(0,35));
+  if(ra)ra.innerHTML='<div style="font-size:12px;color:var(--t2);padding:8px 0">分析中...</div>';
   _doPickup(rec,document.getElementById('pickup-status'),document.getElementById('pickup-result'),parseInt(document.getElementById('pickup-window')?.value||'180',10)||180);
 }
 
@@ -4832,16 +4828,17 @@ function _pickupBigrams(s){
   return bg;
 }
 
-function _pickupMatchFull(comment,trTextsInWindow){
+function _pickupMatchFull(comment,trItemsInWindow){
   const c=_pickupNorm(comment);
   if(c.length<2)return null;
   const cmtBg=_pickupBigrams(c);
   if(!cmtBg.length)return null;
-  for(const trText of trTextsInWindow){
-    const t=_pickupNorm(trText);
+  for(const item of trItemsInWindow){
+    const text=typeof item==='string'?item:(item.text||'');
+    const t=_pickupNorm(text);
     let m=0;
     for(const bg of cmtBg)if(t.includes(bg))m++;
-    if(m/cmtBg.length>=0.5)return trText;
+    if(m/cmtBg.length>=0.5)return{text,sec:item.sec??null};
   }
   return null;
 }
@@ -4874,10 +4871,10 @@ function _doPickup(rec,statusEl,resultEl,windowSec){
     userStats[username].total++;
     const s=chatSec||0;
     const trWindow=trSorted.filter(t=>(t.sec||0)>=s&&(t.sec||0)<=s+windowSec);
-    const matchedTr=_pickupMatchFull(message,trWindow.map(t=>t.text||''));
-    if(matchedTr!==null){
+    const matched=_pickupMatchFull(message,trWindow);
+    if(matched!==null){
       userStats[username].picked++;
-      userStats[username].comments.push({sec:s,message,matchedTr});
+      userStats[username].comments.push({chatSec:s,message,trText:matched.text,trSec:matched.sec});
     }
   }
 
@@ -4885,14 +4882,12 @@ function _doPickup(rec,statusEl,resultEl,windowSec){
   const byCount=[...entries].filter(e=>e.picked>0).sort((a,b)=>b.picked-a.picked||b.total-a.total);
   const byRate=[...entries].filter(e=>e.picked>0&&e.total>=3).sort((a,b)=>b.rate-a.rate||b.picked-a.picked);
 
-  if(statusEl)statusEl.textContent=`完了（${validChats.length}件解析・${byCount.length}人が1件以上拾われ）`;
-  if(!resultEl)return;
-
-  const fmtSec=s=>{if(s==null)return'';const m=Math.floor(s/60),sc=s%60;return m+':'+String(sc).padStart(2,'0');};
+  const fmtSec=s=>{if(s==null||s===undefined)return'?';const m=Math.floor(s/60),sc=Math.floor(s%60);return m+':'+String(sc).padStart(2,'0');};
   const mkDetail=(e,pfx,i)=>e.comments.map(c=>`<tr style="background:rgba(244,114,182,0.05)">
-<td style="color:var(--t2);font-size:10px;white-space:nowrap;padding:3px 6px">${fmtSec(c.sec)}</td>
-<td style="font-size:11px;padding:3px 6px" colspan="2">${esc(c.message)}</td>
-<td style="font-size:10px;color:#a3e635;padding:3px 6px" colspan="2">🎤 ${esc((c.matchedTr||'').slice(0,80))}</td>
+<td style="color:#93c5fd;font-size:10px;white-space:nowrap;padding:4px 6px">${fmtSec(c.chatSec)}</td>
+<td style="font-size:11px;padding:4px 6px;border-right:1px solid var(--bd)">${esc(c.message)}</td>
+<td style="color:#a3e635;font-size:10px;white-space:nowrap;padding:4px 6px">${fmtSec(c.trSec)}</td>
+<td style="font-size:11px;color:#d1fae5;padding:4px 6px">🎤 ${esc((c.trText||'').slice(0,80))}</td>
 </tr>`).join('');
   const mkTable=(rows,label,pfx)=>{
     if(!rows.length)return `<div style="color:var(--t2);padding:12px 0">${label}: 該当なし</div>`;
@@ -4905,10 +4900,24 @@ function _doPickup(rec,statusEl,resultEl,windowSec){
 <td style="text-align:right;color:#f472b6;font-weight:600">${e.picked}</td>
 <td style="text-align:right;color:var(--t2)">${e.total}</td>
 <td style="text-align:right;color:#fb923c">${(e.rate*100).toFixed(1)}%</td>
-</tr><tr id="${pfx}d${i}" style="display:none"><td colspan="5" style="padding:0"><table style="width:100%;border-collapse:collapse">${mkDetail(e,pfx,i)}</table></td></tr>`).join('')}</tbody>
+</tr><tr id="${pfx}d${i}" style="display:none"><td colspan="5" style="padding:0">
+<table style="width:100%;border-collapse:collapse">
+<thead><tr style="background:rgba(0,0,0,0.2)">
+<th style="font-size:10px;color:#93c5fd;padding:3px 6px;font-weight:500;text-align:left">コメント時間</th>
+<th style="font-size:10px;color:var(--t2);padding:3px 6px;font-weight:500;text-align:left;border-right:1px solid var(--bd)">コメント</th>
+<th style="font-size:10px;color:#a3e635;padding:3px 6px;font-weight:500;text-align:left">発声時間</th>
+<th style="font-size:10px;color:var(--t2);padding:3px 6px;font-weight:500;text-align:left">配信者の発言</th>
+</tr></thead>
+<tbody>${mkDetail(e,pfx,i)}</tbody>
+</table></td></tr>`).join('')}</tbody>
 </table>`;
   };
-  resultEl.innerHTML=mkTable(byCount,'🎤 拾われ回数ランキング（上位50名）','pc')+mkTable(byRate,'📊 拾われ率ランキング（3コメ以上・上位50名）','pr');
+
+  const ra=document.getElementById('pickup-result-area');
+  const title=rec?`<div style="font-size:13px;font-weight:600;color:#f472b6;margin-bottom:12px">🎤 #${rec.episodeNum||'?'} ${esc((rec.title||'').slice(0,35))}</div>`:'';
+  const content=mkTable(byCount,'🎤 拾われ回数ランキング（上位50名）','pc')+mkTable(byRate,'📊 拾われ率ランキング（3コメ以上・上位50名）','pr');
+  if(ra){ra.innerHTML=title+`<span id="pickup-status"></span>`+content;if(statusEl)statusEl.textContent=`完了（${validChats.length}件解析・${byCount.length}人が1件以上拾われ）`;}
+  else if(resultEl){resultEl.innerHTML=content;if(statusEl)statusEl.textContent=`完了（${validChats.length}件解析・${byCount.length}人が1件以上拾われ）`;}
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
