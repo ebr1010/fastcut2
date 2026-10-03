@@ -688,7 +688,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.44</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.45</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -4803,7 +4803,7 @@ let _dbPickupCurrentId=null;
 let _pickupEntries=[];
 
 function _sortPickup(key){
-  ['picked','total','rate'].forEach(k=>{
+  ['picked','total','rate','score'].forEach(k=>{
     const b=document.getElementById('pksort-'+k);
     if(b){b.classList.toggle('active',k===key);b.style.color=k===key?'#f472b6':'';b.style.borderColor=k===key?'#f472b688':'';}
   });
@@ -4819,14 +4819,15 @@ function _sortPickup(key){
 <td style="font-size:11px;color:#d1fae5;padding:4px 6px">🎤 ${esc((c.trText||'').slice(0,80))}</td>
 </tr>`).join('');
   el.innerHTML=`<table class="rank-table">
-<thead><tr><th style="text-align:center;width:36px">#</th><th>アカウント</th><th style="text-align:right">拾われ数</th><th style="text-align:right">コメント数</th><th style="text-align:right">拾われ率</th></tr></thead>
+<thead><tr><th style="text-align:center;width:36px">#</th><th>アカウント</th><th style="text-align:right">拾われ数</th><th style="text-align:right">コメント数</th><th style="text-align:right">拾われ率</th><th style="text-align:right">スコア</th></tr></thead>
 <tbody>${sorted.slice(0,50).map((e,i)=>`<tr style="cursor:pointer" onclick="(function(d){d.style.display=d.style.display===''?'none':'';})(document.getElementById('pkd${i}'))">
 <td style="text-align:center;color:var(--t2)">${i+1}</td>
 <td>@${esc(e.user)} <span style="font-size:9px;color:var(--t2)">▼</span></td>
 <td style="text-align:right;color:#f472b6;font-weight:600">${e.picked}</td>
 <td style="text-align:right;color:var(--t2)">${e.total}</td>
 <td style="text-align:right;color:#fb923c">${(e.rate*100).toFixed(1)}%</td>
-</tr><tr id="pkd${i}" style="display:none"><td colspan="5" style="padding:0">
+<td style="text-align:right;color:#a78bfa;font-weight:600">${e.score.toFixed(1)}</td>
+</tr><tr id="pkd${i}" style="display:none"><td colspan="6" style="padding:0">
 <table style="width:100%;border-collapse:collapse">
 <thead><tr style="background:rgba(0,0,0,0.2)">
 <th style="font-size:10px;color:#93c5fd;padding:3px 6px;font-weight:500;text-align:left">コメント時間</th>
@@ -4944,7 +4945,7 @@ function _doPickup(rec,statusEl,resultEl,windowSec){
     }
   }
 
-  const entries=Object.entries(userStats).map(([user,{total,picked,comments}])=>({user,total,picked,rate:total>0?picked/total:0,comments}));
+  const entries=Object.entries(userStats).map(([user,{total,picked,comments}])=>({user,total,picked,rate:total>0?picked/total:0,score:picked*Math.log2(total+1),comments}));
   _pickupEntries=entries;
   const pickedCount=entries.filter(e=>e.picked>0).length;
   const statusMsg=`完了（${validChats.length}件解析・${pickedCount}人が1件以上拾われ）`;
@@ -4956,6 +4957,7 @@ function _doPickup(rec,statusEl,resultEl,windowSec){
 <button class="db-expand-btn active" id="pksort-picked" onclick="_sortPickup('picked')" style="flex:none;padding:4px 12px;font-size:11px;color:#f472b6;border-color:#f472b688">拾われ数順</button>
 <button class="db-expand-btn" id="pksort-total" onclick="_sortPickup('total')" style="flex:none;padding:4px 12px;font-size:11px">コメント数順</button>
 <button class="db-expand-btn" id="pksort-rate" onclick="_sortPickup('rate')" style="flex:none;padding:4px 12px;font-size:11px">拾われ率順</button>
+<button class="db-expand-btn" id="pksort-score" onclick="_sortPickup('score')" style="flex:none;padding:4px 12px;font-size:11px;color:#a78bfa;border-color:#a78bfa88">スコア順</button>
 <span style="font-size:11px;color:var(--t2);line-height:28px">${statusMsg}</span>
 </div>
 <div id="pickup-rank-body"></div>`;
