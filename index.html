@@ -688,7 +688,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.50</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.51</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -4995,7 +4995,7 @@ function runPickupAll(){
       const matched=_pickupMatchFull(message,trWindow);
       if(matched!==null){
         userStats[username].picked++;
-        allHits.push({recId:rec.id,epNum:rec.episodeNum,title:rec.title||'',streamStart:rec.streamStart||'',videoUrl:rec.videoUrl||'',username,chatSec:s,message,trSec:matched.sec,trText:matched.text||''});
+        allHits.push({recId:rec.id,epNum:rec.episodeNum,title:rec.title||'',streamStart:rec.streamStart||'',videoUrl:rec.videoUrl||'',videoId:_getVidId(rec),username,chatSec:s,message,trSec:matched.sec,trText:matched.text||''});
       }
     }
   }
@@ -5021,6 +5021,7 @@ function runPickupAll(){
 <button class="db-expand-btn active" id="pkahsort-score" onclick="_renderPickupAllHits('score')" style="flex:none;padding:4px 12px;font-size:11px;color:#a3e635;border-color:#a3e63588">スコア順</button>
 <button class="db-expand-btn" id="pkahsort-picked" onclick="_renderPickupAllHits('picked')" style="flex:none;padding:4px 12px;font-size:11px">拾われ数順</button>
 <button class="db-expand-btn" id="pkahsort-rate" onclick="_renderPickupAllHits('rate')" style="flex:none;padding:4px 12px;font-size:11px">拾われ率順</button>
+<button class="db-expand-btn" id="pkahsort-date" onclick="_renderPickupAllHits('date')" style="flex:none;padding:4px 12px;font-size:11px">配信日順</button>
 <button class="db-txt-btn" onclick="_copyPickupAllHits()" style="margin-left:8px">📋 全コピー</button>
 </span>`;
   }
@@ -5045,37 +5046,48 @@ function _setPickupAllView(view){
 }
 
 function _renderPickupAllHits(sortKey){
-  ['score','picked','rate'].forEach(k=>{
+  ['score','picked','rate','date'].forEach(k=>{
     const b=document.getElementById('pkahsort-'+k);
     if(b){b.classList.toggle('active',k===sortKey);b.style.color=k===sortKey?'#a3e635':'';b.style.borderColor=k===sortKey?'#a3e63588':'';}
   });
   const el=document.getElementById('pickup-all-hits-body');
   if(!el)return;
   if(!_pickupAllHits.length){el.innerHTML='<div style="color:var(--t2);padding:12px 0">ヒットなし</div>';return;}
-  // アカウントごとにグループ化
   const byUser={};
   for(const h of _pickupAllHits){
     if(!byUser[h.username])byUser[h.username]={hits:[]};
     byUser[h.username].hits.push(h);
   }
-  // ランキングエントリと突合してscore/picked/rate取得
   const entryMap=new Map(_pickupAllEntries.map(e=>[e.user,e]));
-  const users=Object.keys(byUser).map(u=>({user:u,...(entryMap.get(u)||{picked:byUser[u].hits.length,total:0,rate:0,score:0}),hits:byUser[u].hits}));
+  const users=Object.keys(byUser).map(u=>{
+    const hits=byUser[u].hits;
+    const latestDate=hits.reduce((mx,h)=>h.streamStart>mx?h.streamStart:mx,'');
+    return{user:u,...(entryMap.get(u)||{picked:hits.length,total:0,rate:0,score:0}),hits,latestDate};
+  });
   users.sort((a,b)=>{
     if(sortKey==='picked')return b.picked-a.picked||b.score-a.score;
     if(sortKey==='rate')return b.rate-a.rate||b.picked-a.picked;
+    if(sortKey==='date')return b.latestDate.localeCompare(a.latestDate)||b.picked-a.picked;
     return b.score-a.score||b.picked-a.picked;
   });
   const fmtSec=s=>{if(s==null)return'?';const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=Math.floor(s%60);return h>0?h+':'+String(m).padStart(2,'0')+':'+String(sc).padStart(2,'0'):m+':'+String(sc).padStart(2,'0');};
+  const mkTimeLink=(vid,sec)=>{
+    const t=fmtSec(sec);
+    if(!vid)return`<span style="color:#93c5fd;font-size:10px">${t}</span>`;
+    return`<a href="javascript:void(0)" onclick="ytSeek('${vid}',${Math.floor(sec)})" style="color:#93c5fd;font-size:10px;cursor:pointer;text-decoration:underline">${t}</a>`;
+  };
   el.innerHTML=`<table class="rank-table">
 <thead><tr><th style="text-align:center;width:36px">#</th><th>アカウント</th><th style="text-align:right">拾われ数</th><th style="text-align:right">コメント数</th><th style="text-align:right">拾われ率</th><th style="text-align:right">スコア</th></tr></thead>
 <tbody>${users.map((u,i)=>{
   const detailId='pkah-d'+i;
-  const detailRows=u.hits.sort((a,b)=>{const ea=parseInt(a.epNum)||0,eb=parseInt(b.epNum)||0;return ea-eb||(a.chatSec-b.chatSec);}).map(h=>`<tr style="background:rgba(163,230,53,0.04)">
+  const detailRows=[...u.hits].sort((a,b)=>{
+    const da=a.streamStart||'',db=b.streamStart||'';
+    return da.localeCompare(db)||(a.chatSec-b.chatSec);
+  }).map(h=>`<tr style="background:rgba(163,230,53,0.04)">
 <td style="color:var(--t2);font-size:10px;white-space:nowrap;padding:4px 6px" colspan="2">#${h.epNum||'?'} ${esc((h.title||'').slice(0,20))}${(h.title||'').length>20?'…':''}</td>
-<td style="color:#93c5fd;font-size:10px;white-space:nowrap;padding:4px 6px;text-align:right">${fmtSec(h.chatSec)}</td>
+<td style="text-align:right;white-space:nowrap;padding:4px 6px">${mkTimeLink(h.videoId,h.chatSec)}</td>
 <td style="font-size:11px;padding:4px 6px;border-right:1px solid var(--bd)">${esc(h.message)}</td>
-<td style="color:#a3e635;font-size:10px;white-space:nowrap;padding:4px 6px;text-align:right">${fmtSec(h.trSec)}</td>
+<td style="text-align:right;white-space:nowrap;padding:4px 6px">${h.trSec!=null?mkTimeLink(h.videoId,h.trSec).replace('#93c5fd','#a3e635'):''}</td>
 <td style="font-size:11px;color:#d1fae5;padding:4px 6px">🎤 ${esc((h.trText||'').slice(0,60))}</td>
 </tr>`).join('');
   return`<tr style="cursor:pointer" onclick="(function(d){d.style.display=d.style.display===''?'none':'';})(document.getElementById('${detailId}'))">
