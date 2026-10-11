@@ -688,7 +688,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.49</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.50</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -5018,9 +5018,9 @@ function runPickupAll(){
 <button class="db-expand-btn active" id="pkasort-score" onclick="_sortPickupAll('score')" style="flex:none;padding:4px 12px;font-size:11px;color:#a78bfa;border-color:#a78bfa88">スコア順</button>
 </span>
 <span id="pka-hits-btns" style="display:${_pickupAllView==='hits'?'flex':'none'};gap:6px;flex-wrap:wrap;align-items:center">
-<button class="db-expand-btn" id="pkahsort-ep" onclick="_renderPickupAllHits('ep')" style="flex:none;padding:4px 12px;font-size:11px">配信順</button>
-<button class="db-expand-btn active" id="pkahsort-user" onclick="_renderPickupAllHits('user')" style="flex:none;padding:4px 12px;font-size:11px;color:#a3e635;border-color:#a3e63588">アカウント順</button>
-<button class="db-expand-btn" id="pkahsort-time" onclick="_renderPickupAllHits('time')" style="flex:none;padding:4px 12px;font-size:11px">時刻順</button>
+<button class="db-expand-btn active" id="pkahsort-score" onclick="_renderPickupAllHits('score')" style="flex:none;padding:4px 12px;font-size:11px;color:#a3e635;border-color:#a3e63588">スコア順</button>
+<button class="db-expand-btn" id="pkahsort-picked" onclick="_renderPickupAllHits('picked')" style="flex:none;padding:4px 12px;font-size:11px">拾われ数順</button>
+<button class="db-expand-btn" id="pkahsort-rate" onclick="_renderPickupAllHits('rate')" style="flex:none;padding:4px 12px;font-size:11px">拾われ率順</button>
 <button class="db-txt-btn" onclick="_copyPickupAllHits()" style="margin-left:8px">📋 全コピー</button>
 </span>`;
   }
@@ -5045,38 +5045,58 @@ function _setPickupAllView(view){
 }
 
 function _renderPickupAllHits(sortKey){
-  ['ep','user','time'].forEach(k=>{
+  ['score','picked','rate'].forEach(k=>{
     const b=document.getElementById('pkahsort-'+k);
     if(b){b.classList.toggle('active',k===sortKey);b.style.color=k===sortKey?'#a3e635':'';b.style.borderColor=k===sortKey?'#a3e63588':'';}
   });
   const el=document.getElementById('pickup-all-hits-body');
   if(!el)return;
   if(!_pickupAllHits.length){el.innerHTML='<div style="color:var(--t2);padding:12px 0">ヒットなし</div>';return;}
-  const sorted=[..._pickupAllHits].sort((a,b)=>{
-    if(sortKey==='user')return a.username.localeCompare(b.username)||(a.chatSec-b.chatSec);
-    if(sortKey==='time')return a.chatSec-b.chatSec;
-    // ep: episodeNum
-    const ea=parseInt(a.epNum)||0,eb=parseInt(b.epNum)||0;
-    return ea-eb||(a.chatSec-b.chatSec);
+  // アカウントごとにグループ化
+  const byUser={};
+  for(const h of _pickupAllHits){
+    if(!byUser[h.username])byUser[h.username]={hits:[]};
+    byUser[h.username].hits.push(h);
+  }
+  // ランキングエントリと突合してscore/picked/rate取得
+  const entryMap=new Map(_pickupAllEntries.map(e=>[e.user,e]));
+  const users=Object.keys(byUser).map(u=>({user:u,...(entryMap.get(u)||{picked:byUser[u].hits.length,total:0,rate:0,score:0}),hits:byUser[u].hits}));
+  users.sort((a,b)=>{
+    if(sortKey==='picked')return b.picked-a.picked||b.score-a.score;
+    if(sortKey==='rate')return b.rate-a.rate||b.picked-a.picked;
+    return b.score-a.score||b.picked-a.picked;
   });
   const fmtSec=s=>{if(s==null)return'?';const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=Math.floor(s%60);return h>0?h+':'+String(m).padStart(2,'0')+':'+String(sc).padStart(2,'0'):m+':'+String(sc).padStart(2,'0');};
   el.innerHTML=`<table class="rank-table">
-<thead><tr>
-<th>配信</th>
-<th>アカウント</th>
-<th style="text-align:right;white-space:nowrap">コメ時刻</th>
-<th>コメント</th>
-<th style="text-align:right;white-space:nowrap">発声時刻</th>
-<th>配信者の発言</th>
+<thead><tr><th style="text-align:center;width:36px">#</th><th>アカウント</th><th style="text-align:right">拾われ数</th><th style="text-align:right">コメント数</th><th style="text-align:right">拾われ率</th><th style="text-align:right">スコア</th></tr></thead>
+<tbody>${users.map((u,i)=>{
+  const detailId='pkah-d'+i;
+  const detailRows=u.hits.sort((a,b)=>{const ea=parseInt(a.epNum)||0,eb=parseInt(b.epNum)||0;return ea-eb||(a.chatSec-b.chatSec);}).map(h=>`<tr style="background:rgba(163,230,53,0.04)">
+<td style="color:var(--t2);font-size:10px;white-space:nowrap;padding:4px 6px" colspan="2">#${h.epNum||'?'} ${esc((h.title||'').slice(0,20))}${(h.title||'').length>20?'…':''}</td>
+<td style="color:#93c5fd;font-size:10px;white-space:nowrap;padding:4px 6px;text-align:right">${fmtSec(h.chatSec)}</td>
+<td style="font-size:11px;padding:4px 6px;border-right:1px solid var(--bd)">${esc(h.message)}</td>
+<td style="color:#a3e635;font-size:10px;white-space:nowrap;padding:4px 6px;text-align:right">${fmtSec(h.trSec)}</td>
+<td style="font-size:11px;color:#d1fae5;padding:4px 6px">🎤 ${esc((h.trText||'').slice(0,60))}</td>
+</tr>`).join('');
+  return`<tr style="cursor:pointer" onclick="(function(d){d.style.display=d.style.display===''?'none':'';})(document.getElementById('${detailId}'))">
+<td style="text-align:center;color:var(--t2)">${i+1}</td>
+<td>@${esc(u.user)} <span style="font-size:9px;color:var(--t2)">▼</span></td>
+<td style="text-align:right;color:#f472b6;font-weight:600">${u.picked}</td>
+<td style="text-align:right;color:var(--t2)">${u.total}</td>
+<td style="text-align:right;color:#fb923c">${(u.rate*100).toFixed(1)}%</td>
+<td style="text-align:right;color:#a78bfa;font-weight:600">${u.score.toFixed(1)}</td>
+</tr><tr id="${detailId}" style="display:none"><td colspan="6" style="padding:0">
+<table style="width:100%;border-collapse:collapse">
+<thead><tr style="background:rgba(0,0,0,0.2)">
+<th colspan="2" style="font-size:10px;color:var(--t2);padding:3px 6px;font-weight:500;text-align:left">配信</th>
+<th style="font-size:10px;color:#93c5fd;padding:3px 6px;font-weight:500;text-align:right">コメ時刻</th>
+<th style="font-size:10px;color:var(--t2);padding:3px 6px;font-weight:500;text-align:left;border-right:1px solid var(--bd)">コメント</th>
+<th style="font-size:10px;color:#a3e635;padding:3px 6px;font-weight:500;text-align:right">発声時刻</th>
+<th style="font-size:10px;color:var(--t2);padding:3px 6px;font-weight:500;text-align:left">配信者の発言</th>
 </tr></thead>
-<tbody>${sorted.map(h=>`<tr>
-<td style="white-space:nowrap;font-size:11px;color:var(--t2)">#${h.epNum||'?'} ${esc((h.title||'').slice(0,18))}${(h.title||'').length>18?'…':''}</td>
-<td style="color:#f472b6;white-space:nowrap">@${esc(h.username)}</td>
-<td style="text-align:right;color:#93c5fd;font-size:11px;white-space:nowrap">${fmtSec(h.chatSec)}</td>
-<td style="font-size:12px">${esc(h.message)}</td>
-<td style="text-align:right;color:#a3e635;font-size:11px;white-space:nowrap">${fmtSec(h.trSec)}</td>
-<td style="font-size:11px;color:#d1fae5">🎤 ${esc((h.trText||'').slice(0,60))}${(h.trText||'').length>60?'…':''}</td>
-</tr>`).join('')}</tbody></table>`;
+<tbody>${detailRows}</tbody>
+</table></td></tr>`;
+}).join('')}</tbody></table>`;
 }
 
 function _copyPickupAllHits(){
