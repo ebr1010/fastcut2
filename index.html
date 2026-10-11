@@ -688,7 +688,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.47</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.48</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -3110,6 +3110,21 @@ function expandHits(divId,btn){
   const d=document.getElementById(divId);
   if(d){d.style.display='';btn.style.display='none';}
 }
+function copyHits(id){
+  const card=document.getElementById('dbcard-'+id);
+  if(!card)return;
+  const rows=card.querySelectorAll('.db-hit');
+  if(!rows.length){toast('コピーするヒットがありません','wrn');return;}
+  const lines=[];
+  rows.forEach(row=>{
+    const tc=row.querySelector('.tc');
+    const txt=row.querySelector('.db-hit-txt');
+    const time=tc?tc.textContent.trim():'';
+    const msg=txt?txt.textContent.trim():'';
+    lines.push(time?(time+'\t'+msg):msg);
+  });
+  navigator.clipboard.writeText(lines.join('\n')).then(()=>toast('コピー完了 ('+lines.length+'件)','ok')).catch(()=>toast('コピー失敗','err'));
+}
 function makeHitRow(h,kw){
   const t=fmtSec(h.sec);
   const link=h.vid?'<a href="javascript:void(0)" onclick="ytSeek(\''+h.vid+'\','+Math.floor(h.sec)+')" style="cursor:pointer">'+esc(t)+'</a>':esc(t);
@@ -3423,6 +3438,7 @@ function renderDB(records,q,acct){
     const cardClick=_selectMode
       ?'toggleSelect(event,'+rec.id+')'
       :'(!event.defaultPrevented)&&toggleCardExpand(event,'+rec.id+')';
+    const copyBtn=hitsHtml?'<button class="db-txt-btn" onclick="copyHits('+rec.id+')" title="検索結果をクリップボードにコピー">📋 コピー</button> ':'';
     return'<div class="db-card'+(isSel?' sel':'')+'" id="dbcard-'+rec.id+'" ondblclick="'+(_selectMode?'':'loadRecordToAnalysis('+rec.id+')')+'" title="'+(isSel?'選択中 — クリックで解除':'ダブルクリックで解析画面に読み込む')+'">'
       +'<div class="db-card-h" onclick="'+cardClick+'">'+selCb+ep+'<div class="db-title">'+hlStr(title,q)+'</div>'+syncBadge+'</div>'
       +'<div class="db-meta">'+esc(date)+metaUrl+'</div>'
@@ -3434,6 +3450,7 @@ function renderDB(records,q,acct){
       +memoHtml
       +expandHint
       +'<div class="db-actions" onclick="event.stopPropagation()">'
+      +copyBtn
       +'<button class="db-txt-btn" onclick="downloadCombinedText('+rec.id+')">↓ TEXT</button>'
       +' <button class="db-edit-btn" onclick="startEdit('+rec.id+')">✏ 編集</button>'
       +' <button class="db-del" onclick="delVideo('+rec.id+')">削除</button>'
