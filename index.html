@@ -688,7 +688,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.46</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.47</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -3186,9 +3186,13 @@ function renderDB(records,q,acct){
     });
   }
 
-  // account filter (applied on top of keyword filter)
+  // account filter (q+al同時: そのアカウントのコメントにキーワードがある配信のみ)
   if(al){
-    filtered=filtered.filter(rec=>(rec.chatData||[]).some(c=>matchUser(c.username)));
+    if(q){
+      filtered=filtered.filter(rec=>(rec.chatData||[]).some(c=>matchUser(c.username)&&_fns.every(fn=>fn(_stripStamps(c.message)))));
+    }else{
+      filtered=filtered.filter(rec=>(rec.chatData||[]).some(c=>matchUser(c.username)));
+    }
   }
 
   // SC/マイル判定（donated保存前の旧データはmessage内容で判定）
@@ -3354,13 +3358,15 @@ function renderDB(records,q,acct){
     if(showHits){
       const _vid=_getVidId(rec);
       if(al){
+        const _chkQ=_dbMatchFn?_dbMatch:t=>t.toLowerCase().includes(ql);
         let userHits=chatData.filter(c=>matchUser(c.username));
+        if(q)userHits=userHits.filter(c=>_fns.every(fn=>fn(_stripStamps(c.message))));
         if(_scMode)userHits=userHits.filter(_isSC);
         userHits=userHits.map(c=>({sec:c.sec,rawMsg:c.message,uname:c.username,txt:'@'+c.username+' '+_renderMsg(c.message),vid:_vid})).sort((a,b)=>a.sec-b.sec);
         if(userHits.length){
           const cap=5,over=userHits.length-cap;
-          hitsHtml='<div class="db-hits">'+userHits.slice(0,cap).map(h=>makeHitRow(h,'')).join('')
-            +(over>0?'<div id="hm-'+rec.id+'" style="display:none">'+userHits.slice(cap).map(h=>makeHitRow(h,'')).join('')+'</div>'
+          hitsHtml='<div class="db-hits">'+userHits.slice(0,cap).map(h=>makeHitRow(h,q)).join('')
+            +(over>0?'<div id="hm-'+rec.id+'" style="display:none">'+userHits.slice(cap).map(h=>makeHitRow(h,q)).join('')+'</div>'
               +'<div class="db-hits-more" style="cursor:pointer" onclick="expandHits(\'hm-'+rec.id+'\',this)">▼ 他 '+over+' 件</div>':'')
             +'</div>';
         }
