@@ -688,7 +688,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
 <body>
 
 <header>
-  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.48</span></div>
+  <div class="logo-txt">FAST<span>CUT</span><span class="logo-ver">v2.12.49</span></div>
   <div class="tab-bar">
     <button class="tab active" id="tab-analyze">解析</button>
     <button class="tab" id="tab-db">データベース</button>
@@ -1106,6 +1106,7 @@ mark{background:rgba(185,24,40,0.25);color:var(--r1);border-radius:1px;padding:0
     <div id="pickup-all-layout" style="display:none">
       <div id="pickup-all-sort-bar" style="display:none;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center"></div>
       <div id="pickup-all-rank-body"></div>
+      <div id="pickup-all-hits-body" style="display:none"></div>
     </div>
   </div>
 </div>
@@ -4917,6 +4918,8 @@ function _rerunPickup(){
 
 let _pickupScope='single';
 let _pickupAllEntries=[];
+let _pickupAllHits=[];
+let _pickupAllView='rank'; // 'rank' | 'hits'
 
 function _setPickupScope(scope){
   _pickupScope=scope;
@@ -4971,6 +4974,7 @@ function runPickupAll(){
   const recs=(tag?_dbCache.filter(r=>r.mainTag===tag):_dbCache).filter(r=>(r.chatData||[]).length&&(r.trData||[]).length);
   if(!recs.length){if(statusEl)statusEl.textContent='対象データなし';return;}
   const userStats={};
+  const allHits=[];
   for(const rec of recs){
     const chatData=rec.chatData||[];
     const trData=rec.trData||[];
@@ -4989,23 +4993,105 @@ function runPickupAll(){
       const s=chatSec||0;
       const trWindow=trSorted.filter(t=>(t.sec||0)>=s&&(t.sec||0)<=s+windowSec);
       const matched=_pickupMatchFull(message,trWindow);
-      if(matched!==null)userStats[username].picked++;
+      if(matched!==null){
+        userStats[username].picked++;
+        allHits.push({recId:rec.id,epNum:rec.episodeNum,title:rec.title||'',streamStart:rec.streamStart||'',videoUrl:rec.videoUrl||'',username,chatSec:s,message,trSec:matched.sec,trText:matched.text||''});
+      }
     }
   }
   _pickupAllEntries=Object.entries(userStats).map(([user,{total,picked}])=>({user,total,picked,rate:total>0?picked/total:0,score:picked*Math.log2(total+1)}));
+  _pickupAllHits=allHits;
   const pickedUsers=_pickupAllEntries.filter(e=>e.picked>0).length;
   const totalVids=recs.length;
-  if(statusEl)statusEl.textContent=`完了（${totalVids}配信・${pickedUsers}人が1件以上拾われ）`;
+  if(statusEl)statusEl.textContent=`完了（${totalVids}配信・${pickedUsers}人が1件以上拾われ・ヒット${allHits.length}件）`;
   const sortBar=document.getElementById('pickup-all-sort-bar');
   if(sortBar){
     sortBar.style.display='flex';
     sortBar.innerHTML=`
+<button class="rank-mode-btn${_pickupAllView==='rank'?' active':''}" id="pkaview-rank" onclick="_setPickupAllView('rank')" style="padding:4px 12px;font-size:11px">ランキング</button>
+<button class="rank-mode-btn${_pickupAllView==='hits'?' active':''}" id="pkaview-hits" onclick="_setPickupAllView('hits')" style="padding:4px 12px;font-size:11px;color:#a3e635;border-color:#a3e63588">ヒット一覧 (${allHits.length}件)</button>
+<span style="width:1px;background:var(--bd);margin:0 4px;align-self:stretch"></span>
+<span id="pka-rank-btns" style="display:${_pickupAllView==='rank'?'flex':'none'};gap:6px;flex-wrap:wrap">
 <button class="db-expand-btn" id="pkasort-picked" onclick="_sortPickupAll('picked')" style="flex:none;padding:4px 12px;font-size:11px">拾われ数順</button>
 <button class="db-expand-btn" id="pkasort-total" onclick="_sortPickupAll('total')" style="flex:none;padding:4px 12px;font-size:11px">コメント数順</button>
 <button class="db-expand-btn" id="pkasort-rate" onclick="_sortPickupAll('rate')" style="flex:none;padding:4px 12px;font-size:11px">拾われ率順</button>
-<button class="db-expand-btn active" id="pkasort-score" onclick="_sortPickupAll('score')" style="flex:none;padding:4px 12px;font-size:11px;color:#a78bfa;border-color:#a78bfa88">スコア順</button>`;
+<button class="db-expand-btn active" id="pkasort-score" onclick="_sortPickupAll('score')" style="flex:none;padding:4px 12px;font-size:11px;color:#a78bfa;border-color:#a78bfa88">スコア順</button>
+</span>
+<span id="pka-hits-btns" style="display:${_pickupAllView==='hits'?'flex':'none'};gap:6px;flex-wrap:wrap;align-items:center">
+<button class="db-expand-btn" id="pkahsort-ep" onclick="_renderPickupAllHits('ep')" style="flex:none;padding:4px 12px;font-size:11px">配信順</button>
+<button class="db-expand-btn active" id="pkahsort-user" onclick="_renderPickupAllHits('user')" style="flex:none;padding:4px 12px;font-size:11px;color:#a3e635;border-color:#a3e63588">アカウント順</button>
+<button class="db-expand-btn" id="pkahsort-time" onclick="_renderPickupAllHits('time')" style="flex:none;padding:4px 12px;font-size:11px">時刻順</button>
+<button class="db-txt-btn" onclick="_copyPickupAllHits()" style="margin-left:8px">📋 全コピー</button>
+</span>`;
   }
-  _sortPickupAll('score');
+  if(_pickupAllView==='rank')_sortPickupAll('score');
+  else _renderPickupAllHits('user');
+}
+
+function _setPickupAllView(view){
+  _pickupAllView=view;
+  const rankBtn=document.getElementById('pkaview-rank');
+  const hitsBtn=document.getElementById('pkaview-hits');
+  const rankBtns=document.getElementById('pka-rank-btns');
+  const hitsBtns=document.getElementById('pka-hits-btns');
+  if(rankBtn){rankBtn.classList.toggle('active',view==='rank');}
+  if(hitsBtn){hitsBtn.classList.toggle('active',view==='hits');hitsBtn.style.color=view==='hits'?'#a3e635':'';hitsBtn.style.borderColor=view==='hits'?'#a3e63588':'';}
+  if(rankBtns)rankBtns.style.display=view==='rank'?'flex':'none';
+  if(hitsBtns)hitsBtns.style.display=view==='hits'?'flex':'none';
+  document.getElementById('pickup-all-rank-body').style.display=view==='rank'?'':'none';
+  document.getElementById('pickup-all-hits-body').style.display=view==='hits'?'':'none';
+  if(view==='rank')_sortPickupAll('score');
+  else _renderPickupAllHits('user');
+}
+
+function _renderPickupAllHits(sortKey){
+  ['ep','user','time'].forEach(k=>{
+    const b=document.getElementById('pkahsort-'+k);
+    if(b){b.classList.toggle('active',k===sortKey);b.style.color=k===sortKey?'#a3e635':'';b.style.borderColor=k===sortKey?'#a3e63588':'';}
+  });
+  const el=document.getElementById('pickup-all-hits-body');
+  if(!el)return;
+  if(!_pickupAllHits.length){el.innerHTML='<div style="color:var(--t2);padding:12px 0">ヒットなし</div>';return;}
+  const sorted=[..._pickupAllHits].sort((a,b)=>{
+    if(sortKey==='user')return a.username.localeCompare(b.username)||(a.chatSec-b.chatSec);
+    if(sortKey==='time')return a.chatSec-b.chatSec;
+    // ep: episodeNum
+    const ea=parseInt(a.epNum)||0,eb=parseInt(b.epNum)||0;
+    return ea-eb||(a.chatSec-b.chatSec);
+  });
+  const fmtSec=s=>{if(s==null)return'?';const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=Math.floor(s%60);return h>0?h+':'+String(m).padStart(2,'0')+':'+String(sc).padStart(2,'0'):m+':'+String(sc).padStart(2,'0');};
+  el.innerHTML=`<table class="rank-table">
+<thead><tr>
+<th>配信</th>
+<th>アカウント</th>
+<th style="text-align:right;white-space:nowrap">コメ時刻</th>
+<th>コメント</th>
+<th style="text-align:right;white-space:nowrap">発声時刻</th>
+<th>配信者の発言</th>
+</tr></thead>
+<tbody>${sorted.map(h=>`<tr>
+<td style="white-space:nowrap;font-size:11px;color:var(--t2)">#${h.epNum||'?'} ${esc((h.title||'').slice(0,18))}${(h.title||'').length>18?'…':''}</td>
+<td style="color:#f472b6;white-space:nowrap">@${esc(h.username)}</td>
+<td style="text-align:right;color:#93c5fd;font-size:11px;white-space:nowrap">${fmtSec(h.chatSec)}</td>
+<td style="font-size:12px">${esc(h.message)}</td>
+<td style="text-align:right;color:#a3e635;font-size:11px;white-space:nowrap">${fmtSec(h.trSec)}</td>
+<td style="font-size:11px;color:#d1fae5">🎤 ${esc((h.trText||'').slice(0,60))}${(h.trText||'').length>60?'…':''}</td>
+</tr>`).join('')}</tbody></table>`;
+}
+
+function _copyPickupAllHits(){
+  if(!_pickupAllHits.length){toast('コピーするデータがありません','wrn');return;}
+  const fmtSec=s=>{if(s==null)return'?';const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=Math.floor(s%60);return h>0?h+':'+String(m).padStart(2,'0')+':'+String(sc).padStart(2,'0'):m+':'+String(sc).padStart(2,'0');};
+  const header='配信\tアカウント\tコメ時刻\tコメント\t発声時刻\t配信者の発言';
+  const rows=_pickupAllHits.map(h=>[
+    '#'+(h.epNum||'?')+' '+(h.title||'').slice(0,30),
+    '@'+h.username,
+    fmtSec(h.chatSec),
+    h.message,
+    fmtSec(h.trSec),
+    (h.trText||'').slice(0,80)
+  ].join('\t'));
+  navigator.clipboard.writeText([header,...rows].join('\n')).then(()=>toast('コピー完了 ('+_pickupAllHits.length+'件)','ok')).catch(()=>toast('コピー失敗','err'));
 }
 
 
