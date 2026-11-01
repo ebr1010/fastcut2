@@ -234,6 +234,31 @@
       color: var(--text-sub);
       padding: 8px;
     }
+    /* Sentence feedback */
+    .sentence {
+      cursor: pointer;
+      border-radius: 3px;
+      transition: background 0.1s;
+    }
+    .sentence:hover {
+      background: rgba(255, 220, 50, 0.18);
+    }
+    .sentence.flagged {
+      background: rgba(248, 113, 113, 0.22);
+      text-decoration: underline wavy #f87171;
+      text-underline-offset: 3px;
+    }
+    .msg.bot .bubble:hover .feedback-hint {
+      opacity: 1;
+    }
+    .feedback-hint {
+      display: block;
+      font-size: 10px;
+      color: var(--text-sub);
+      opacity: 0;
+      transition: opacity 0.2s;
+      margin-top: 2px;
+    }
   </style>
 </head>
 <body>
@@ -427,6 +452,25 @@ window.onload = () => {
   document.getElementById('model-select').value = model;
 };
 
+function splitSentences(text) {
+  const endings = new Set(['。', '！', '？', '\n']);
+  const parts = [];
+  let cur = '';
+  for (let i = 0; i < text.length; i++) {
+    cur += text[i];
+    if (endings.has(text[i])) {
+      while (i + 1 < text.length && endings.has(text[i + 1]) && text[i + 1] !== '\n') {
+        i++;
+        cur += text[i];
+      }
+      if (cur.trim()) parts.push(cur);
+      cur = '';
+    }
+  }
+  if (cur.trim()) parts.push(cur);
+  return parts.length > 0 ? parts : [text];
+}
+
 function togglePanel() {
   const p = document.getElementById('api-panel');
   p.style.display = p.style.display === 'none' ? 'flex' : 'none';
@@ -467,7 +511,23 @@ function addMessage(role, text) {
 
   const bubble = document.createElement('div');
   bubble.className = 'bubble';
-  bubble.textContent = text;
+
+  if (role === 'bot') {
+    splitSentences(text).forEach(s => {
+      const span = document.createElement('span');
+      span.className = 'sentence';
+      span.textContent = s;
+      span.title = 'クリックでおかしい箇所を指摘';
+      span.onclick = () => span.classList.toggle('flagged');
+      bubble.appendChild(span);
+    });
+    const hint = document.createElement('span');
+    hint.className = 'feedback-hint';
+    hint.textContent = '文をクリック → 赤くマークして指摘';
+    bubble.appendChild(hint);
+  } else {
+    bubble.textContent = text;
+  }
 
   const ts = document.createElement('span');
   ts.className = 'ts';
@@ -596,7 +656,7 @@ async function sendMessage() {
     }
 
     // フォールバックモデル順
-    const fallbacks = [model, 'gemini-2.5-flash', 'gemini-3.5-flash-lite'].filter((v, i, a) => a.indexOf(v) === i);
+    const fallbacks = [model, 'gemini-3.5-flash-lite'].filter((v, i, a) => a.indexOf(v) === i);
     let data, usedModel = model;
     for (let fi = 0; fi < fallbacks.length; fi++) {
       try {
