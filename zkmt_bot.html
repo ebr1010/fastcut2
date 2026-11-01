@@ -859,6 +859,7 @@ async function sendMessage() {
     chat.scrollTop = chat.scrollHeight;
     // エラー時はメッセージを履歴から除く
     messages.pop();
+    saveMessages();
   }
 
   sending = false;
