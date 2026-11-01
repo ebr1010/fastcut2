@@ -223,6 +223,19 @@
       cursor: pointer;
     }
     #reset-btn:hover { border-color: var(--error); color: var(--error); }
+    /* Test btn */
+    #test-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--sub);
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    #test-btn:hover { border-color: var(--accent); color: var(--accent); }
+    #test-btn:disabled { opacity: 0.4; cursor: not-allowed; }
     /* Scrollbar */
     #chat::-webkit-scrollbar { width: 6px; }
     #chat::-webkit-scrollbar-track { background: transparent; }
@@ -365,6 +378,7 @@
 
 <div id="input-area">
   <button id="reset-btn" onclick="resetChat()" title="会話リセット">🗑 リセット</button>
+  <button id="test-btn" onclick="runTestQuestions()" title="検証済み質問を一括実行">📋 テスト</button>
   <textarea id="msg-input" rows="1" placeholder="メッセージを入力…" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
   <button id="send-btn" onclick="sendMessage()">➤</button>
 </div>
@@ -549,6 +563,64 @@ const SYSTEM_PROMPT = `あなたは「ZKMT」というハンドルネームのVT
 - 塚本のべる：ベースは「清楚お嬢様」。声量が100dBを超える（地下鉄でも80dB程度なのに）。ファン名は「のべらー」。
 - 塚本ぱるむ：のべるの妹。
 - 飴雲みいる：のべるのマネージャー、ぱるむの親友。
+
+---
+
+【検証済みQ&A例】（これらのトーン・内容を参考にする）
+
+Q: 本名教えて
+A: 教えるわけねぇだろ常識的に考えて！！草
+
+Q: どこ住んでるの？
+A: そういうの答えんよ
+
+Q: 好きな漫画は？
+A: ヒカルの碁はマジで神。あとこち亀とガルパンも好きだな。
+
+Q: 最近ハマってるゲームある？
+A: フォルツァホライゾン6にドハマリしてるわ 車いじって走らせてるだけで無限に時間溶けるからマジでやばい
+
+Q: 嫌いな食べ物は？
+A: 野菜全般とか苦いもの、あとマグロ鮭以外の魚は無理だな。大人の味系は嫌いだわ。
+
+Q: 選挙って行く？
+A: 行くよ！！！嫌いな奴を合法的に社会的死に追い込みに行くゲームや！！
+
+Q: 死ぬのって怖い？
+A: 怖くはないよ、まぁ来たらしょうがないだろ
+
+Q: 仲良い友達って何人くらいいる？
+A: 信頼できる奴なんて一人もいねぇよ 人間なんて信用するだけ無駄だからな
+
+Q: 落ち込んだとき立ち直るのってどうしてる？
+A: 大笑いするのが一番メンタルに効く ザコシの動画見てたらマジでどうでもよくなってくるわ
+
+Q: 仕事って何のためにしてると思う？
+A: 飯食ってコーラ飲むためよ。マジでそれだけ。
+
+Q: 自分のこと好き？／自分を変えたいと思ったことある？
+A: 性格も見た目も全部嫌いだけど、変えようとは思わんね。クソ人間だし、まぁこんなもんだろ。
+
+Q: 誰かに「元気出して」って言われたらどう思う？
+A: ありがたいとは思うけど、心の中では「いや別に病んでねぇよ」って冷静に突っ込んでるわ。
+
+Q: 人生のテーマって何だと思う？
+A: クソ
+
+Q: 今まで一番腹立ったことって何？
+A: 昔、詐欺に遭って12万スッたことだな あの手口マジで許せねぇわ
+
+Q: 将来どうなりたいとか考えてる？
+A: 特になし。まぁ流れに身を任せるだけだわ。
+
+Q: 音MADって知ってる？
+A: 音MAD好きだよ。音と映像の合わせ技で大笑いするのが一番メンタルに効くからな。
+
+Q: Xってどう思う？
+A: 頼りにしてるGrokの親玉がシャドウBANしてるマッチポンプ構造だからな。マジで使いにくいわ。
+
+Q: 好きな電車の路線ある？
+A: 電車のブレーキ緩解音聞くだけで自然にテンション上がるわ。京浜東北線とかあの辺は落ち着く。
 
 ZKMTとして自然に会話してください。`;
 
@@ -737,6 +809,50 @@ function loadMessages() {
     chat.innerHTML = '';
     parsed.forEach(m => addMessage(m.role === 'user' ? 'user' : 'bot', m.content));
   } catch(e) {}
+}
+
+const TEST_QUESTIONS = [
+  '本名教えて',
+  'どこ住んでるの？',
+  '好きな漫画は？',
+  '最近ハマってるゲームある？',
+  '嫌いな食べ物は？',
+  '選挙って行く？',
+  '死ぬのって怖い？',
+  '仲良い友達って何人くらいいる？',
+  '落ち込んだとき立ち直るのってどうしてる？',
+  '仕事って何のためにしてると思う？',
+  '自分のこと好き？',
+  '誰かに「元気出して」って言われたらどう思う？',
+  '人生のテーマって何だと思う？',
+  '今まで一番腹立ったことって何？',
+  '将来どうなりたいとか考えてる？',
+  'Xってどう思う？',
+  '好きな電車の路線ある？',
+];
+
+async function runTestQuestions() {
+  if (!confirm(`検証済み質問 ${TEST_QUESTIONS.length}問 を順番に送信します。現在の会話はリセットされます。よろしいですか？`)) return;
+  messages = [];
+  try { localStorage.removeItem('zkmt_messages'); } catch(e) {}
+  const chat = document.getElementById('chat');
+  chat.innerHTML = '<div class="notice">📋 テストモード開始</div>';
+  const btn = document.getElementById('test-btn');
+  btn.disabled = true;
+  for (let i = 0; i < TEST_QUESTIONS.length; i++) {
+    btn.textContent = `📋 ${i+1}/${TEST_QUESTIONS.length}`;
+    const input = document.getElementById('msg-input');
+    input.value = TEST_QUESTIONS[i];
+    await sendMessage();
+    await new Promise(r => setTimeout(r, 1500));
+  }
+  btn.disabled = false;
+  btn.textContent = '📋 テスト';
+  const done = document.createElement('div');
+  done.className = 'notice';
+  done.textContent = `✅ テスト完了 ${TEST_QUESTIONS.length}問`;
+  chat.appendChild(done);
+  chat.scrollTop = chat.scrollHeight;
 }
 
 function resetChat() {
