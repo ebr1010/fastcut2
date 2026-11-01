@@ -544,7 +544,9 @@ async function sendMessage() {
             await new Promise(r => setTimeout(r, (i + 1) * 2000));
             continue;
           }
-          throw new Error(msg);
+          const overloadErr = new Error(msg);
+          overloadErr.isOverload = isOverload;
+          throw overloadErr;
         } catch (e) {
           clearTimeout(timeoutId);
           if (e.name === 'AbortError') {
@@ -553,17 +555,32 @@ async function sendMessage() {
               await new Promise(r => setTimeout(r, 2000));
               continue;
             }
-            throw new Error('応答がありませんでした。しばらく待ってから再送信してください。');
+            const timeoutErr = new Error('タイムアウト');
+            timeoutErr.isOverload = true;
+            throw timeoutErr;
           }
           throw e;
         }
       }
     }
 
-    const data = await callGemini(model);
+    // フォールバックモデル順
+    const fallbacks = [model, 'gemini-2.5-flash', 'gemini-2.5-flash-lite'].filter((v, i, a) => a.indexOf(v) === i);
+    let data, usedModel = model;
+    for (let fi = 0; fi < fallbacks.length; fi++) {
+      try {
+        if (fi > 0) document.getElementById('status-text').textContent = `混雑中…${fallbacks[fi]} で再試行`;
+        data = await callGemini(fallbacks[fi]);
+        usedModel = fallbacks[fi];
+        break;
+      } catch (e) {
+        if (e.isOverload && fi < fallbacks.length - 1) continue;
+        throw e;
+      }
+    }
     const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || '（返答なし）';
 
-    document.getElementById('status-text').textContent = 'オンライン · ' + model;
+    document.getElementById('status-text').textContent = 'オンライン · ' + usedModel;
     removeTyping();
     addMessage('bot', reply);
     messages.push({ role: 'assistant', content: reply });
