@@ -224,17 +224,6 @@
     }
     #reset-btn:hover { border-color: var(--error); color: var(--error); }
     /* Export / Test btns */
-    #import-qa-btn {
-      background: none;
-      border: 1px solid var(--border);
-      color: var(--sub);
-      font-size: 0.75rem;
-      padding: 4px 10px;
-      border-radius: 6px;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-    #import-qa-btn:hover { border-color: var(--accent); color: var(--accent); }
     #export-btn {
       background: none;
       border: 1px solid var(--border);
@@ -400,7 +389,6 @@
 
 <div id="input-area">
   <button id="reset-btn" onclick="resetChat()" title="会話リセット">🗑 リセット</button>
-  <button id="import-qa-btn" onclick="openQAImport()" title="解析サイトの回答をbotに反映">📥 Q&A更新</button>
   <button id="export-btn" onclick="exportQuestionLog()" title="収集した質問を解析サイトに送る">📤 質問ログ</button>
   <button id="test-btn" onclick="runTestQuestions()" title="検証済み質問を一括実行">📋 テスト</button>
   <textarea id="msg-input" rows="1" placeholder="メッセージを入力…" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
@@ -647,29 +635,6 @@ Q: 好きな電車の路線ある？
 A: 全般的に好き
 
 ZKMTとして自然に会話してください。`;
-
-function buildSystemPrompt() {
-  try {
-    const qa = JSON.parse(localStorage.getItem('zkmt_qa') || '[]');
-    if (qa.length === 0) return SYSTEM_PROMPT;
-    let ext = '\n\n【ZKMTが実際に答えた回答（最優先で参考にする）】\n';
-    qa.forEach(item => { ext += `\nQ: ${item.q}\nA: ${item.a}`; });
-    return SYSTEM_PROMPT + ext;
-  } catch(e) { return SYSTEM_PROMPT; }
-}
-
-function openQAImport() {
-  const json = prompt('解析サイトの「📤 botに同期」でコピーしたJSONを貼り付けてください：');
-  if (!json) return;
-  try {
-    const data = JSON.parse(json);
-    if (!Array.isArray(data)) throw new Error('配列ではありません');
-    localStorage.setItem('zkmt_qa', json);
-    alert(`✅ ${data.length}件のQ&Aを更新しました。`);
-  } catch(e) {
-    alert('エラー：正しいJSONではありません。\n' + e.message);
-  }
-}
 
 let messages = [];
 let apiKey = localStorage.getItem('zkmt_api_key') || '';
@@ -965,7 +930,7 @@ async function sendMessage() {
     }));
 
     const body = JSON.stringify({
-      system_instruction: { parts: [{ text: buildSystemPrompt() }] },
+      system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
       contents: geminiContents,
       generationConfig: { maxOutputTokens: 1024, temperature: 0.9 }
     });
