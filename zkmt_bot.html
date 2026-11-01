@@ -259,6 +259,70 @@
       transition: opacity 0.2s;
       margin-top: 2px;
     }
+    .report-btn {
+      display: none;
+      margin-top: 6px;
+      padding: 3px 10px;
+      background: rgba(248, 113, 113, 0.12);
+      border: 1px solid rgba(248, 113, 113, 0.35);
+      border-radius: 6px;
+      color: #f87171;
+      font-size: 11px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .bubble.has-flags .report-btn { display: inline-block; }
+    .report-btn:hover { background: rgba(248, 113, 113, 0.26); }
+    /* Report modal */
+    #report-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    #report-modal.open { display: flex; }
+    #report-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px 22px;
+      max-width: 520px;
+      width: 90%;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+    #report-box h3 {
+      margin-bottom: 12px;
+      color: #f87171;
+      font-size: 14px;
+    }
+    .report-item {
+      background: rgba(248, 113, 113, 0.1);
+      border-left: 3px solid #f87171;
+      border-radius: 4px;
+      padding: 7px 12px;
+      margin-bottom: 7px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .report-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+      justify-content: flex-end;
+    }
+    .report-actions button {
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      cursor: pointer;
+      border: none;
+    }
+    #copy-report-btn { background: var(--accent); color: #fff; }
+    #close-report-btn { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
   </style>
 </head>
 <body>
@@ -282,6 +346,17 @@
     <option value="gemini-2.5-pro">Gemini 2.5 Pro（高品質）</option>
   </select>
   <button id="save-key-btn" onclick="saveKey()">保存</button>
+</div>
+
+<div id="report-modal">
+  <div id="report-box">
+    <h3>⚑ 言わないはずの内容</h3>
+    <div id="report-items"></div>
+    <div class="report-actions">
+      <button id="copy-report-btn" onclick="copyReport()">📋 コピー</button>
+      <button id="close-report-btn" onclick="closeReport()">閉じる</button>
+    </div>
+  </div>
 </div>
 
 <div id="chat">
@@ -443,6 +518,32 @@ let apiKey = localStorage.getItem('zkmt_api_key') || '';
 let model = localStorage.getItem('zkmt_model') || 'gemini-3.8-flash';
 let sending = false;
 
+// Report modal
+function openReport(bubble) {
+  const flagged = bubble.querySelectorAll('.sentence.flagged');
+  const items = document.getElementById('report-items');
+  items.innerHTML = '';
+  flagged.forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'report-item';
+    div.textContent = s.textContent;
+    items.appendChild(div);
+  });
+  document.getElementById('copy-report-btn').textContent = '📋 コピー';
+  document.getElementById('report-modal').classList.add('open');
+}
+function closeReport() {
+  document.getElementById('report-modal').classList.remove('open');
+}
+function copyReport() {
+  const items = document.querySelectorAll('.report-item');
+  const text = '【言わないはずの内容】\n' + Array.from(items).map(i => '・' + i.textContent).join('\n');
+  navigator.clipboard.writeText(text).then(() => {
+    document.getElementById('copy-report-btn').textContent = '✓ コピー済';
+    setTimeout(() => { document.getElementById('copy-report-btn').textContent = '📋 コピー'; }, 2000);
+  });
+}
+
 // Init
 window.onload = () => {
   if (apiKey) {
@@ -450,6 +551,9 @@ window.onload = () => {
     document.getElementById('status-text').textContent = 'オンライン · ' + model;
   }
   document.getElementById('model-select').value = model;
+  document.getElementById('report-modal').addEventListener('click', e => {
+    if (e.target.id === 'report-modal') closeReport();
+  });
 };
 
 function splitSentences(text) {
@@ -517,14 +621,22 @@ function addMessage(role, text) {
       const span = document.createElement('span');
       span.className = 'sentence';
       span.textContent = s;
-      span.title = 'クリックでおかしい箇所を指摘';
-      span.onclick = () => span.classList.toggle('flagged');
+      span.title = 'クリックで「言わないはずの内容」としてマーク';
+      span.onclick = () => {
+        span.classList.toggle('flagged');
+        bubble.classList.toggle('has-flags', bubble.querySelectorAll('.sentence.flagged').length > 0);
+      };
       bubble.appendChild(span);
     });
     const hint = document.createElement('span');
     hint.className = 'feedback-hint';
-    hint.textContent = '文をクリック → 赤くマークして指摘';
+    hint.textContent = '文をクリック → 言わない内容としてマーク';
     bubble.appendChild(hint);
+    const reportBtn = document.createElement('button');
+    reportBtn.className = 'report-btn';
+    reportBtn.textContent = '⚑ 指摘を報告';
+    reportBtn.onclick = () => openReport(bubble);
+    bubble.appendChild(reportBtn);
   } else {
     bubble.textContent = text;
   }
