@@ -223,7 +223,18 @@
       cursor: pointer;
     }
     #reset-btn:hover { border-color: var(--error); color: var(--error); }
-    /* Test btn */
+    /* Export / Test btns */
+    #export-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--sub);
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    #export-btn:hover { border-color: #4caf50; color: #4caf50; }
     #test-btn {
       background: none;
       border: 1px solid var(--border);
@@ -378,6 +389,7 @@
 
 <div id="input-area">
   <button id="reset-btn" onclick="resetChat()" title="会話リセット">🗑 リセット</button>
+  <button id="export-btn" onclick="exportQuestionLog()" title="収集した質問を解析サイトに送る">📤 質問ログ</button>
   <button id="test-btn" onclick="runTestQuestions()" title="検証済み質問を一括実行">📋 テスト</button>
   <textarea id="msg-input" rows="1" placeholder="メッセージを入力…" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
   <button id="send-btn" onclick="sendMessage()">➤</button>
@@ -855,6 +867,29 @@ async function runTestQuestions() {
   chat.scrollTop = chat.scrollHeight;
 }
 
+function logQuestion(text) {
+  try {
+    const log = JSON.parse(localStorage.getItem('zkmt_qlog') || '[]');
+    if (!log.includes(text)) {
+      log.push(text);
+      localStorage.setItem('zkmt_qlog', JSON.stringify(log));
+    }
+  } catch(e) {}
+}
+
+function exportQuestionLog() {
+  try {
+    const log = JSON.parse(localStorage.getItem('zkmt_qlog') || '[]');
+    if (log.length === 0) { alert('質問ログがまだありません。'); return; }
+    const json = JSON.stringify(log, null, 2);
+    navigator.clipboard.writeText(json).then(() => {
+      alert(`${log.length}件の質問をコピーしました。\nClaudeに「解析サイトに反映して」と貼り付けてください。`);
+    }).catch(() => {
+      prompt('以下をコピーしてClaudeに渡してください：', json);
+    });
+  } catch(e) {}
+}
+
 function resetChat() {
   if (!confirm('会話履歴をリセットしますか？')) return;
   messages = [];
@@ -883,6 +918,7 @@ async function sendMessage() {
   addMessage('user', text);
   messages.push({ role: 'user', content: text });
   saveMessages();
+  logQuestion(text);
 
   addTyping();
 
